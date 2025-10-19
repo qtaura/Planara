@@ -168,3 +168,16 @@ export async function login(usernameOrEmail: string, password: string): Promise<
   const data = await res.json();
   return data;
 }
+
+export async function signup(payload: { username: string; email: string; password: string }): Promise<any> {
+  const res = await fetch(`${API_BASE}/users/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to signup: ${res.status}`);
+  }
+  return res.json();
+}

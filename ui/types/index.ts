@@ -1,5 +1,6 @@
 export type ViewType = 
   | 'login'
+  | 'signup'
   | 'landing' 
   | 'onboarding' 
   | 'dashboard' 

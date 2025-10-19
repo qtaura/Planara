@@ -26,11 +26,18 @@ export function LandingScreen({ onNavigate }: LandingScreenProps) {
               GitHub
             </Button>
             <Button
-              onClick={() => onNavigate('onboarding')}
+              variant="outline"
+              size="sm"
+              onClick={() => onNavigate('login')}
+            >
+              Sign in
+            </Button>
+            <Button
+              onClick={() => onNavigate('signup')}
               size="sm"
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
-              Get started
+              Sign up
             </Button>
           </div>
         </div>

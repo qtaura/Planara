@@ -13,8 +13,10 @@ import { ViewType } from './types';
 import { getToken } from '@lib/api';
 import { LoginScreen } from './components/LoginScreen';
 
+import { SignupScreen } from './components/SignupScreen';
+
 function AppContent() {
-  const [currentView, setCurrentView] = useState<ViewType>(() => (getToken() ? 'dashboard' : 'login'));
+  const [currentView, setCurrentView] = useState<ViewType>('landing');
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
 
@@ -39,6 +41,10 @@ function AppContent() {
 
   if (currentView === 'login') {
     return <LoginScreen onSuccess={() => setCurrentView('dashboard')} />;
+  }
+
+  if (currentView === 'signup') {
+    return <SignupScreen onSuccess={() => setCurrentView('dashboard')} />;
   }
 
   if (currentView === 'landing') {
