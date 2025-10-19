@@ -1,0 +1,35 @@
+# Root ignores
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env files
+.env
+.env.*
+*.local
+
+# Build outputs
+/dist/
+**/dist/
+
+# Node modules
+/node_modules/
+**/node_modules/
+
+# Editor/OS
+.vscode/
+.idea/
+*.swp
+
+# Coverage
+coverage/
+
+# Misc
+*.cache
+
+# Vite
+.vite
+**/.vite
