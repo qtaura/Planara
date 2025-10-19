@@ -15,6 +15,9 @@ This project follows the "Keep a Changelog" format and Semantic Versioning.
 - CRUD API routes under `/api/projects`, `/api/tasks`, `/api/users`, `/api/milestones`, `/api/comments` in `routes/*`.
 - UI API client `ui/lib/api.ts` to fetch and transform `Project`, `Task`, and `Milestone` data from `/api/*` into UI types.
 - Vite path aliases in `ui/vite.config.ts` mapping `@lib`, `@components`, `@styles`, `@types`, `@data` to local folders.
+- UI API helpers: `createProject`, `updateTaskStatus`, `deleteTask` for project/task CRUD.
+- Task actions in `TaskModal` (mark done, delete) with toasts and event dispatch.
+- Event-driven UI updates via `projects:changed` and `tasks:changed` for instant refresh.
 
 ### Changed
 - Migrated PostCSS configuration to use `@tailwindcss/postcss` (Tailwind v4) with explicit ESM imports and `autoprefixer`.
@@ -24,6 +27,9 @@ This project follows the "Keep a Changelog" format and Semantic Versioning.
 - Dashboard, AppSidebar, and ProjectView now load backend data (with mock fallback if the API is offline).
 - ProjectView fetches related `tasks` and `milestones` via API and includes a loading state.
 - Vite config resolves `@lib`, `@components`, `@styles`, `@types`, `@data` aliases to match `ui/tsconfig.json` paths.
+- CreateProjectModal integrated with backend; shows loading/error, toasts, and dispatches `projects:changed`.
+- Dashboard and AppSidebar refresh automatically on `projects:changed` with loading/error feedback.
+- ProjectView refreshes relations on `tasks:changed` and `projects:changed` with robust loading/error handling.
 
 ### Fixed
 - Resolved Tailwind/PostCSS overlay error caused by using `tailwindcss` directly as a PostCSS plugin.

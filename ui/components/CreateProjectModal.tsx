@@ -13,6 +13,8 @@ import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
 import { Calendar, Github, Sparkles, X } from 'lucide-react';
+import { createProject } from '@lib/api';
+import { toast } from 'sonner';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -25,6 +27,10 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
   const [aiGenerate, setAiGenerate] = useState(true);
   const [tags, setTags] = useState<string[]>(['web', 'frontend']);
   const [newTag, setNewTag] = useState('');
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const projectTypes = [
     { value: 'web', label: 'Web App' },
@@ -42,9 +48,26 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
     }
   };
 
-  const handleCreate = () => {
-    onCreate();
-    onClose();
+  const handleCreate = async () => {
+    if (!name.trim()) {
+      setError('Project name is required');
+      return;
+    }
+    setCreating(true);
+    setError(null);
+    try {
+      await createProject({ name: name.trim(), description: description.trim() || undefined });
+      toast.success('Project created');
+      window.dispatchEvent(new CustomEvent('projects:changed'));
+      onCreate();
+      onClose();
+    } catch (e: any) {
+      const msg = e?.message || 'Failed to create project';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -60,6 +83,11 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
         </DialogHeader>
 
         <div className="space-y-6 mt-6">
+          {error && (
+            <div className="p-3 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+              {error}
+            </div>
+          )}
           {/* Basic Info */}
           <div className="space-y-4">
             <div>
@@ -70,6 +98,9 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
                 id="project-name"
                 placeholder="e.g., Website redesign"
                 className="h-10"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={creating}
               />
             </div>
 
@@ -81,6 +112,9 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
                 id="description"
                 placeholder="What's this project about?"
                 rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={creating}
               />
             </div>
           </div>
@@ -98,6 +132,7 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
                       ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-600 dark:border-indigo-600 text-indigo-600 dark:text-indigo-400'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
                   }`}
+                  disabled={creating}
                 >
                   {type.label}
                 </button>
@@ -116,6 +151,7 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
                   id="start-date"
                   type="date"
                   className="h-10"
+                  disabled={creating}
                 />
                 <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               </div>
@@ -129,6 +165,7 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
                   id="end-date"
                   type="date"
                   className="h-10"
+                  disabled={creating}
                 />
                 <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               </div>
@@ -149,6 +186,7 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
                   <button
                     onClick={() => setTags(tags.filter((t) => t !== tag))}
                     className="ml-1 hover:text-red-600"
+                    disabled={creating}
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -162,8 +200,9 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
                 onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
                 placeholder="Add a tag..."
                 className="h-9 text-sm"
+                disabled={creating}
               />
-              <Button onClick={handleAddTag} variant="outline" size="sm">
+              <Button onClick={handleAddTag} variant="outline" size="sm" disabled={creating}>
                 Add
               </Button>
             </div>
@@ -181,7 +220,7 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
                   </p>
                 </div>
               </div>
-              <Switch checked={aiGenerate} onCheckedChange={setAiGenerate} />
+              <Switch checked={aiGenerate} onCheckedChange={setAiGenerate} disabled={creating} />
             </div>
 
             <div className="flex items-center justify-between">
@@ -194,20 +233,21 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
                   </p>
                 </div>
               </div>
-              <Switch checked={githubLinked} onCheckedChange={setGithubLinked} />
+              <Switch checked={githubLinked} onCheckedChange={setGithubLinked} disabled={creating} />
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={onClose} disabled={creating}>
               Cancel
             </Button>
             <Button
               onClick={handleCreate}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              disabled={creating || !name.trim()}
             >
-              Create project
+              {creating ? 'Creating...' : 'Create project'}
             </Button>
           </div>
         </div>

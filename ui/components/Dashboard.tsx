@@ -14,6 +14,7 @@ import { mockProjects } from '../data/mockData';
 import { Project } from '../types';
 import { useEffect, useState } from 'react';
 import { listProjects } from '@lib/api';
+import { toast } from 'sonner';
 import {
   LineChart,
   Line,
@@ -34,19 +35,36 @@ interface DashboardProps {
 
 export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: DashboardProps) {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchProjects() {
+    setLoading(true);
+    setError(null);
+    try {
+      const ps = await listProjects();
+      setProjects(ps);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load projects');
+      toast.error(error || 'Failed to load projects');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
-    listProjects()
-      .then((ps) => {
-        if (!cancelled) setProjects(ps);
-      })
-      .catch(() => {
-        // silently fall back to mock data
-      });
+    fetchProjects().catch(() => {});
+    function onChanged() {
+      if (!cancelled) fetchProjects().catch(() => {});
+    }
+    window.addEventListener('projects:changed', onChanged as EventListener);
     return () => {
       cancelled = true;
+      window.removeEventListener('projects:changed', onChanged as EventListener);
     };
   }, []);
+
   const activeProjects = (projects.length ? projects : mockProjects).filter(p => p.status === 'active');
   
   const velocityData = [
@@ -76,6 +94,12 @@ export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: 
             <p className="text-sm text-slate-600 dark:text-slate-400">
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
+            {loading && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Refreshing projects...</p>
+            )}
+            {error && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1">{error}</p>
+            )}
           </div>
           <Button
             onClick={onOpenCreateProject}

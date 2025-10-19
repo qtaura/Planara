@@ -90,3 +90,34 @@ export async function getProjectWithRelations(projectId: string): Promise<Projec
   ]);
   return toUiProject({ ...base, id: Number(projectId), name: base.name, description: base.description, archived: base.status === 'archived', favorite: base.favorite, createdAt: base.startDate }, tasks, milestones);
 }
+
+export async function createProject(payload: { name: string; description?: string; archived?: boolean; favorite?: boolean }): Promise<Project> {
+  const res = await fetch(`${API_BASE}/projects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed to create project: ${res.status}`);
+  const data = await res.json();
+  return toUiProject(data);
+}
+
+export async function updateTaskStatus(taskId: string, status: Task['status']): Promise<Task> {
+  const res = await fetch(`${API_BASE}/tasks/${encodeURIComponent(taskId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error(`Failed to update task: ${res.status}`);
+  const data = await res.json();
+  return toUiTask(data);
+}
+
+export async function deleteTask(taskId: string): Promise<boolean> {
+  const res = await fetch(`${API_BASE}/tasks/${encodeURIComponent(taskId)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error(`Failed to delete task: ${res.status}`);
+  const data = await res.json();
+  return !!data?.ok;
+}

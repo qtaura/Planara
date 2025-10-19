@@ -24,6 +24,8 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { Task } from '../types';
+import { updateTaskStatus, deleteTask } from '@lib/api';
+import { toast } from 'sonner';
 
 interface TaskModalProps {
   task: Task | null;
@@ -33,8 +35,39 @@ interface TaskModalProps {
 
 export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   const [showAiSuggestions, setShowAiSuggestions] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (!task) return null;
+
+  async function handleMarkDone() {
+    setUpdating(true);
+    try {
+      await updateTaskStatus(task.id, 'done');
+      toast.success('Task marked as done');
+      window.dispatchEvent(new CustomEvent('tasks:changed'));
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to update task');
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm('Delete this task?')) return;
+    setDeleting(true);
+    try {
+      await deleteTask(task.id);
+      toast.success('Task deleted');
+      window.dispatchEvent(new CustomEvent('tasks:changed'));
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to delete task');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const aiSuggestions = [
     'Add subtask: Set up database migrations',
@@ -105,9 +138,29 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
                 ))}
               </div>
             </div>
-            <Button variant="ghost" size="sm">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMarkDone}
+                disabled={updating || deleting || task.status === 'done'}
+                className="text-green-600 dark:text-green-400 border-green-600 dark:border-green-600"
+              >
+                Mark done
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDelete}
+                disabled={updating || deleting}
+                className="text-red-600 dark:text-red-400 border-red-600 dark:border-red-600"
+              >
+                Delete
+              </Button>
+              <Button variant="ghost" size="sm" disabled={updating || deleting}>
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 

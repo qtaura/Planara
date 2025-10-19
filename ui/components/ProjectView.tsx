@@ -21,6 +21,7 @@ import { TaskModal } from './TaskModal';
 import { Project, Task } from '../types';
 import { mockProjects } from '../data/mockData';
 import { getProjectWithRelations } from '@lib/api';
+import { toast } from 'sonner';
 
 interface ProjectViewProps {
   projectId: string;
@@ -31,24 +32,36 @@ export function ProjectView({ projectId }: ProjectViewProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refreshProject() {
+    setLoading(true);
+    setError(null);
+    try {
+      const p = await getProjectWithRelations(projectId);
+      if (p) setProject(p);
+      else setProject(mockProjects.find((mp) => mp.id === projectId) || null);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load project');
+      toast.error(error || 'Failed to load project');
+      setProject(mockProjects.find((mp) => mp.id === projectId) || null);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    getProjectWithRelations(projectId)
-      .then((p) => {
-        if (!cancelled) {
-          if (p) setProject(p);
-          else setProject(mockProjects.find((mp) => mp.id === projectId) || null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setProject(mockProjects.find((mp) => mp.id === projectId) || null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
+    refreshProject().catch(() => {});
+    function onTasksChanged() { if (!cancelled) refreshProject().catch(() => {}); }
+    function onProjectsChanged() { if (!cancelled) refreshProject().catch(() => {}); }
+    window.addEventListener('tasks:changed', onTasksChanged as EventListener);
+    window.addEventListener('projects:changed', onProjectsChanged as EventListener);
+    return () => { 
+      cancelled = true; 
+      window.removeEventListener('tasks:changed', onTasksChanged as EventListener);
+      window.removeEventListener('projects:changed', onProjectsChanged as EventListener);
+    };
   }, [projectId]);
 
   if (loading) {
