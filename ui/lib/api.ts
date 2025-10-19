@@ -1,6 +1,42 @@
 import type { Project, Task, Milestone, SubTask } from '../types';
 
 const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001/api';
+const TOKEN_KEY = 'planara_token';
+
+export function getToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setToken(token: string) {
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {}
+}
+
+export function clearToken() {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {}
+}
+
+async function apiFetch(path: string, options: RequestInit = {}) {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  if (res.status === 401) {
+    clearToken();
+    try { window.dispatchEvent(new CustomEvent('auth:required')); } catch {}
+    throw new Error('Unauthorized');
+  }
+  return res;
+}
 
 function toUiTask(t: any): Task {
   const subtasks: SubTask[] = [];
@@ -58,7 +94,7 @@ function toUiProject(p: any, tasks: Task[] = [], milestones: Milestone[] = []): 
 }
 
 export async function listProjects(): Promise<Project[]> {
-  const res = await fetch(`${API_BASE}/projects`);
+  const res = await apiFetch(`/projects`);
   if (!res.ok) throw new Error(`Failed to fetch projects: ${res.status}`);
   const data = await res.json();
   // Map without relations first
@@ -66,14 +102,14 @@ export async function listProjects(): Promise<Project[]> {
 }
 
 export async function listTasksForProject(projectId: string): Promise<Task[]> {
-  const res = await fetch(`${API_BASE}/tasks?projectId=${encodeURIComponent(projectId)}`);
+  const res = await apiFetch(`/tasks?projectId=${encodeURIComponent(projectId)}`);
   if (!res.ok) throw new Error(`Failed to fetch tasks: ${res.status}`);
   const data = await res.json();
   return (data as any[]).map((t) => toUiTask(t));
 }
 
 export async function listMilestonesForProject(projectId: string): Promise<Milestone[]> {
-  const res = await fetch(`${API_BASE}/milestones?projectId=${encodeURIComponent(projectId)}`);
+  const res = await apiFetch(`/milestones?projectId=${encodeURIComponent(projectId)}`);
   if (!res.ok) throw new Error(`Failed to fetch milestones: ${res.status}`);
   const data = await res.json();
   return (data as any[]).map((m) => toUiMilestone(m));
@@ -92,7 +128,7 @@ export async function getProjectWithRelations(projectId: string): Promise<Projec
 }
 
 export async function createProject(payload: { name: string; description?: string; archived?: boolean; favorite?: boolean }): Promise<Project> {
-  const res = await fetch(`${API_BASE}/projects`, {
+  const res = await apiFetch(`/projects`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -103,7 +139,7 @@ export async function createProject(payload: { name: string; description?: strin
 }
 
 export async function updateTaskStatus(taskId: string, status: Task['status']): Promise<Task> {
-  const res = await fetch(`${API_BASE}/tasks/${encodeURIComponent(taskId)}`, {
+  const res = await apiFetch(`/tasks/${encodeURIComponent(taskId)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
@@ -114,10 +150,21 @@ export async function updateTaskStatus(taskId: string, status: Task['status']): 
 }
 
 export async function deleteTask(taskId: string): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/tasks/${encodeURIComponent(taskId)}`, {
+  const res = await apiFetch(`/tasks/${encodeURIComponent(taskId)}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error(`Failed to delete task: ${res.status}`);
   const data = await res.json();
   return !!data?.ok;
+}
+
+export async function login(usernameOrEmail: string, password: string): Promise<{ token: string; user: any }>{
+  const res = await fetch(`${API_BASE}/users/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usernameOrEmail, password }),
+  });
+  if (!res.ok) throw new Error(`Failed to login: ${res.status}`);
+  const data = await res.json();
+  return data;
 }
