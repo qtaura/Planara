@@ -16,6 +16,8 @@ import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 import { mockProjects, mockUser } from '../data/mockData';
 import { Project } from '../types';
+import { useEffect, useState } from 'react';
+import { listProjects } from '@lib/api';
 
 interface AppSidebarProps {
   activeView: string;
@@ -32,8 +34,20 @@ export function AppSidebar({
   onSelectProject,
   onOpenCreateProject 
 }: AppSidebarProps) {
-  const activeProjects = mockProjects.filter(p => p.status === 'active');
-  const favoriteProjects = mockProjects.filter(p => p.favorite && p.status === 'active');
+  const [projects, setProjects] = useState<Project[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    listProjects()
+      .then((ps) => {
+        if (!cancelled) setProjects(ps);
+      })
+      .catch(() => {
+        // fallback to mock
+      });
+    return () => { cancelled = true; };
+  }, []);
+  const activeProjects = (projects.length ? projects : mockProjects).filter(p => p.status === 'active');
+  const favoriteProjects = activeProjects.filter(p => p.favorite);
 
   return (
     <div className="w-64 h-screen bg-white dark:bg-[#0A0A0A] border-r border-slate-200 dark:border-slate-800/50 flex flex-col">

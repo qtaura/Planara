@@ -10,7 +10,7 @@ export class Milestone {
   title!: string;
 
   @ManyToOne(() => Project, (project) => project.milestones, { onDelete: "CASCADE" })
-  project!: Project;
+  project!: Project | null;
 
   @Column({ type: "integer", default: 0 })
   progressPercent!: number;

@@ -8,7 +8,7 @@ export class Comment {
   id!: number;
 
   @ManyToOne(() => Task, (task) => task.comments, { onDelete: "CASCADE" })
-  task!: Task;
+  task!: Task | null;
 
   @ManyToOne(() => User, (user) => user.comments, { onDelete: "SET NULL" })
   author?: User | null;

@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { mockProjects } from '../data/mockData';
 import { Project } from '../types';
+import { useEffect, useState } from 'react';
+import { listProjects } from '@lib/api';
 import {
   LineChart,
   Line,
@@ -31,7 +33,21 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: DashboardProps) {
-  const activeProjects = mockProjects.filter(p => p.status === 'active');
+  const [projects, setProjects] = useState<Project[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    listProjects()
+      .then((ps) => {
+        if (!cancelled) setProjects(ps);
+      })
+      .catch(() => {
+        // silently fall back to mock data
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const activeProjects = (projects.length ? projects : mockProjects).filter(p => p.status === 'active');
   
   const velocityData = [
     { week: 'W1', velocity: 28 },

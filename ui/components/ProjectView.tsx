@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
@@ -20,6 +20,7 @@ import { FilesView } from './FilesView';
 import { TaskModal } from './TaskModal';
 import { Project, Task } from '../types';
 import { mockProjects } from '../data/mockData';
+import { getProjectWithRelations } from '@lib/api';
 
 interface ProjectViewProps {
   projectId: string;
@@ -28,8 +29,35 @@ interface ProjectViewProps {
 export function ProjectView({ projectId }: ProjectViewProps) {
   const [activeTab, setActiveTab] = useState('roadmap');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const project = mockProjects.find((p) => p.id === projectId);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getProjectWithRelations(projectId)
+      .then((p) => {
+        if (!cancelled) {
+          if (p) setProject(p);
+          else setProject(mockProjects.find((mp) => mp.id === projectId) || null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setProject(mockProjects.find((mp) => mp.id === projectId) || null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [projectId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-white dark:bg-[#0A0A0A]">
+        <p className="text-slate-400">Loading project...</p>
+      </div>
+    );
+  }
 
   if (!project) {
     return (
@@ -59,33 +87,33 @@ export function ProjectView({ projectId }: ProjectViewProps) {
                   {project.githubLinked && (
                     <Badge
                       variant="outline"
-                      className="border-green-200 dark:border-green-800 text-green-700 dark:text-green-400"
+                      className="border-green-500 text-green-600 dark:text-green-400"
                     >
-                      <Github className="w-3 h-3 mr-1" />
-                      Synced
+                      <Github className="w-3 h-3 mr-1 inline" /> Linked
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{project.description}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 max-w-2xl">
+                  {project.description}
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm">
-                <Users className="w-4 h-4 mr-2" />
-                {project.members.length}
+                <Users className="w-4 h-4 mr-2" /> Share
               </Button>
               <Button variant="outline" size="sm">
-                <Settings className="w-4 h-4" />
+                <Settings className="w-4 h-4 mr-2" /> Settings
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="icon">
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
             </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
             <StatCard
               label="Progress"
               value={`${project.progress}%`}

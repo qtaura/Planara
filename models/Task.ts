@@ -28,7 +28,7 @@ export class Task {
   milestone?: Milestone | null;
 
   @ManyToOne(() => Project, (project) => project.tasks, { onDelete: "CASCADE" })
-  project!: Project;
+  project!: Project | null;
 
   @ManyToOne(() => User, (user) => user.tasks, { nullable: true, onDelete: "SET NULL" })
   assignee?: User | null;
