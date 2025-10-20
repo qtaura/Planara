@@ -51,3 +51,28 @@ This project follows the "Keep a Changelog" format and Semantic Versioning.
 - UI dev server under `ui/` runs with `npm run dev` and may choose `5173` or the next available port (e.g., `5174`).
 - Transient `net::ERR_ABORTED` logs during HMR re-optimization are benign; refresh if seen.
 - UI components gracefully fall back to `ui/data/mockData.ts` if the API is unavailable.
+
+## 0.1.0 - 2025-10-20
+
+### Added
+- `avatar` column to `User` entity for storing image URLs/data.
+- Avatar update support via `PUT /api/users/:id` and client `updateUser`.
+- UI: Avatar upload with preview in `SettingsScreen` (file input, size checks).
+
+### Changed
+- Backend `updateProfile` now checks duplicates and returns `409` on existing `username`/`email`.
+- UI API client surfaces server error messages (e.g., conflicts) for clearer toasts.
+- UI `updateUser` payload includes `avatar` to persist avatar changes.
+
+### Fixed
+- Username change failures due to API mismatch and silent error handling.
+- Non-functional “Change Avatar” button (now opens file picker and previews).
+- OAuth redirects showing provider errors due to missing callback URIs; documented fixes.
+
+### Docs
+- Documented OAuth redirect URIs:
+  - Slack: `http://localhost:3002/api/users/oauth/slack/callback`
+  - Google: `http://localhost:3002/api/users/oauth/google/callback`
+  - GitHub: `http://localhost:3002/api/users/oauth/github/callback`
+- Noted env vars required for OAuth (`SLACK_CLIENT_ID/SECRET`, `GOOGLE_CLIENT_ID/SECRET`, optional GitHub).
+- Clarified UI backend base via `VITE_API_URL` during development.
