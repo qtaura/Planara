@@ -217,14 +217,35 @@ export async function deleteTask(taskId: string): Promise<boolean> {
 }
 
 export async function login(usernameOrEmail: string, password: string): Promise<{ token: string; user: any }>{
-  const res = await fetch(`${API_BASE}/users/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ usernameOrEmail, password }),
-  });
-  if (!res.ok) throw new Error(`Failed to login: ${res.status}`);
-  const data = await res.json();
-  return data;
+  // Improved error handling: normalize invalid credentials and network errors
+  try {
+    const res = await fetch(`${API_BASE}/users/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usernameOrEmail, password }),
+    });
+    if (!res.ok) {
+      let message = 'Incorrect username or password';
+      try {
+        const text = await res.text();
+        if (text) {
+          const data = JSON.parse(text);
+          if (typeof data?.error === 'string' && data.error) {
+            message = data.error.toLowerCase().includes('invalid') ? 'Incorrect username or password' : data.error;
+          }
+        }
+      } catch {}
+      throw new Error(message);
+    }
+    const data = await res.json();
+    return data;
+  } catch (e: any) {
+    const msg = e?.message || 'Login failed';
+    if (msg.includes('Failed to fetch')) {
+      throw new Error('Network error. Check your connection.');
+    }
+    throw new Error(msg);
+  }
 }
 
 export async function signup(payload: { username: string; email: string; password: string }): Promise<any> {

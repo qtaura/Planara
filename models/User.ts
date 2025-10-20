@@ -23,6 +23,13 @@ export class User {
   @Column({ nullable: true })
   avatar?: string;
 
+  // Add case-insensitive username support and change limit tracking
+  @Column({ unique: true, nullable: true })
+  usernameLower?: string;
+
+  @Column({ default: 0 })
+  usernameChangeCount!: number;
+
   @OneToMany(() => Task, (task) => task.assignee)
   tasks?: Task[];
 

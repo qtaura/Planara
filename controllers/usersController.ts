@@ -23,12 +23,18 @@ export async function signup(req: Request, res: Response) {
     return res.status(400).json({ error: "username, email and password are required" });
   }
   const repo = AppDataSource.getRepository(User);
-  const exists = await repo.findOne({ where: [{ username }, { email }] });
-  if (exists) {
+  // Case-insensitive checks and set usernameLower
+  const usernameLower = String(username).toLowerCase();
+  const usernameConflict = await repo.findOne({ where: { usernameLower } });
+  const emailConflict = await repo
+    .createQueryBuilder('user')
+    .where('LOWER(user.email) = :email', { email: String(email).toLowerCase() })
+    .getOne();
+  if (usernameConflict || emailConflict) {
     return res.status(409).json({ error: "username or email already exists" });
   }
   const hashedPassword = await bcrypt.hash(password, 10);
-  const user = repo.create({ username, email, hashedPassword });
+  const user = repo.create({ username, usernameLower, email, hashedPassword });
   await repo.save(user);
   res.status(201).json(sanitize(user));
 }
@@ -39,7 +45,17 @@ export async function login(req: Request, res: Response) {
     return res.status(400).json({ error: "usernameOrEmail and password are required" });
   }
   const repo = AppDataSource.getRepository(User);
-  const user = await repo.findOne({ where: [{ username: usernameOrEmail }, { email: usernameOrEmail }] });
+  // Case-insensitive lookup by email or username
+  const candidate = String(usernameOrEmail);
+  let user: User | null = null;
+  if (candidate.includes('@')) {
+    user = await repo
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: candidate.toLowerCase() })
+      .getOne();
+  } else {
+    user = await repo.findOne({ where: { usernameLower: candidate.toLowerCase() } });
+  }
   if (!user) {
     return res.status(401).json({ error: "invalid credentials" });
   }
@@ -62,16 +78,25 @@ export async function updateProfile(req: Request, res: Response) {
 
   const { username, email, password, teamId, avatar } = req.body as Partial<{ username: string; email: string; password: string; teamId: number; avatar: string }>;
 
-  if (username && username !== user.username) {
-    const conflict = await repo.findOne({ where: { username } });
+  // Enforce one-change limit and case-insensitive uniqueness for username
+  if (username && username.toLowerCase() !== (user.usernameLower || user.username.toLowerCase())) {
+    const changeCount = (user.usernameChangeCount ?? 0);
+    if (changeCount >= 1) {
+      return res.status(403).json({ error: "username change limit reached" });
+    }
+    const desiredLower = String(username).toLowerCase();
+    const conflict = await repo.findOne({ where: { usernameLower: desiredLower } });
     if (conflict && conflict.id !== user.id) {
       return res.status(409).json({ error: "username already exists" });
     }
     user.username = username;
+    user.usernameLower = desiredLower;
+    user.usernameChangeCount = changeCount + 1;
   }
 
-  if (email && email !== user.email) {
-    const conflict = await repo.findOne({ where: { email } });
+  // Case-insensitive email uniqueness
+  if (email && email.toLowerCase() !== (user.email || '').toLowerCase()) {
+    const conflict = await repo.createQueryBuilder('user').where('LOWER(user.email) = :email', { email: String(email).toLowerCase() }).getOne();
     if (conflict && conflict.id !== user.id) {
       return res.status(409).json({ error: "email already exists" });
     }
@@ -158,14 +183,19 @@ export async function oauthCallback(req: Request, res: Response) {
         || `${ghUser.id}@users.noreply.github.com`;
 
       const repo = AppDataSource.getRepository(User);
-      let user = await repo.findOne({ where: [{ email: primaryEmail }, { username: ghUser?.login }] });
+      const loginLower = String(ghUser?.login || '').toLowerCase();
+      let user = await repo
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = :email', { email: String(primaryEmail).toLowerCase() })
+        .orWhere('user.usernameLower = :unameLower', { unameLower: loginLower })
+        .getOne();
       let created = false;
       if (!user) {
         let username = ghUser?.login || `github_${ghUser?.id}`;
         let suffix = 0;
-        while (await repo.findOne({ where: { username } })) { suffix += 1; username = `${ghUser?.login}${suffix}`; }
+        while (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } })) { suffix += 1; username = `${ghUser?.login}${suffix}`; }
         const hashedPassword = await bcrypt.hash(`oauth:github:${ghUser?.id}:${Date.now()}`, 10);
-        user = repo.create({ username, email: primaryEmail, hashedPassword });
+        user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
         await repo.save(user);
         created = true;
       }
@@ -197,15 +227,20 @@ export async function oauthCallback(req: Request, res: Response) {
       const primaryEmail = gUser?.email || `${gUser?.sub}@users.noreply.google.com`;
 
       const repo = AppDataSource.getRepository(User);
-      let user = await repo.findOne({ where: [{ email: primaryEmail }, { username: gUser?.name }] });
+      const nameLower = String(gUser?.name || '').toLowerCase();
+      let user = await repo
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = :email', { email: String(primaryEmail).toLowerCase() })
+        .orWhere('user.usernameLower = :unameLower', { unameLower: nameLower })
+        .getOne();
       let created = false;
       if (!user) {
         let base = gUser?.name || (primaryEmail?.split('@')[0]) || `google_${gUser?.sub}`;
         let username = base;
         let suffix = 0;
-        while (await repo.findOne({ where: { username } })) { suffix += 1; username = `${base}${suffix}`; }
+        while (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } })) { suffix += 1; username = `${base}${suffix}`; }
         const hashedPassword = await bcrypt.hash(`oauth:google:${gUser?.sub}:${Date.now()}`, 10);
-        user = repo.create({ username, email: primaryEmail, hashedPassword });
+        user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
         await repo.save(user);
         created = true;
       }
@@ -239,15 +274,20 @@ export async function oauthCallback(req: Request, res: Response) {
       const primaryEmail = sUser?.email || `${sUser?.id}@users.noreply.slack.com`;
 
       const repo = AppDataSource.getRepository(User);
-      let user = await repo.findOne({ where: [{ email: primaryEmail }, { username: sUser?.name }] });
+      const nameLower = String(sUser?.name || '').toLowerCase();
+      let user = await repo
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = :email', { email: String(primaryEmail).toLowerCase() })
+        .orWhere('user.usernameLower = :unameLower', { unameLower: nameLower })
+        .getOne();
       let created = false;
       if (!user) {
         let base = sUser?.name || (primaryEmail?.split('@')[0]) || `slack_${sUser?.id}`;
         let username = base;
         let suffix = 0;
-        while (await repo.findOne({ where: { username } })) { suffix += 1; username = `${base}${suffix}`; }
+        while (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } })) { suffix += 1; username = `${base}${suffix}`; }
         const hashedPassword = await bcrypt.hash(`oauth:slack:${sUser?.id}:${Date.now()}`, 10);
-        user = repo.create({ username, email: primaryEmail, hashedPassword });
+        user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
         await repo.save(user);
         created = true;
       }

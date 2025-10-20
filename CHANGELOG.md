@@ -3,6 +3,37 @@
 All notable changes to this project are documented here.
 This project follows the "Keep a Changelog" format and Semantic Versioning.
 
+## 0.3.0 - 2025-10-20
+
+### Added
+- OAuth sign-in from Login screen with popup for GitHub, Google, Slack.
+- Case-insensitive usernames via `usernameLower` shadow column and uniqueness checks.
+- One-time username change limit enforced via `usernameChangeCount`.
+- Caps Lock detection on password field with inline hint on Sign-In.
+- Dark/Light mode toggle surfaced on Sign-In (persisted in `localStorage`).
+- Normalized, user-friendly login error messages (invalid credentials, wrong password, network).
+- Immediate UI propagation after avatar save using global event dispatch.
+
+### Changed
+- Backend compiles with `tsc -p tsconfig.server.json` before start to ensure decorator metadata.
+- API server confirmed stable on `http://localhost:3010/` when default ports are busy.
+- `ThemeProvider` wraps the UI application to enable global theme toggling.
+- OAuth controller responses normalized to avoid leaking provider-specific errors.
+- `ui/lib/api.ts` and `LoginScreen.tsx` updated to improve auth UX (messages, popup handling).
+
+### Fixed
+- Addressed `EADDRINUSE` errors by selecting available server/UI ports and documenting overrides.
+
+### Docs
+- README completely revamped to professional standard with inline logo, badges, architecture, setup, configuration, API overview, troubleshooting.
+- Documented OAuth callback URIs for `PORT=3010` and `VITE_API_URL` usage in development.
+- Added Security & Auth notes on case-insensitive usernames, change limit, JWT, and OAuth.
+
+### Chore
+- Ensured local SQLite files are ignored by Git and reinforced env-driven configuration.
+
+---
+
 ## 0.0.0 - 2025-10-20
 
 ### Added
