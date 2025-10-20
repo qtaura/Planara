@@ -1,6 +1,7 @@
 import type { Project, Task, Milestone, SubTask } from '../types';
 
-export const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'http://localhost:3001/api').trim();
+const _envBase = String(((import.meta as any).env?.VITE_API_URL) || '').trim();
+export const API_BASE = _envBase || `${window.location.origin}/api`;
 const TOKEN_KEY = 'planara_token';
 const CURRENT_USER_KEY = 'planara_user';
 
