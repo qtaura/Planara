@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
 import { Task } from "./Task.js";
 import { Comment } from "./Comment.js";
+import { Project } from "./Project.js";
 
 @Entity()
 export class User {
@@ -19,9 +20,15 @@ export class User {
   @Column({ nullable: true })
   teamId?: number;
 
+  @Column({ nullable: true })
+  avatar?: string;
+
   @OneToMany(() => Task, (task) => task.assignee)
   tasks?: Task[];
 
   @OneToMany(() => Comment, (comment) => comment.author)
   comments?: Comment[];
+
+  @OneToMany(() => Project, (project) => project.owner)
+  projects?: Project[];
 }
