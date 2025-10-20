@@ -5,6 +5,16 @@ import { Project } from "../models/Project.js";
 import { Milestone } from "../models/Milestone.js";
 import { User } from "../models/User.js";
 
+// Auto-calculate milestone progress based on task completion
+async function recalcMilestoneProgress(milestoneId: number) {
+  const taskRepo = AppDataSource.getRepository(Task);
+  const milestoneRepo = AppDataSource.getRepository(Milestone);
+  const total = await taskRepo.count({ where: { milestone: { id: milestoneId } } });
+  const done = await taskRepo.count({ where: { milestone: { id: milestoneId }, status: "done" } });
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+  await milestoneRepo.update({ id: milestoneId }, { progressPercent: percent });
+}
+
 export async function getTasks(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
   const repo = AppDataSource.getRepository(Task);
@@ -52,6 +62,9 @@ export async function createTask(req: Request, res: Response) {
     if (assignee) task.assignee = assignee;
   }
   await repo.save(task);
+  if (task.milestone?.id) {
+    await recalcMilestoneProgress(task.milestone.id);
+  }
   res.status(201).json(task);
 }
 
@@ -65,6 +78,8 @@ export async function updateTask(req: Request, res: Response) {
   const project = task.project ? await projectRepo.findOne({ where: { id: task.project.id }, relations: { owner: true } }) : null;
   if (!project) return res.status(404).json({ error: "project not found" });
   if (userId && project.owner?.id !== userId) return res.status(403).json({ error: "forbidden" });
+
+  const prevMilestoneId = task.milestone?.id;
 
   const { title, description, status, priority, labels, milestoneId, assigneeId } = req.body;
   if (title) task.title = title;
@@ -93,6 +108,14 @@ export async function updateTask(req: Request, res: Response) {
   }
 
   await repo.save(task);
+
+  const ids = new Set<number>();
+  if (typeof prevMilestoneId !== "undefined") ids.add(prevMilestoneId);
+  if (task.milestone?.id) ids.add(task.milestone.id);
+  for (const mid of ids) {
+    await recalcMilestoneProgress(mid);
+  }
+
   res.json(task);
 }
 
@@ -100,12 +123,17 @@ export async function deleteTask(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
   const id = Number(req.params.id);
   const repo = AppDataSource.getRepository(Task);
-  const task = await repo.findOne({ where: { id }, relations: { project: true } });
+  const task = await repo.findOne({ where: { id }, relations: { project: true, milestone: true } });
   if (!task) return res.status(404).json({ error: "task not found" });
   const projectRepo = AppDataSource.getRepository(Project);
   const project = task.project ? await projectRepo.findOne({ where: { id: task.project.id }, relations: { owner: true } }) : null;
   if (!project) return res.status(404).json({ error: "project not found" });
   if (userId && project.owner?.id !== userId) return res.status(403).json({ error: "forbidden" });
+
+  const milestoneId = task.milestone?.id;
   await repo.remove(task);
+  if (milestoneId) {
+    await recalcMilestoneProgress(milestoneId);
+  }
   res.json({ ok: true });
 }

@@ -3,7 +3,7 @@
 All notable changes to this project are documented here.
 This project follows the "Keep a Changelog" format and Semantic Versioning.
 
-## 0.0.0 (Unreleased)
+## 0.0.0 - 2025-10-20
 
 ### Added
 - Vite + React application under `ui/` with complete component library (Radix UI, Lucide, Recharts, Sonner, Embla, Vaul, Motion, etc.).
@@ -52,12 +52,13 @@ This project follows the "Keep a Changelog" format and Semantic Versioning.
 - Transient `net::ERR_ABORTED` logs during HMR re-optimization are benign; refresh if seen.
 - UI components gracefully fall back to `ui/data/mockData.ts` if the API is unavailable.
 
-## 0.1.0 - 2025-10-20
+## 0.1.0 (Unreleased)
 
 ### Added
 - `avatar` column to `User` entity for storing image URLs/data.
 - Avatar update support via `PUT /api/users/:id` and client `updateUser`.
 - UI: Avatar upload with preview in `SettingsScreen` (file input, size checks).
+- Milestone progress auto-calculation: backend updates `Milestone.progressPercent` based on tasks with status `done`; recalculated on task create/update/delete.
 
 ### Changed
 - Backend `updateProfile` now checks duplicates and returns `409` on existing `username`/`email`.
