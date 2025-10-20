@@ -13,7 +13,7 @@ import {
 
 import { Project } from '../types';
 import { useEffect, useState } from 'react';
-import { listProjects } from '@lib/api';
+import { listProjects, listTasksForProject, listMilestonesForProject } from '@lib/api';
 import { toast } from 'sonner';
 import {
   LineChart,
@@ -37,6 +37,8 @@ export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<{ tasksCompleted: number; milestonesCount: number; avgVelocity: number }>({ tasksCompleted: 0, milestonesCount: 0, avgVelocity: 0 });
+  const [filter, setFilter] = useState<'active' | 'archived' | 'all'>('active');
 
   async function fetchProjects() {
     setLoading(true);
@@ -44,6 +46,30 @@ export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: 
     try {
       const ps = await listProjects();
       setProjects(ps);
+      // aggregate dashboard stats from active projects only
+      const active = ps.filter(p => p.status === 'active');
+      let tasksCompleted = 0;
+      let milestonesCount = 0;
+      let velocitySum = 0;
+      let velocityCount = 0;
+      for (const p of active) {
+        try {
+          const tasks = await listTasksForProject(p.id);
+          const milestones = await listMilestonesForProject(p.id);
+          tasksCompleted += tasks.filter(t => t.status === 'completed').length;
+          milestonesCount += milestones.length;
+          const velocities = tasks.map(t => {
+            const done = t.status === 'completed' ? 1 : 0;
+            return done;
+          });
+          if (velocities.length > 0) {
+            velocitySum += velocities.reduce((a, b) => a + b, 0);
+            velocityCount += velocities.length;
+          }
+        } catch {}
+      }
+      const avgVelocity = velocityCount > 0 ? Math.round((velocitySum / velocityCount) * 100) / 100 : 0;
+      setStats({ tasksCompleted, milestonesCount, avgVelocity });
     } catch (e: any) {
       setError(e?.message || 'Failed to load projects');
       toast.error(error || 'Failed to load projects');
@@ -54,6 +80,14 @@ export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: 
 
   useEffect(() => {
     let cancelled = false;
+    // pick filter from navigation
+    try {
+      const f = localStorage.getItem('dashboard_filter');
+      if (f === 'archived' || f === 'active' || f === 'all') {
+        setFilter(f as any);
+        localStorage.removeItem('dashboard_filter');
+      }
+    } catch {}
     fetchProjects().catch(() => {});
     function onChanged() {
       if (!cancelled) fetchProjects().catch(() => {});
@@ -66,6 +100,7 @@ export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: 
   }, []);
 
   const activeProjects = projects.filter(p => p.status === 'active');
+  const visibleProjects = projects.filter(p => filter === 'archived' ? p.status === 'archived' : filter === 'active' ? p.status === 'active' : true);
   
   const velocityData = [
     { week: 'W1', velocity: 28 },
@@ -115,34 +150,34 @@ export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: 
           <StatCard
             label="Active projects"
             value={activeProjects.length.toString()}
-            change="+2 this month"
-            trend="up"
+            change=""
+            trend="neutral"
           />
           <StatCard
             label="Tasks completed"
-            value="124"
-            change="+18 this week"
-            trend="up"
+            value={stats.tasksCompleted.toString()}
+            change=""
+            trend="neutral"
           />
           <StatCard
             label="Milestones"
-            value="8"
-            change="3 upcoming"
+            value={stats.milestonesCount.toString()}
+            change=""
             trend="neutral"
           />
           <StatCard
             label="Team velocity"
-            value="35"
-            change="+12%"
+            value={`${stats.avgVelocity}`}
+            change=""
             trend="up"
           />
         </div>
 
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-slate-900 dark:text-white">Velocity trend</h3>
+        {/* Charts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-slate-900 dark:text-white">Team Velocity</p>
               <Button variant="ghost" size="sm" className="h-8 text-slate-600 dark:text-slate-400">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -156,41 +191,17 @@ export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: 
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.3} />
-                <XAxis 
-                  dataKey="week" 
-                  stroke="#94a3b8" 
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis 
-                  stroke="#94a3b8" 
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1e293b', 
-                    border: '1px solid #334155',
-                    borderRadius: '6px',
-                    fontSize: '12px'
-                  }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="velocity" 
-                  stroke="#6366f1" 
-                  fill="url(#velocityGradient)"
-                  strokeWidth={2}
-                />
+                <XAxis dataKey="week" tick={{ fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+                <YAxis tick={{ fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', color: 'white', border: 'none' }} />
+                <Area type="monotone" dataKey="velocity" stroke="#6366f1" fill="url(#velocityGradient)" />
               </AreaChart>
             </ResponsiveContainer>
           </Card>
 
-          <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-slate-900 dark:text-white">Sprint burndown</h3>
+          <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-slate-900 dark:text-white">Burndown</p>
               <Button variant="ghost" size="sm" className="h-8 text-slate-600 dark:text-slate-400">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -198,70 +209,38 @@ export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: 
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={burndownData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.3} />
-                <XAxis 
-                  dataKey="day" 
-                  stroke="#94a3b8" 
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis 
-                  stroke="#94a3b8" 
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1e293b', 
-                    border: '1px solid #334155',
-                    borderRadius: '6px',
-                    fontSize: '12px'
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="remaining" 
-                  stroke="#6366f1" 
-                  strokeWidth={2}
-                  dot={{ fill: '#6366f1', r: 3 }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="ideal" 
-                  stroke="#94a3b8" 
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  dot={false}
-                />
+                <XAxis dataKey="day" tick={{ fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+                <YAxis tick={{ fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', color: 'white', border: 'none' }} />
+                <Line type="monotone" dataKey="remaining" stroke="#f59e0b" />
+                <Line type="monotone" dataKey="ideal" stroke="#10b981" />
               </LineChart>
             </ResponsiveContainer>
           </Card>
         </div>
 
-        {/* Projects Grid */}
-        <div className="mb-8">
+        {/* Active Projects */}
+        <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-slate-900 dark:text-white">Projects</h2>
-            <Button variant="ghost" className="text-sm text-slate-600 dark:text-slate-400">
-              View all
-              <ArrowUpRight className="ml-1 h-3 w-3" />
-            </Button>
+            <p className="text-slate-900 dark:text-white">Active projects</p>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="h-8 text-slate-600 dark:text-slate-400">
+                <Github className="h-4 w-4" />
+                <span className="ml-2">Import from GitHub</span>
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 text-slate-600 dark:text-slate-400">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          {activeProjects.length === 0 ? (
-            <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
-              <div className="text-center">
-                <h3 className="text-slate-900 dark:text-white mb-1">No projects yet</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Create your first project to get started.</p>
-                <Button onClick={onOpenCreateProject} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                  <Plus className="mr-2 h-4 w-4" />
-                  New project
-                </Button>
-              </div>
+
+          {visibleProjects.length === 0 ? (
+            <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-8">
+              <p className="text-slate-600 dark:text-slate-400">No projects yet</p>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {activeProjects.map((project) => (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {visibleProjects.map((project) => (
                 <ProjectCard
                   key={project.id}
                   project={project}

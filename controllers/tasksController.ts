@@ -9,10 +9,18 @@ import { User } from "../models/User.js";
 async function recalcMilestoneProgress(milestoneId: number) {
   const taskRepo = AppDataSource.getRepository(Task);
   const milestoneRepo = AppDataSource.getRepository(Milestone);
-  const total = await taskRepo.count({ where: { milestone: { id: milestoneId } } });
-  const done = await taskRepo.count({ where: { milestone: { id: milestoneId }, status: "done" } });
+
+  // Fetch tasks explicitly to avoid relation where-count quirks
+  const tasks = await taskRepo.find({ where: { milestone: { id: milestoneId } } });
+  const total = tasks.length;
+  const done = tasks.filter((t) => t.status === "done").length;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
-  await milestoneRepo.update({ id: milestoneId }, { progressPercent: percent });
+
+  const milestone = await milestoneRepo.findOne({ where: { id: milestoneId } });
+  if (milestone) {
+    milestone.progressPercent = percent;
+    await milestoneRepo.save(milestone);
+  }
 }
 
 export async function getTasks(req: Request, res: Response) {

@@ -29,6 +29,10 @@ coverage/
 
 # Misc
 *.cache
+# Ignore local SQLite database files
+/db/planara.sqlite
+/db/*.sqlite
+*.sqlite
 
 # Vite
 .vite

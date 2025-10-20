@@ -52,9 +52,29 @@ This project follows the "Keep a Changelog" format and Semantic Versioning.
 - Transient `net::ERR_ABORTED` logs during HMR re-optimization are benign; refresh if seen.
 - UI components gracefully fall back to `ui/data/mockData.ts` if the API is unavailable.
 
-## 0.1.0 (Unreleased)
+## 0.2.0 (Unreleased)
+
+### Security
+- Ignore local SQLite database files in Git (`/db/planara.sqlite`, `/db/*.sqlite`, `*.sqlite`).
+- Untracked `db/planara.sqlite` to prevent leaking user emails/usernames.
 
 ### Added
+- UI `.env` with `VITE_API_URL` to point frontend to backend.
+- Client `listUsers` and server relations included in `listProjects` for richer data.
+- Global UI events: `user:updated`, `settings_active_section`, `dashboard_filter` for coordinated navigation and refresh.
+
+### Changed
+- Sidebar shows current user name and avatar; clicking opens Settings → Profile.
+- Sidebar “Notifications” and “Team” navigate to Settings with section preselected.
+- Sidebar “Archived” sets a dashboard filter used by Dashboard.
+- Dashboard stat cards compute real metrics from tasks/milestones (completed tasks, milestones, avg velocity).
+- `ui/lib/api.ts` normalizes task statuses and computes project progress from tasks.
+
+### Fixed
+- Profile avatar save now updates immediately across the app via global event broadcast.
+
+### Docs
+- Note to never commit local SQLite DB; use `.gitignore` patterns above.
 - `avatar` column to `User` entity for storing image URLs/data.
 - Avatar update support via `PUT /api/users/:id` and client `updateUser`.
 - UI: Avatar upload with preview in `SettingsScreen` (file input, size checks).

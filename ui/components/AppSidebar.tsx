@@ -17,7 +17,7 @@ import { ThemeToggle } from './ThemeToggle';
 
 import { Project } from '../types';
 import { useEffect, useState } from 'react';
-import { listProjects } from '@lib/api';
+import { listProjects, getCurrentUser, getCurrentUserFromAPI } from '@lib/api';
 import { toast } from 'sonner';
 
 interface AppSidebarProps {
@@ -38,6 +38,7 @@ export function AppSidebar({
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<any | null>(getCurrentUser());
 
   async function fetchProjects() {
     setLoading(true);
@@ -53,20 +54,39 @@ export function AppSidebar({
     }
   }
 
+  async function refreshUser() {
+    try {
+      const u = getCurrentUser();
+      if (u) { setUser(u); return; }
+      const fromApi = await getCurrentUserFromAPI();
+      if (fromApi) setUser(fromApi);
+    } catch {}
+  }
+
   useEffect(() => {
     let cancelled = false;
     fetchProjects().catch(() => {});
+    refreshUser().catch(() => {});
     function onChanged() {
       if (!cancelled) fetchProjects().catch(() => {});
     }
+    function onAuth() {
+      if (!cancelled) refreshUser().catch(() => {});
+    }
     window.addEventListener('projects:changed', onChanged as EventListener);
+    window.addEventListener('auth:logged_in', onAuth as EventListener);
+    window.addEventListener('user:updated', onAuth as EventListener);
     return () => { 
       cancelled = true; 
       window.removeEventListener('projects:changed', onChanged as EventListener);
+      window.removeEventListener('auth:logged_in', onAuth as EventListener);
+      window.removeEventListener('user:updated', onAuth as EventListener);
     };
   }, []);
   const activeProjects = projects.filter(p => p.status === 'active');
   const favoriteProjects = activeProjects.filter(p => p.favorite);
+
+  const initials = (user?.username || user?.email || 'U').slice(0,2).toUpperCase();
 
   return (
     <div className="w-64 h-screen bg-white dark:bg-[#0A0A0A] border-r border-slate-200 dark:border-slate-800/50 flex flex-col">
@@ -77,13 +97,13 @@ export function AppSidebar({
           <ThemeToggle />
         </div>
         
-        <button className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 w-full transition-colors">
+        <button className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 w-full transition-colors" onClick={() => { try { localStorage.setItem('settings_active_section', 'profile'); } catch {}; onNavigate('settings'); }}>
           <Avatar className="h-6 w-6">
-            <AvatarImage src="" />
-            <AvatarFallback className="text-xs">U</AvatarFallback>
+            <AvatarImage src={user?.avatar || ''} />
+            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-sm text-slate-900 dark:text-white truncate">You</p>
+            <p className="text-sm text-slate-900 dark:text-white truncate">{user?.username || 'You'}</p>
           </div>
         </button>
         {loading && (
@@ -112,18 +132,18 @@ export function AppSidebar({
             icon={<LayoutDashboard className="w-4 h-4" />}
             label="Dashboard"
             active={activeView === 'dashboard'}
-            onClick={() => onNavigate('dashboard')}
+            onClick={() => { try { localStorage.setItem('dashboard_filter', 'active'); } catch {}; onNavigate('dashboard'); }}
           />
           <NavItem
             icon={<Bell className="w-4 h-4" />}
             label="Notifications"
             badge="3"
-            onClick={() => {}}
+            onClick={() => { try { localStorage.setItem('settings_active_section', 'notifications'); } catch {}; onNavigate('settings'); }}
           />
           <NavItem
             icon={<Users className="w-4 h-4" />}
             label="Team"
-            onClick={() => {}}
+            onClick={() => { try { localStorage.setItem('settings_active_section', 'team'); } catch {}; onNavigate('settings'); }}
           />
         </div>
 
@@ -185,7 +205,7 @@ export function AppSidebar({
           <NavItem
             icon={<Archive className="w-4 h-4" />}
             label="Archived"
-            onClick={() => {}}
+            onClick={() => { try { localStorage.setItem('dashboard_filter', 'archived'); } catch {}; onNavigate('dashboard'); }}
           />
         </div>
       </div>

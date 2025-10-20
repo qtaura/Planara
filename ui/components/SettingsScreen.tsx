@@ -33,6 +33,23 @@ export function SettingsScreen() {
     }
   }, []);
 
+  // Preselect section from navigation and listen for section change events
+  useEffect(() => {
+    try {
+      const section = localStorage.getItem('settings_active_section');
+      if (section) {
+        setActiveSection(section);
+        localStorage.removeItem('settings_active_section');
+      }
+    } catch {}
+    const handler = (e: any) => {
+      const sec = e?.detail?.section;
+      if (typeof sec === 'string') setActiveSection(sec);
+    };
+    window.addEventListener('settings:open_section', handler as EventListener);
+    return () => window.removeEventListener('settings:open_section', handler as EventListener);
+  }, []);
+
   const sections = [
     { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
     { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
@@ -103,16 +120,9 @@ function ProfileSection({ user, onUserUpdated }: { user: any | null; onUserUpdat
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image is too large (max 2MB)');
-      return;
-    }
     const reader = new FileReader();
     reader.onload = () => {
-      setAvatarPreview(String(reader.result));
-    };
-    reader.onerror = () => {
-      toast.error('Failed to read image');
+      setAvatarPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
   }
@@ -123,6 +133,7 @@ function ProfileSection({ user, onUserUpdated }: { user: any | null; onUserUpdat
       const updated = await updateUser(Number(user.id), { username, email, avatar: avatarPreview });
       setCurrentUser(updated);
       onUserUpdated(updated);
+      window.dispatchEvent(new CustomEvent('user:updated'));
       toast.success('Profile updated');
     } catch (e: any) {
       toast.error(e?.message || 'Failed to update profile');
@@ -130,80 +141,33 @@ function ProfileSection({ user, onUserUpdated }: { user: any | null; onUserUpdat
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
-        <h3 className="text-slate-900 dark:text-white mb-6">Profile Information</h3>
-
-        <div className="flex items-center gap-6 mb-6">
-          <Avatar className="h-20 w-20">
-            <AvatarImage src={avatarPreview || ''} />
-            <AvatarFallback>{initials}</AvatarFallback>
-          </Avatar>
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
-            <Button variant="outline" size="sm" className="mb-2" onClick={handleAvatarClick}>
-              Change Avatar
-            </Button>
-            <p className="text-xs text-slate-500 dark:text-slate-400">JPG, PNG or GIF. Max 2MB.</p>
-          </div>
+    <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-slate-900 dark:text-white">Profile</h3>
+        <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">Save changes</Button>
+      </div>
+      <div className="flex items-center gap-4">
+        <Avatar className="h-16 w-16">
+          <AvatarImage src={avatarPreview || ''} />
+          <AvatarFallback className="text-sm">{initials}</AvatarFallback>
+        </Avatar>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleAvatarClick}>Change avatar</Button>
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
         </div>
+      </div>
 
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="name" className="mb-2 block">Username</Label>
-            <Input id="name" value={username} onChange={(e) => setUsername(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="email" className="mb-2 block">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="role" className="mb-2 block">Role</Label>
-            <Input id="role" defaultValue="" />
-          </div>
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label>Username</Label>
+          <Input value={username} onChange={(e) => setUsername(e.target.value)} />
         </div>
-
-        <Separator className="my-6" />
-
-        <div className="flex justify-end">
-          <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-            Save changes
-          </Button>
+        <div>
+          <Label>Email</Label>
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
-      </Card>
-
-      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
-        <h3 className="text-slate-900 dark:text-white mb-4">Connected accounts</h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <Github className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-              <div>
-                <p className="text-sm text-slate-900 dark:text-white">GitHub</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Connected</p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm">Disconnect</Button>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <Mail className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-              <div>
-                <p className="text-sm text-slate-900 dark:text-white">Google</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Not connected</p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm">Connect</Button>
-          </div>
-        </div>
-      </Card>
-    </div>
+      </div>
+    </Card>
   );
 }
 
@@ -308,11 +272,18 @@ function NotificationsSection() {
 }
 
 function TeamSection() {
-  const teamMembers = [
-    { name: 'Alex Chen', email: 'alex@example.com', role: 'Owner' },
-    { name: 'Sarah Johnson', email: 'sarah@example.com', role: 'Admin' },
-    { name: 'Mike Wilson', email: 'mike@example.com', role: 'Member' },
-  ];
+  const [members, setMembers] = useState<any[]>([]);
+
+  useEffect(() => {
+    const u = getCurrentUser();
+    if (u) {
+      setMembers([u]);
+    } else {
+      getCurrentUserFromAPI().then((cu) => {
+        if (cu) setMembers([cu]);
+      }).catch(() => {});
+    }
+  }, []);
 
   return (
     <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
@@ -323,29 +294,35 @@ function TeamSection() {
         </Button>
       </div>
 
-      <div className="space-y-3">
-        {teamMembers.map((member, i) => (
-          <div
-            key={i}
-            className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700"
-          >
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="text-sm">
-                  {member.name.split(' ').map(n => n[0]).join('')}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm text-slate-900 dark:text-white">{member.name}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{member.email}</p>
+      {members.length === 0 ? (
+        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+          <p className="text-sm text-slate-600 dark:text-slate-400">No team members yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {members.map((member, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700"
+            >
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="text-sm">
+                    {(member.username || member.email || 'U').slice(0,2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm text-slate-900 dark:text-white">{member.username || 'You'}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{member.email || ''}</p>
+                </div>
               </div>
+              <Badge variant="outline" className="text-xs">
+                {member.role || 'Member'}
+              </Badge>
             </div>
-            <Badge variant="outline" className="text-xs">
-              {member.role}
-            </Badge>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }

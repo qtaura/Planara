@@ -26,8 +26,8 @@ export async function getMilestones(req: Request, res: Response) {
 
 export async function createMilestone(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
-  const { name, description, dueDate, projectId } = req.body;
-  if (!name || !projectId) return res.status(400).json({ error: "name and projectId are required" });
+  const { title, projectId, dueDate } = req.body;
+  if (!title || !projectId) return res.status(400).json({ error: "title and projectId are required" });
   const repo = AppDataSource.getRepository(Milestone);
   const projectRepo = AppDataSource.getRepository(Project);
 
@@ -35,7 +35,7 @@ export async function createMilestone(req: Request, res: Response) {
   if (!project) return res.status(404).json({ error: "project not found" });
   if (userId && project.owner?.id !== userId) return res.status(403).json({ error: "forbidden" });
 
-  const milestone = repo.create({ name, description, dueDate: dueDate ? new Date(dueDate) : null, project, progressPercent: 0 });
+  const milestone = repo.create({ title, project, progressPercent: 0, dueDate: dueDate ? new Date(dueDate) : undefined });
   await repo.save(milestone);
   res.status(201).json(milestone);
 }
@@ -51,10 +51,9 @@ export async function updateMilestone(req: Request, res: Response) {
   if (!project) return res.status(404).json({ error: "project not found" });
   if (userId && project.owner?.id !== userId) return res.status(403).json({ error: "forbidden" });
 
-  const { name, description, dueDate } = req.body;
-  if (name) milestone.name = name;
-  if (typeof description !== "undefined") milestone.description = description;
-  if (typeof dueDate !== "undefined") milestone.dueDate = dueDate ? new Date(dueDate) : null;
+  const { title, dueDate } = req.body;
+  if (title) milestone.title = title;
+  if (typeof dueDate !== "undefined") milestone.dueDate = dueDate ? new Date(dueDate) : undefined;
 
   await repo.save(milestone);
   res.json(milestone);
