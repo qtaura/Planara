@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Github, Mail, MessageSquare } from 'lucide-react';
 import { login, setToken, API_BASE, setCurrentUser } from '@lib/api';
 import { ThemeToggle } from './ThemeToggle';
+import { Logo } from './Logo';
 
 interface LoginScreenProps {
   onSuccess: () => void;
@@ -70,6 +71,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
         <ThemeToggle />
       </div>
       <div className="w-full max-w-sm p-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="flex justify-center mb-4"><Logo size="lg" /></div>
         <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-1">Sign in</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Use your username or email and password</p>
         <form onSubmit={handleLogin} className="space-y-4">

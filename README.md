@@ -1,18 +1,6 @@
 <p align="center">
   <a href="https://github.com/qtaura/Planara" aria-label="Planara">
-    <!-- Inline SVG logo to keep README self-contained -->
-    <svg width="140" height="40" viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Planara logo">
-      <defs>
-        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#8b5cf6"/>
-          <stop offset="100%" stop-color="#6366f1"/>
-        </linearGradient>
-      </defs>
-      <rect rx="28" ry="28" x="0" y="0" width="200" height="200" fill="url(#g)"/>
-      <circle cx="70" cy="75" r="30" fill="white" opacity="0.3"/>
-      <path d="M55 130 L115 130 L85 90 Z" fill="#fff" opacity="0.9"/>
-      <text x="230" y="120" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto" font-size="72" font-weight="700" fill="#111827">Planara</text>
-    </svg>
+    <img src="ui/assets/planara-logo.svg" width="140" alt="Planara logo" />
   </a>
 </p>
 

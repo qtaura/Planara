@@ -1,0 +1,11 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Planara logo">
+  <defs>
+    <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#logo-gradient)" />
+  <path d="M10 8h7c2.76 0 5 2.24 5 5s-2.24 5-5 5h-3v6h-4V8zm4 4v4h3c1.1 0 2-.9 2-2s-.9-2-2-2h-3z" fill="#FFFFFF" />
+  <circle cx="23" cy="23" r="2" fill="#FFFFFF" opacity="0.6" />
+</svg>
