@@ -14,16 +14,37 @@ import { getToken } from '@lib/api';
 import { LoginScreen } from './components/LoginScreen';
 
 import { SignupScreen } from './components/SignupScreen';
+import { SignupProvidersScreen } from './components/SignupProvidersScreen';
+import { EmailSignupScreen } from './components/EmailSignupScreen';
+import { SetUsernameScreen } from './components/SetUsernameScreen';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('landing');
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
 
+  // signup flow state
+  const [signupEmail, setSignupEmail] = useState<string>('');
+  const [signupPassword, setSignupPassword] = useState<string>('');
+
   useEffect(() => {
     const handler = () => setCurrentView('login');
     window.addEventListener('auth:required', handler);
     return () => window.removeEventListener('auth:required', handler);
+  }, []);
+
+  // Navigate after auth completes
+  useEffect(() => {
+    const handler = () => setCurrentView('dashboard');
+    window.addEventListener('auth:logged_in', handler);
+    return () => window.removeEventListener('auth:logged_in', handler);
+  }, []);
+
+  // New OAuth users need to pick a username
+  useEffect(() => {
+    const handler = () => setCurrentView('signup_username');
+    window.addEventListener('auth:needs_username', handler);
+    return () => window.removeEventListener('auth:needs_username', handler);
   }, []);
 
   const handleNavigate = (view: ViewType) => {
@@ -45,6 +66,38 @@ function AppContent() {
 
   if (currentView === 'signup') {
     return <SignupScreen onSuccess={() => setCurrentView('dashboard')} />;
+  }
+
+  if (currentView === 'signup_providers') {
+    return (
+      <SignupProvidersScreen
+        onChooseEmail={() => setCurrentView('signup_email')}
+        onChooseProvider={() => {}}
+        onSkip={() => setCurrentView('landing')}
+      />
+    );
+  }
+
+  if (currentView === 'signup_email') {
+    return (
+      <EmailSignupScreen
+        onNext={({ email, password }) => {
+          setSignupEmail(email);
+          setSignupPassword(password);
+          setCurrentView('signup_username');
+        }}
+      />
+    );
+  }
+
+  if (currentView === 'signup_username') {
+    return (
+      <SetUsernameScreen
+        email={signupEmail}
+        password={signupPassword}
+        onSuccess={() => setCurrentView('dashboard')}
+      />
+    );
   }
 
   if (currentView === 'landing') {

@@ -10,7 +10,7 @@ import {
   ArrowUpRight,
   MoreHorizontal
 } from 'lucide-react';
-import { mockProjects } from '../data/mockData';
+
 import { Project } from '../types';
 import { useEffect, useState } from 'react';
 import { listProjects } from '@lib/api';
@@ -65,7 +65,7 @@ export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: 
     };
   }, []);
 
-  const activeProjects = (projects.length ? projects : mockProjects).filter(p => p.status === 'active');
+  const activeProjects = projects.filter(p => p.status === 'active');
   
   const velocityData = [
     { week: 'W1', velocity: 28 },
@@ -248,18 +248,31 @@ export function Dashboard({ onSelectProject, onNavigate, onOpenCreateProject }: 
               <ArrowUpRight className="ml-1 h-3 w-3" />
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activeProjects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onClick={() => {
-                  onSelectProject(project.id);
-                  onNavigate('project');
-                }}
-              />
-            ))}
-          </div>
+          {activeProjects.length === 0 ? (
+            <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
+              <div className="text-center">
+                <h3 className="text-slate-900 dark:text-white mb-1">No projects yet</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Create your first project to get started.</p>
+                <Button onClick={onOpenCreateProject} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New project
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activeProjects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  onClick={() => {
+                    onSelectProject(project.id);
+                    onNavigate('project');
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

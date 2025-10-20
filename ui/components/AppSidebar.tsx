@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Input } from './ui/input';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
-import { mockProjects, mockUser } from '../data/mockData';
+
 import { Project } from '../types';
 import { useEffect, useState } from 'react';
 import { listProjects } from '@lib/api';
@@ -65,7 +65,7 @@ export function AppSidebar({
       window.removeEventListener('projects:changed', onChanged as EventListener);
     };
   }, []);
-  const activeProjects = (projects.length ? projects : mockProjects).filter(p => p.status === 'active');
+  const activeProjects = projects.filter(p => p.status === 'active');
   const favoriteProjects = activeProjects.filter(p => p.favorite);
 
   return (
@@ -79,11 +79,11 @@ export function AppSidebar({
         
         <button className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 w-full transition-colors">
           <Avatar className="h-6 w-6">
-            <AvatarImage src={mockUser.avatar} />
-            <AvatarFallback className="text-xs">AC</AvatarFallback>
+            <AvatarImage src="" />
+            <AvatarFallback className="text-xs">U</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-sm text-slate-900 dark:text-white truncate">{mockUser.name}</p>
+            <p className="text-sm text-slate-900 dark:text-white truncate">You</p>
           </div>
         </button>
         {loading && (
@@ -163,17 +163,21 @@ export function AppSidebar({
             </Button>
           </div>
           <div className="space-y-0.5">
-            {activeProjects.map((project) => (
-              <ProjectItem
-                key={project.id}
-                project={project}
-                active={activeProject === project.id}
-                onClick={() => {
-                  onSelectProject(project.id);
-                  onNavigate('project');
-                }}
-              />
-            ))}
+            {activeProjects.length === 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400 px-2 py-1.5">No projects yet</p>
+            ) : (
+              activeProjects.map((project) => (
+                <ProjectItem
+                  key={project.id}
+                  project={project}
+                  active={activeProject === project.id}
+                  onClick={() => {
+                    onSelectProject(project.id);
+                    onNavigate('project');
+                  }}
+                />
+              ))
+            )}
           </div>
         </div>
 

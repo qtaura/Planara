@@ -33,7 +33,7 @@ export function LandingScreen({ onNavigate }: LandingScreenProps) {
               Sign in
             </Button>
             <Button
-              onClick={() => onNavigate('signup')}
+              onClick={() => onNavigate('signup_providers')}
               size="sm"
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >

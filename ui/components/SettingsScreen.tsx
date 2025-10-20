@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -17,11 +17,21 @@ import {
   Mail,
   Trash2,
 } from 'lucide-react';
-import { mockUser } from '../data/mockData';
 import { useTheme } from '../lib/theme-context';
+import { toast } from 'sonner';
+import { getCurrentUser, getCurrentUserFromAPI, updateUser, setCurrentUser } from '../lib/api';
 
 export function SettingsScreen() {
   const [activeSection, setActiveSection] = useState('profile');
+  const [user, setUser] = useState<any | null>(getCurrentUser());
+
+  useEffect(() => {
+    if (!user) {
+      getCurrentUserFromAPI().then((u) => {
+        if (u) setUser(u);
+      }).catch(() => {});
+    }
+  }, []);
 
   const sections = [
     { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
@@ -60,7 +70,7 @@ export function SettingsScreen() {
 
           {/* Content */}
           <div className="lg:col-span-3">
-            {activeSection === 'profile' && <ProfileSection />}
+            {activeSection === 'profile' && <ProfileSection user={user} onUserUpdated={(u) => setUser(u)} />}
             {activeSection === 'appearance' && <AppearanceSection />}
             {activeSection === 'notifications' && <NotificationsSection />}
             {activeSection === 'team' && <TeamSection />}
@@ -72,7 +82,53 @@ export function SettingsScreen() {
   );
 }
 
-function ProfileSection() {
+function ProfileSection({ user, onUserUpdated }: { user: any | null; onUserUpdated: (u: any) => void; }) {
+  const [username, setUsername] = useState<string>(user?.username || '');
+  const [email, setEmail] = useState<string>(user?.email || '');
+  const [avatarPreview, setAvatarPreview] = useState<string>(user?.avatar || '');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setUsername(user?.username || '');
+    setEmail(user?.email || '');
+    setAvatarPreview(user?.avatar || '');
+  }, [user]);
+
+  const initials = (user?.username || user?.email || 'U').slice(0, 2).toUpperCase();
+
+  function handleAvatarClick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image is too large (max 2MB)');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatarPreview(String(reader.result));
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read image');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleSave() {
+    try {
+      if (!user?.id) throw new Error('No user loaded');
+      const updated = await updateUser(Number(user.id), { username, email, avatar: avatarPreview });
+      setCurrentUser(updated);
+      onUserUpdated(updated);
+      toast.success('Profile updated');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to update profile');
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
@@ -80,11 +136,18 @@ function ProfileSection() {
 
         <div className="flex items-center gap-6 mb-6">
           <Avatar className="h-20 w-20">
-            <AvatarImage src={mockUser.avatar} />
-            <AvatarFallback>AC</AvatarFallback>
+            <AvatarImage src={avatarPreview || ''} />
+            <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           <div>
-            <Button variant="outline" size="sm" className="mb-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+            <Button variant="outline" size="sm" className="mb-2" onClick={handleAvatarClick}>
               Change Avatar
             </Button>
             <p className="text-xs text-slate-500 dark:text-slate-400">JPG, PNG or GIF. Max 2MB.</p>
@@ -93,23 +156,23 @@ function ProfileSection() {
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="name" className="mb-2 block">Full name</Label>
-            <Input id="name" defaultValue={mockUser.name} />
+            <Label htmlFor="name" className="mb-2 block">Username</Label>
+            <Input id="name" value={username} onChange={(e) => setUsername(e.target.value)} />
           </div>
           <div>
             <Label htmlFor="email" className="mb-2 block">Email</Label>
-            <Input id="email" type="email" defaultValue={mockUser.email} />
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div>
             <Label htmlFor="role" className="mb-2 block">Role</Label>
-            <Input id="role" defaultValue={mockUser.role} />
+            <Input id="role" defaultValue="" />
           </div>
         </div>
 
         <Separator className="my-6" />
 
         <div className="flex justify-end">
-          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+          <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">
             Save changes
           </Button>
         </div>

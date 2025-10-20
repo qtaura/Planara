@@ -1,6 +1,9 @@
 export type ViewType = 
   | 'login'
   | 'signup'
+  | 'signup_providers'
+  | 'signup_email'
+  | 'signup_username'
   | 'landing' 
   | 'onboarding' 
   | 'dashboard' 

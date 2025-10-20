@@ -1,7 +1,8 @@
 import type { Project, Task, Milestone, SubTask } from '../types';
 
-const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001/api';
+export const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'http://localhost:3001/api').trim();
 const TOKEN_KEY = 'planara_token';
+const CURRENT_USER_KEY = 'planara_user';
 
 export function getToken(): string | null {
   try {
@@ -23,6 +24,33 @@ export function clearToken() {
   } catch {}
 }
 
+export function setCurrentUser(user: any) {
+  try {
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  } catch {}
+}
+
+export function getCurrentUser(): any | null {
+  try {
+    const raw = localStorage.getItem(CURRENT_USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function decodeUserIdFromToken(token: string | null): number | null {
+  if (!token) return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    const payload = JSON.parse(atob(parts[1]));
+    return typeof payload?.userId === 'number' ? payload.userId : null;
+  } catch {
+    return null;
+  }
+}
+
 async function apiFetch(path: string, options: RequestInit = {}) {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -36,6 +64,36 @@ async function apiFetch(path: string, options: RequestInit = {}) {
     throw new Error('Unauthorized');
   }
   return res;
+}
+
+export async function getUserById(id: number): Promise<any | null> {
+  const res = await apiFetch(`/users`);
+  if (!res.ok) throw new Error(`Failed to fetch users: ${res.status}`);
+  const users = await res.json();
+  return (users as any[]).find((u) => Number(u?.id) === Number(id)) || null;
+}
+
+export async function getCurrentUserFromAPI(): Promise<any | null> {
+  const id = decodeUserIdFromToken(getToken());
+  if (!id) return null;
+  const user = await getUserById(id);
+  if (user) setCurrentUser(user);
+  return user;
+}
+
+export async function updateUser(id: number, payload: Partial<{ username: string; email: string; password: string; teamId: number; avatar: string }>): Promise<any> {
+  const res = await apiFetch(`/users/${encodeURIComponent(String(id))}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to update user: ${res.status}`);
+  }
+  const data = await res.json();
+  setCurrentUser(data);
+  return data;
 }
 
 function toUiTask(t: any): Task {

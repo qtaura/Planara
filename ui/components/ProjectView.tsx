@@ -19,7 +19,7 @@ import { CalendarView } from './CalendarView';
 import { FilesView } from './FilesView';
 import { TaskModal } from './TaskModal';
 import { Project, Task } from '../types';
-import { mockProjects } from '../data/mockData';
+
 import { getProjectWithRelations } from '@lib/api';
 import { toast } from 'sonner';
 
@@ -39,12 +39,11 @@ export function ProjectView({ projectId }: ProjectViewProps) {
     setError(null);
     try {
       const p = await getProjectWithRelations(projectId);
-      if (p) setProject(p);
-      else setProject(mockProjects.find((mp) => mp.id === projectId) || null);
+      setProject(p || null);
     } catch (e: any) {
       setError(e?.message || 'Failed to load project');
       toast.error(error || 'Failed to load project');
-      setProject(mockProjects.find((mp) => mp.id === projectId) || null);
+      setProject(null);
     } finally {
       setLoading(false);
     }
