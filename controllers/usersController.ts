@@ -120,7 +120,7 @@ export async function startOAuth(req: Request, res: Response) {
     if (!clientId) return res.status(500).send('GitHub OAuth not configured');
     const redirectUri = `${req.protocol}://${req.get('host')}/api/users/oauth/github/callback`;
     const state = Buffer.from(JSON.stringify({ origin })).toString('base64');
-    const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('read:user user:email')}&state=${encodeURIComponent(state)}`;
+    const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('read:user user:email repo')}&state=${encodeURIComponent(state)}`;
     return res.redirect(authorizeUrl);
   }
 
@@ -201,8 +201,8 @@ export async function oauthCallback(req: Request, res: Response) {
       }
 
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-      const payload = { token, user: sanitize(user), created };
-      const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',token:data.token,user:data.user,created:data.created},origin);}catch(e){}window.close();</script></body></html>`;
+      const payload = { token, user: sanitize(user), created, provider: 'github', accessToken };
+      const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',token:data.token,user:data.user,created:data.created,provider:data.provider,accessToken:data.accessToken},origin);}catch(e){}window.close();</script></body></html>`;
       res.setHeader('Content-Type', 'text/html');
       return res.send(html);
     }
