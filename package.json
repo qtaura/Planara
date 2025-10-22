@@ -7,7 +7,7 @@
     "dev": "tsx watch index.ts",
     "build": "tsc -p tsconfig.server.json && npm --prefix ui run build",
     "build:ui": "npm --prefix ui run build",
-    "postinstall": "npm --prefix ui install --include=dev",
+    "postinstall": "npm --prefix ui ci --include=dev",
     "start": "node dist/index.js"
   },
   "dependencies": {
