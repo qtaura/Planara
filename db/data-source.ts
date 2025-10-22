@@ -19,8 +19,8 @@ export const AppDataSource = new DataSource(
         entities: [User, Project, Task, Milestone, Comment],
         synchronize: true,
         logging: false,
-        // Enable SSL when explicitly requested (e.g., public host with ?sslmode=require)
-        ssl: dbUrl && dbUrl.includes("sslmode=require") ? { rejectUnauthorized: false } : undefined,
+        // Always ignore self-signed certs for Railway/public hosts
+        ssl: { rejectUnauthorized: false },
       }
     : {
         type: "sqlite",
