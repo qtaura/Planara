@@ -55,9 +55,13 @@ if (fs.existsSync(path.join(uiDist, "index.html"))) {
 }
 
 const port = Number(process.env.PORT) || 3001;
+const host = process.env.HOST || '0.0.0.0';
 
 await initDB();
 
-app.listen(port, () => {
-  console.log(`API server listening on http://localhost:${port}`);
+app.listen(port, host as any, () => {
+  const url = `http://${host}:${port}`;
+  const publicDomain = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_STATIC_URL;
+  const hint = publicDomain ? ` (public: https://${publicDomain})` : '';
+  console.log(`API server listening on ${url}${hint}`);
 });
