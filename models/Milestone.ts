@@ -15,6 +15,7 @@ export class Milestone {
   @Column({ type: "integer", default: 0 })
   progressPercent!: number;
 
-  @Column({ type: "datetime", nullable: true })
+  // Use portable Date mapping; driver chooses proper column type (sqlite: datetime, postgres: timestamp)
+  @Column({ nullable: true })
   dueDate?: Date;
 }
