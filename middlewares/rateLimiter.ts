@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import type { Request } from 'express';
 
 /**
  * Rate limiter for email verification code sending
@@ -16,7 +17,7 @@ export const emailVerificationLimiter = rateLimit({
   // Skip successful requests (only count failed attempts)
   skipSuccessfulRequests: false,
   // Skip requests that don't need rate limiting
-  skip: (req) => {
+  skip: (req: Request) => {
     // Skip rate limiting for certain conditions if needed
     return false;
   },
