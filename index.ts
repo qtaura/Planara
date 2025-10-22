@@ -13,6 +13,15 @@ import milestonesRouter from "./routes/milestones.js";
 import commentsRouter from "./routes/comments.js";
 import { initDB } from "./db/data-source.js";
 
+// If a managed Postgres URL is present, relax TLS globally to avoid self-signed cert errors
+const dbUrl = process.env.DATABASE_URL || process.env.RAILWAY_DATABASE_URL;
+if (dbUrl) {
+  try {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    console.warn('[startup] NODE_TLS_REJECT_UNAUTHORIZED=0 set due to DATABASE_URL presence');
+  } catch {}
+}
+
 const app = express();
 // Trust proxy headers so req.protocol reflects HTTPS behind reverse proxies
 app.set('trust proxy', 1);
