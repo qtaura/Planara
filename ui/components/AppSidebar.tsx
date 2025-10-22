@@ -7,7 +7,8 @@ import {
   Bell, 
   Settings, 
   Plus,
-  Search
+  Search,
+  LogOut
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -17,7 +18,7 @@ import { ThemeToggle } from './ThemeToggle';
 
 import { Project } from '../types';
 import { useEffect, useState } from 'react';
-import { listProjects, getCurrentUser, getCurrentUserFromAPI } from '@lib/api';
+import { listProjects, getCurrentUser, getCurrentUserFromAPI, signOut } from '@lib/api';
 import { toast } from 'sonner';
 
 interface AppSidebarProps {
@@ -211,12 +212,17 @@ export function AppSidebar({
       </div>
 
       {/* Bottom */}
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800/50">
+      <div className="p-3 border-t border-slate-200 dark:border-slate-800/50 space-y-1.5">
         <NavItem
           icon={<Settings className="w-4 h-4" />}
           label="Settings"
           active={activeView === 'settings'}
           onClick={() => onNavigate('settings')}
+        />
+        <NavItem
+          icon={<LogOut className="w-4 h-4" />}
+          label="Sign out"
+          onClick={() => { signOut(); toast.success('Signed out'); }}
         />
       </div>
     </div>

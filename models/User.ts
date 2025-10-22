@@ -30,6 +30,9 @@ export class User {
   @Column({ default: 0 })
   usernameChangeCount!: number;
 
+  @Column({ default: false })
+  isVerified!: boolean;
+
   @OneToMany(() => Task, (task) => task.assignee)
   tasks?: Task[];
 

@@ -128,3 +128,13 @@ This project follows the "Keep a Changelog" format and Semantic Versioning.
   - GitHub: `http://localhost:3002/api/users/oauth/github/callback`
 - Noted env vars required for OAuth (`SLACK_CLIENT_ID/SECRET`, `GOOGLE_CLIENT_ID/SECRET`, optional GitHub).
 - Clarified UI backend base via `VITE_API_URL` during development.
+
+## 2025-10-22 — Routing and SPA fallback
+- Added React Router integration in `ui/main.tsx` using `BrowserRouter`, `Routes`, and `Route` for pages: `/`, `/login`, `/signup`, `/signup/providers`, `/signup/email`, `/signup/username`, `/dashboard`, `/project/:id`, `/settings`, `/onboarding`.
+- Implemented onboarding route handler to navigate to `/dashboard` on completion.
+- Confirmed backend SPA fallback in `index.ts`: serves `ui/dist/index.html` for non-API routes (`app.get('*', ...)`) while leaving `/api/*` to Express routers.
+- Vite config remains standard; no special base is required for same-origin deploys. For multi-domain setups, set `VITE_API_URL` in UI.
+- Deployment rewrite rules:
+  - Railway: default static serving works with backend fallback; ensure build outputs to `ui/dist`.
+  - Cloudflare/Netlify: add rewrite `/* -> /index.html (200)` to enable direct deep-linking to SPA routes.
+- Notes: Remove any redundant `prebuild` scripts that run `npm ci` again on Railway to avoid `EBUSY` errors. Install UI dev deps (`vite`, `@vitejs/plugin-react`, `react-router-dom`) locally for development.
