@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch index.ts",
-    "prebuild": "npm ci && npm --prefix ui ci",
     "build": "tsc -p tsconfig.server.json && npm --prefix ui run build",
     "build:ui": "npm --prefix ui run build",
     "postinstall": "npm --prefix ui ci",
