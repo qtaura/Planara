@@ -20,7 +20,8 @@ export const AppDataSource = new DataSource(
         synchronize: true,
         logging: false,
         // Always ignore self-signed certs for Railway/public hosts
-        ssl: { rejectUnauthorized: false },
+        ssl: true,
+        extra: { ssl: { rejectUnauthorized: false } },
       }
     : {
         type: "sqlite",
