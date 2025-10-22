@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch index.ts",
+    "prebuild": "npm ci && npm --prefix ui ci",
     "build": "tsc -p tsconfig.server.json && npm --prefix ui run build",
     "build:ui": "npm --prefix ui run build",
     "postinstall": "npm --prefix ui ci",
@@ -16,14 +17,18 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "pg": "^8.11.3",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.2.2",
     "sqlite3": "^5.1.7",
-    "typeorm": "^0.3.27"
+    "typeorm": "^0.3.27",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.10",
