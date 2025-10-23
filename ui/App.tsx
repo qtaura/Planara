@@ -12,6 +12,7 @@ import { ThemeProvider } from './lib/theme-context';
 import { ViewType } from './types';
 import { getToken } from '@lib/api';
 import { LoginScreen } from './components/LoginScreen';
+import NotificationScreen from './components/NotificationScreen';
 
 import { SignupScreen } from './components/SignupScreen';
 import { SignupProvidersScreen } from './components/SignupProvidersScreen';
@@ -175,6 +176,7 @@ function AppContent() {
       )}
 
       {currentView === 'settings' && <SettingsScreen />}
+      {currentView === 'notifications' && <NotificationScreen />}
 
       <AIAssistant />
 

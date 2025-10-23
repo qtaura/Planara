@@ -28,6 +28,7 @@ import {
 } from 'recharts';
 import { API_BASE, setToken, setCurrentUser } from '@lib/api';
 import { CreateProjectModal } from './CreateProjectModal';
+import { GitHubRepoPicker } from './GitHubRepoPicker';
 
 interface DashboardProps {
   onNavigate: (view: string) => void;
@@ -40,17 +41,23 @@ export function Dashboard({ onNavigate, onSelectProject }: DashboardProps) {
   const [error, setError] = useState<string | null>(null);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [githubAccessToken, setGithubAccessToken] = useState<string | null>(null);
+  const [repoPickerOpen, setRepoPickerOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       const data = (e && (e as any).data) || null;
-      if (data && data.type === 'oauth' && data.token) {
+      if (data && data.type === 'oauth' && (data.token || data.verificationRequired)) {
         try {
-          setToken(data.token);
+          if (data.token) setToken(data.token);
           if (data.user) setCurrentUser(data.user);
         } catch {}
-        toast.success(`Welcome, ${data.user?.username || data.user?.email || 'user'}!`);
-        try { window.dispatchEvent(new CustomEvent('auth:logged_in')); } catch {}
+        if (data.verificationRequired) {
+          toast.message('Verify your email to complete sign-in');
+          try { window.dispatchEvent(new CustomEvent('auth:needs_verification')); } catch {}
+        } else {
+          toast.success(`Welcome, ${data.user?.username || data.user?.email || 'user'}!`);
+          try { window.dispatchEvent(new CustomEvent('auth:logged_in')); } catch {}
+        }
         if (data.provider === 'github' && data.accessToken) {
           setGithubAccessToken(String(data.accessToken));
           setRepoPickerOpen(true);
@@ -80,6 +87,10 @@ export function Dashboard({ onNavigate, onSelectProject }: DashboardProps) {
   }, []);
 
   function startProvider(provider: 'github' | 'google' | 'slack') {
+    if (provider === 'github' && githubAccessToken) {
+      setRepoPickerOpen(true);
+      return;
+    }
     const url = `${API_BASE}/users/oauth/${provider}/start?origin=${encodeURIComponent(window.location.origin)}`;
     window.open(url, 'oauth', 'width=600,height=700');
   }
@@ -227,6 +238,17 @@ export function Dashboard({ onNavigate, onSelectProject }: DashboardProps) {
         onCreate={() => {
           setCreateProjectOpen(false);
           fetchAll();
+        }}
+      />
+
+      <GitHubRepoPicker
+        isOpen={repoPickerOpen}
+        accessToken={githubAccessToken}
+        onClose={() => setRepoPickerOpen(false)}
+        onLinked={() => {
+          setRepoPickerOpen(false);
+          fetchAll();
+          toast.success('Repository linked to new project');
         }}
       />
     </div>
