@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import type { Request } from 'express';
 
 /**
@@ -72,30 +72,34 @@ export const strictLimiter = rateLimit({
 export const perEmailSendLimiter = rateLimit({
   windowMs: 60 * 1000, // 60 seconds cooldown per email
   max: 1,
-  keyGenerator: (req: Request) => {
-    const email = String((req.body as any)?.email || (req.query as any)?.email || '').toLowerCase();
-    return email || String(req.ip || '') || 'unknown';
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const email = (req.body?.email ?? req.params?.email ?? req.query?.email) as string | undefined;
+    if (email && typeof email === 'string') return `email:${email.toLowerCase()}`;
+    const ip = req.ip || '';
+    return ipKeyGenerator(ip);
   },
   message: {
     success: false,
     error: 'Please wait before requesting another code.',
   },
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 
 export const perEmailVerifyLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes window per email
   max: 5, // Limit to 5 verification attempts per window
-  keyGenerator: (req: Request) => {
-    const email = String((req.body as any)?.email || (req.query as any)?.email || '').toLowerCase();
-    return email || String(req.ip || '') || 'unknown';
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const email = (req.body?.email ?? req.params?.email ?? req.query?.email) as string | undefined;
+    if (email && typeof email === 'string') return `email:${email.toLowerCase()}`;
+    const ip = req.ip || '';
+    return ipKeyGenerator(ip);
   },
   message: {
     success: false,
     error: 'Too many verification attempts. Please try again later.',
   },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: true,
 });
