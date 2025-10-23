@@ -34,6 +34,19 @@ export class User {
   @Column({ default: false })
   isVerified!: boolean;
 
+  // Security & abuse-prevention tracking
+  @Column({ default: 0 })
+  verifyInvalidCount!: number;
+
+  @Column({ nullable: true })
+  verifyLockedUntil?: Date;
+
+  @Column({ nullable: true })
+  verifyBackoffUntil?: Date;
+
+  @Column({ nullable: true })
+  sendBackoffUntil?: Date;
+
   @OneToMany(() => Task, (task) => task.assignee)
   tasks?: Task[];
 

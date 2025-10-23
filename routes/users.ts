@@ -3,6 +3,7 @@ import { getUsers, signup, login, updateProfile, startOAuth, oauthCallback } fro
 import { EmailVerificationController } from "../controllers/emailVerificationController.js";
 import { authenticate } from "../middlewares/auth.js";
 import { emailVerificationLimiter, emailVerificationAttemptLimiter, authLimiter, perEmailSendLimiter, perEmailVerifyLimiter } from "../middlewares/rateLimiter.js";
+import { adminOnly } from "../middlewares/admin.js";
 
 const router = Router();
 
@@ -17,5 +18,8 @@ router.put("/:id", authenticate, updateProfile);
 router.post("/auth/send-code", perEmailSendLimiter, emailVerificationLimiter, EmailVerificationController.sendCode);
 router.post("/auth/verify-code", perEmailVerifyLimiter, emailVerificationAttemptLimiter, EmailVerificationController.verifyCode);
 router.get("/auth/verification-status/:email", EmailVerificationController.getVerificationStatus);
+
+// Admin bypass to clear lockouts/backoffs
+router.post("/auth/admin/unlock", adminOnly, EmailVerificationController.adminUnlock);
 
 export default router;

@@ -12,6 +12,9 @@ export class EmailVerificationCode {
   @Column({ length: 6 })
   code!: string;
 
+  @Column({ nullable: true })
+  codeHash?: string;
+
   @Column()
   expiresAt!: Date;
 
