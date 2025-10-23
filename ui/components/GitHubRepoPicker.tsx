@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Modal } from './Modal';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Badge } from './ui/badge';
-import { Github, Lock, Globe, RefreshCw } from 'lucide-react';
-import { createProject } from '@lib/api';
+import { Card } from './ui/card';
+import { Github, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { API_BASE } from '@lib/api';
 
 interface GitHubRepoPickerProps {
   isOpen: boolean;
@@ -14,160 +14,106 @@ interface GitHubRepoPickerProps {
   onLinked: () => void;
 }
 
-interface GitHubRepo {
-  id: number;
-  name: string;
-  full_name: string;
-  description: string | null;
-  private: boolean;
-  html_url: string;
-  updated_at: string;
-  owner?: { login?: string };
-}
-
 export function GitHubRepoPicker({ isOpen, accessToken, onClose, onLinked }: GitHubRepoPickerProps) {
-  const [repos, setRepos] = useState<GitHubRepo[]>([]);
+  const [repos, setRepos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [linkingRepoId, setLinkingRepoId] = useState<number | null>(null);
-
-  async function fetchRepos() {
-    if (!accessToken) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('https://api.github.com/user/repos?per_page=50&sort=updated', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/vnd.github+json',
-          'User-Agent': 'Planara',
-        },
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Failed to list repositories: ${res.status}`);
-      }
-      const data = await res.json();
-      setRepos(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load repositories');
-      toast.error(e?.message || 'Failed to load repositories');
-    } finally {
-      setLoading(false);
-    }
-  }
 
   useEffect(() => {
-    if (isOpen) {
-      fetchRepos();
+    async function fetchRepos() {
+      if (!accessToken) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`https://api.github.com/user/repos?per_page=100`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) throw new Error(`GitHub error: ${res.status}`);
+        const data = await res.json();
+        setRepos(Array.isArray(data) ? data : []);
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load GitHub repositories');
+        toast.error(e?.message || 'Failed to load GitHub repositories');
+      } finally {
+        setLoading(false);
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, accessToken]);
+    fetchRepos().catch(() => {});
+  }, [accessToken]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return repos;
-    return repos.filter((r) =>
-      r.name.toLowerCase().includes(q) || r.full_name.toLowerCase().includes(q)
-    );
-  }, [repos, query]);
+    const q = query.toLowerCase();
+    return repos.filter((r) => `${r.owner?.login || ''}/${r.name || ''}`.toLowerCase().includes(q));
+  }, [query, repos]);
 
-  async function linkRepo(r: GitHubRepo) {
+  function switchAccount() {
+    const url = `${API_BASE}/users/oauth/github/start?origin=${encodeURIComponent(window.location.origin)}`;
+    window.open(url, 'oauth', 'width=600,height=700');
+    toast.message('Re-run GitHub sign-in to switch accounts');
+  }
+
+  async function linkRepository(repo: any) {
     try {
-      setLinkingRepoId(r.id);
-      const payload: any = {
-        name: r.name,
-        description: r.description || '',
-        favorite: false,
-        archived: false,
+      const body = {
+        provider: 'github',
+        repo_full_name: `${repo.owner?.login}/${repo.name}`,
+        repo_id: repo.id,
       };
-      const project = await createProject(payload);
-      toast.success(`Linked ${r.full_name}`);
-      // Optimistically mark UI project as linked (badge relies on githubLinked in UI)
-      try { onLinked(); } catch {}
-      onClose();
+      const res = await fetch(`/api/projects/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Failed to link repository');
+      toast.success('Repository linked');
+      onLinked();
     } catch (e: any) {
       toast.error(e?.message || 'Failed to link repository');
-    } finally {
-      setLinkingRepoId(null);
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-slate-900 dark:text-white">Import from GitHub</DialogTitle>
-          <DialogDescription className="text-slate-600 dark:text-slate-400">
-            Select a repository to create a linked project
-          </DialogDescription>
-        </DialogHeader>
-
-        {error && (
-          <div className="p-3 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm mb-3">
-            {error}
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 mb-4">
-          <Input
-            placeholder="Search repositories..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="h-10"
-            disabled={loading}
-          />
-          <Button variant="outline" onClick={fetchRepos} disabled={loading} className="h-10">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+    <Modal isOpen={isOpen} onClose={onClose} title="Import from GitHub">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+          <Github className="h-4 w-4" />
+          <span className="text-sm">Select a repository to import</span>
         </div>
+        <Button variant="ghost" size="sm" onClick={switchAccount} title="Switch GitHub account">
+          <RefreshCw className="h-4 w-4" />
+          <span className="ml-2">Switch account</span>
+        </Button>
+      </div>
 
-        <div className="space-y-2">
-          {loading ? (
-            <p className="text-sm text-slate-600 dark:text-slate-400">Loading repositories…</p>
-          ) : filtered.length === 0 ? (
-            <p className="text-sm text-slate-600 dark:text-slate-400">No repositories found.</p>
-          ) : (
-            filtered.map((repo) => (
-              <div key={repo.id} className="flex items-center justify-between p-3 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                <div className="flex items-center gap-3">
-                  <Github className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-                  <div>
-                    <p className="text-slate-900 dark:text-white font-medium">{repo.full_name}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">{repo.description || 'No description'}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      {repo.private ? (
-                        <Badge variant="outline" className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300">
-                          <Lock className="w-3 h-3 mr-1 inline" /> Private
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300">
-                          <Globe className="w-3 h-3 mr-1 inline" /> Public
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300">
-                        Updated {new Date(repo.updated_at).toLocaleDateString()}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                <Button
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                  onClick={() => linkRepo(repo)}
-                  disabled={linkingRepoId === repo.id}
-                >
-                  {linkingRepoId === repo.id ? 'Linking…' : 'Link'}
-                </Button>
+      <div className="mb-3 flex items-center gap-2">
+        <Search className="h-4 w-4 text-slate-400" />
+        <Input placeholder="Filter repositories" value={query} onChange={(e) => setQuery(e.target.value)} />
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-slate-600 dark:text-slate-400">Loading repositories…</p>
+      ) : error ? (
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+      ) : filtered.length === 0 ? (
+        <Card className="p-4">
+          <p className="text-sm text-slate-600 dark:text-slate-400">No repositories found</p>
+        </Card>
+      ) : (
+        <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2">
+          {filtered.map((repo) => (
+            <Card key={repo.id} className="p-3 flex items-center justify-between">
+              <div>
+                <p className="text-slate-900 dark:text-white">{repo.owner?.login}/{repo.name}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  {repo.private ? 'Private' : 'Public'} • Updated {new Date(repo.updated_at).toLocaleDateString()}
+                </p>
               </div>
-            ))
-          )}
+              <Button size="sm" onClick={() => linkRepository(repo)}>Link</Button>
+            </Card>
+          ))}
         </div>
-
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-          <Button variant="outline" onClick={onClose}>Close</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      )}
+    </Modal>
   );
 }
