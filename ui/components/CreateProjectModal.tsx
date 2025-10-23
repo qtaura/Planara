@@ -12,9 +12,10 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
-import { Calendar, Github, Sparkles, X } from 'lucide-react';
+import { Calendar, Github, Sparkles, X, FileText, Folder, GitBranch } from 'lucide-react';
 import { createProject } from '@lib/api';
 import { toast } from 'sonner';
+import { GitHubRepoPicker } from './GitHubRepoPicker';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -22,7 +23,11 @@ interface CreateProjectModalProps {
   onCreate: () => void;
 }
 
+type ProjectCreationType = 'blank' | 'github' | 'template';
+
 export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectModalProps) {
+  const [creationType, setCreationType] = useState<ProjectCreationType>('blank');
+  const [showGitHubPicker, setShowGitHubPicker] = useState(false);
   const [githubLinked, setGithubLinked] = useState(false);
   const [aiGenerate, setAiGenerate] = useState(true);
   const [tags, setTags] = useState<string[]>(['web', 'frontend']);
@@ -31,6 +36,9 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
   const [description, setDescription] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Mock GitHub access token - in real app this would come from auth context
+  const [githubToken] = useState<string | null>('mock_token');
 
   const projectTypes = [
     { value: 'web', label: 'Web App' },
@@ -39,7 +47,15 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
     { value: 'library', label: 'Library' },
   ];
 
+  const projectTemplates = [
+    { id: 'react-app', name: 'React App', description: 'Modern React application with TypeScript', icon: '⚛️' },
+    { id: 'node-api', name: 'Node.js API', description: 'RESTful API with Express and TypeScript', icon: '🚀' },
+    { id: 'mobile-app', name: 'Mobile App', description: 'Cross-platform mobile app with React Native', icon: '📱' },
+    { id: 'landing-page', name: 'Landing Page', description: 'Marketing website with modern design', icon: '🌐' },
+  ];
+
   const [selectedType, setSelectedType] = useState('web');
+  const [selectedTemplate, setSelectedTemplate] = useState('react-app');
 
   const handleAddTag = () => {
     if (newTag && !tags.includes(newTag)) {
@@ -49,14 +65,29 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
   };
 
   const handleCreate = async () => {
+    if (creationType === 'github') {
+      setShowGitHubPicker(true);
+      return;
+    }
+    
     if (!name.trim()) {
       setError('Project name is required');
       return;
     }
+    
     setCreating(true);
     setError(null);
     try {
-      await createProject({ name: name.trim(), description: description.trim() || undefined });
+      const projectData: any = { 
+        name: name.trim(), 
+        description: description.trim() || undefined 
+      };
+      
+      if (creationType === 'template') {
+        projectData.template = selectedTemplate;
+      }
+      
+      await createProject(projectData);
       toast.success('Project created');
       window.dispatchEvent(new CustomEvent('projects:changed'));
       onCreate();
@@ -70,15 +101,27 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
     }
   };
 
+  const handleGitHubRepoLinked = () => {
+    toast.success('Repository linked successfully');
+    window.dispatchEvent(new CustomEvent('projects:changed'));
+    onCreate();
+    onClose();
+    setShowGitHubPicker(false);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-slate-900 dark:text-white">
-            Create project
+            {creationType === 'github' ? 'Import Repository' :
+             creationType === 'template' ? 'Create from Template' :
+             'Create Project'}
           </DialogTitle>
           <DialogDescription className="text-slate-600 dark:text-slate-400">
-            Set up a new project with AI-powered task suggestions
+            {creationType === 'github' ? 'Link an existing GitHub repository to your project' :
+             creationType === 'template' ? 'Start with a pre-built template and customize it' :
+             'Set up a new project with AI-powered task suggestions'}
           </DialogDescription>
         </DialogHeader>
 
@@ -88,8 +131,106 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
               {error}
             </div>
           )}
+
+          {/* Project Creation Type */}
+          <div>
+            <Label className="mb-3 block">How would you like to create your project?</Label>
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={() => setCreationType('blank')}
+                className={`p-4 rounded-lg border text-left transition-colors ${
+                  creationType === 'blank'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-600 dark:border-indigo-600'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+                disabled={creating}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <Folder className={`w-5 h-5 ${creationType === 'blank' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400'}`} />
+                  <span className={`font-medium ${creationType === 'blank' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>
+                    Blank Project
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Start from scratch with a clean project
+                </p>
+              </button>
+
+              <button
+                onClick={() => setCreationType('github')}
+                className={`p-4 rounded-lg border text-left transition-colors ${
+                  creationType === 'github'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-600 dark:border-indigo-600'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+                disabled={creating}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <Github className={`w-5 h-5 ${creationType === 'github' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400'}`} />
+                  <span className={`font-medium ${creationType === 'github' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>
+                    Import Repository
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Link an existing GitHub repository
+                </p>
+              </button>
+
+              <button
+                onClick={() => setCreationType('template')}
+                className={`p-4 rounded-lg border text-left transition-colors ${
+                  creationType === 'template'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-600 dark:border-indigo-600'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+                disabled={creating}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <FileText className={`w-5 h-5 ${creationType === 'template' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400'}`} />
+                  <span className={`font-medium ${creationType === 'template' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>
+                    Use Template
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Start with a pre-built template
+                </p>
+              </button>
+            </div>
+          </div>
+          {/* Template Selection */}
+          {creationType === 'template' && (
+            <div>
+              <Label className="mb-3 block">Choose a template</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {projectTemplates.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => setSelectedTemplate(template.id)}
+                    className={`p-4 rounded-lg border text-left transition-colors ${
+                      selectedTemplate === template.id
+                        ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-600 dark:border-indigo-600'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                    disabled={creating}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-lg">{template.icon}</span>
+                      <span className={`font-medium ${selectedTemplate === template.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>
+                        {template.name}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {template.description}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Basic Info */}
-          <div className="space-y-4">
+          {creationType !== 'github' && (
+            <div className="space-y-4">
             <div>
               <Label htmlFor="project-name" className="mb-2 block">
                 Project name
@@ -118,6 +259,7 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
               />
             </div>
           </div>
+          )}
 
           {/* Project Type */}
           <div>
@@ -245,13 +387,23 @@ export function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectM
             <Button
               onClick={handleCreate}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              disabled={creating || !name.trim()}
+              disabled={creating || (creationType !== 'github' && !name.trim())}
             >
-              {creating ? 'Creating...' : 'Create project'}
+              {creating ? 'Creating...' : 
+               creationType === 'github' ? 'Import from GitHub' :
+               creationType === 'template' ? 'Create from template' :
+               'Create project'}
             </Button>
           </div>
         </div>
       </DialogContent>
+      
+      <GitHubRepoPicker
+        isOpen={showGitHubPicker}
+        accessToken={githubToken}
+        onClose={() => setShowGitHubPicker(false)}
+        onLinked={handleGitHubRepoLinked}
+      />
     </Dialog>
   );
 }

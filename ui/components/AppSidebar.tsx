@@ -18,7 +18,7 @@ import { ThemeToggle } from './ThemeToggle';
 
 import { Project } from '../types';
 import { useEffect, useState } from 'react';
-import { listProjects, getCurrentUser, getCurrentUserFromAPI, signOut } from '@lib/api';
+import { listProjects, getCurrentUser, getCurrentUserFromAPI, signOut, getUnreadNotificationCount } from '@lib/api';
 import { toast } from 'sonner';
 
 interface AppSidebarProps {
@@ -40,6 +40,7 @@ export function AppSidebar({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any | null>(getCurrentUser());
+  const [notificationCount, setNotificationCount] = useState<number>(0);
 
   async function fetchProjects() {
     setLoading(true);
@@ -64,24 +65,43 @@ export function AppSidebar({
     } catch {}
   }
 
+  async function fetchNotificationCount() {
+    try {
+      const count = await getUnreadNotificationCount();
+      setNotificationCount(count);
+    } catch (e) {
+      // Silently fail for notifications - not critical
+      setNotificationCount(0);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     fetchProjects().catch(() => {});
     refreshUser().catch(() => {});
+    fetchNotificationCount().catch(() => {});
     function onChanged() {
       if (!cancelled) fetchProjects().catch(() => {});
     }
     function onAuth() {
-      if (!cancelled) refreshUser().catch(() => {});
+      if (!cancelled) {
+        refreshUser().catch(() => {});
+        fetchNotificationCount().catch(() => {});
+      }
+    }
+    function onNotificationChanged() {
+      if (!cancelled) fetchNotificationCount().catch(() => {});
     }
     window.addEventListener('projects:changed', onChanged as EventListener);
     window.addEventListener('auth:logged_in', onAuth as EventListener);
     window.addEventListener('user:updated', onAuth as EventListener);
+    window.addEventListener('notifications:changed', onNotificationChanged as EventListener);
     return () => { 
       cancelled = true; 
       window.removeEventListener('projects:changed', onChanged as EventListener);
       window.removeEventListener('auth:logged_in', onAuth as EventListener);
       window.removeEventListener('user:updated', onAuth as EventListener);
+      window.removeEventListener('notifications:changed', onNotificationChanged as EventListener);
     };
   }, []);
   const activeProjects = projects.filter(p => p.status === 'active');
@@ -138,8 +158,9 @@ export function AppSidebar({
           <NavItem
             icon={<Bell className="w-4 h-4" />}
             label="Notifications"
-            badge="3"
-            onClick={() => { try { localStorage.setItem('settings_active_section', 'notifications'); } catch {}; onNavigate('settings'); }}
+            active={activeView === 'notifications'}
+            badge={notificationCount > 0 ? notificationCount.toString() : undefined}
+            onClick={() => onNavigate('notifications')}
           />
           <NavItem
             icon={<Users className="w-4 h-4" />}

@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
 import { Task } from "./Task.js";
 import { Comment } from "./Comment.js";
 import { Project } from "./Project.js";
+import { Notification } from "./Notification.js";
 
 @Entity()
 export class User {
@@ -41,4 +42,7 @@ export class User {
 
   @OneToMany(() => Project, (project) => project.owner)
   projects?: Project[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications?: Notification[];
 }

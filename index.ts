@@ -11,6 +11,7 @@ import tasksRouter from "./routes/tasks.js";
 import usersRouter from "./routes/users.js";
 import milestonesRouter from "./routes/milestones.js";
 import commentsRouter from "./routes/comments.js";
+import notificationsRouter from "./routes/notifications.js";
 import { initDB } from "./db/data-source.js";
 
 // If a managed Postgres URL is present, relax TLS globally to avoid self-signed cert errors
@@ -43,6 +44,7 @@ app.use("/api/tasks", tasksRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/milestones", milestonesRouter);
 app.use("/api/comments", commentsRouter);
+app.use("/api/notifications", notificationsRouter);
 
 // Serve built UI from ui/dist when present (single-domain deployment)
 const uiDist = path.join(process.cwd(), "ui", "dist");

@@ -27,7 +27,7 @@ import {
   Area,
 } from 'recharts';
 import { API_BASE, setToken, setCurrentUser } from '@lib/api';
-import { GitHubRepoPicker } from './GitHubRepoPicker';
+import { CreateProjectModal } from './CreateProjectModal';
 
 interface DashboardProps {
   onNavigate: (view: string) => void;
@@ -38,7 +38,7 @@ export function Dashboard({ onNavigate, onSelectProject }: DashboardProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [repoPickerOpen, setRepoPickerOpen] = useState(false);
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [githubAccessToken, setGithubAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,7 +99,7 @@ export function Dashboard({ onNavigate, onSelectProject }: DashboardProps) {
         <div className="flex items-center gap-2">
           <Button
             className="bg-indigo-600 hover:bg-indigo-700 text-white"
-            onClick={() => onNavigate('project_create')}
+            onClick={() => setCreateProjectOpen(true)}
           >
             <Plus className="w-4 h-4 mr-2" />
             New project
@@ -193,7 +193,7 @@ export function Dashboard({ onNavigate, onSelectProject }: DashboardProps) {
                 className="p-4 cursor-pointer"
                 onClick={() => {
                   onSelectProject(project.id);
-                  onNavigate('project');
+                  // removed extra onNavigate to avoid double navigation
                 }}
               >
                 <div className="flex items-center justify-between mb-3">
@@ -221,11 +221,13 @@ export function Dashboard({ onNavigate, onSelectProject }: DashboardProps) {
         )}
       </div>
 
-      <GitHubRepoPicker
-        isOpen={repoPickerOpen}
-        accessToken={githubAccessToken}
-        onClose={() => setRepoPickerOpen(false)}
-        onLinked={() => fetchAll()}
+      <CreateProjectModal
+        isOpen={createProjectOpen}
+        onClose={() => setCreateProjectOpen(false)}
+        onCreate={() => {
+          setCreateProjectOpen(false);
+          fetchAll();
+        }}
       />
     </div>
   );

@@ -1,10 +1,6 @@
 import type { Project, Task, Milestone, SubTask } from '../types';
 
-const _envBase = String(((import.meta as any).env?.VITE_API_URL) || '').trim();
-export const API_BASE = _envBase || `${window.location.origin}/api`;
-import { get } from 'http';
-
-const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const API_BASE = (import.meta as any).env?.VITE_API_BASE || '/api';
 const TOKEN_KEY = 'planara_token';
 const CURRENT_USER_KEY = 'planara_current_user';
 
@@ -201,6 +197,10 @@ export async function updateTask(taskId: string, payload: any): Promise<any> {
   return res.json();
 }
 
+export async function updateTaskStatus(taskId: string | number, status: string): Promise<any> {
+  return updateTask(String(taskId), { status });
+}
+
 export async function deleteTask(taskId: string): Promise<boolean> {
   const res = await apiFetch(`/tasks/${encodeURIComponent(taskId)}`, {
     method: 'DELETE',
@@ -243,38 +243,95 @@ export async function login(usernameOrEmail: string, password: string): Promise<
 }
 
 export async function signup(payload: { username: string; email: string; password: string }): Promise<any> {
-  const res = await fetch(`${API_BASE}/users/signup`, {
+  try {
+    const res = await fetch(`${API_BASE}/users/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      const message = errorData?.error || `Signup failed with status ${res.status}`;
+      throw new Error(message);
+    }
+
+    const data = await res.json();
+    if (data.token) {
+      setToken(data.token);
+      if (data.user) setCurrentUser(data.user);
+    }
+    return data;
+  } catch (error) {
+    // Re-throw with a user-friendly message
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Network error during signup. Please try again.');
+  }
+}
+
+// Notification API functions
+export async function getNotifications(): Promise<any[]> {
+  const res = await apiFetch('/notifications');
+  if (!res.ok) throw new Error(`Failed to fetch notifications: ${res.status}`);
+  return res.json();
+}
+
+export async function getUnreadNotificationCount(): Promise<number> {
+  const res = await apiFetch('/notifications/unread-count');
+  if (!res.ok) throw new Error(`Failed to fetch unread count: ${res.status}`);
+  const data = await res.json();
+  return data.count || 0;
+}
+
+export async function createNotification(payload: {
+  title: string;
+  message: string;
+  type?: string;
+  projectId?: number;
+  taskId?: number;
+  actionUrl?: string;
+}): Promise<any> {
+  const res = await apiFetch('/notifications', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    let message = `Failed to signup: ${res.status}`;
-    try {
-      const text = await res.text();
-      if (text) {
-        try {
-          const data = JSON.parse(text);
-          const errMsg = typeof data?.error === 'string' ? data.error : undefined;
-          if (errMsg) {
-            const lower = errMsg.toLowerCase();
-            if (lower.includes('exists')) {
-              message = 'Username or email already in use';
-            } else {
-              message = errMsg;
-            }
-          } else {
-            message = text;
-          }
-        } catch {
-          // plain text error
-          message = text;
-        }
-      }
-    } catch {}
-    throw new Error(message);
-  }
+  if (!res.ok) throw new Error(`Failed to create notification: ${res.status}`);
   return res.json();
 }
 
+export async function markNotificationAsRead(notificationId: number): Promise<any> {
+  const res = await apiFetch(`/notifications/${notificationId}/read`, {
+    method: 'PUT',
+  });
+  if (!res.ok) throw new Error(`Failed to mark notification as read: ${res.status}`);
+  return res.json();
+}
+
+export async function markAllNotificationsAsRead(): Promise<boolean> {
+  const res = await apiFetch('/notifications/mark-all-read', {
+    method: 'PUT',
+  });
+  if (!res.ok) throw new Error(`Failed to mark all notifications as read: ${res.status}`);
+  const data = await res.json();
+  return !!data?.success;
+}
+
+export async function deleteNotification(notificationId: number): Promise<boolean> {
+  const res = await apiFetch(`/notifications/${notificationId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error(`Failed to delete notification: ${res.status}`);
+  const data = await res.json();
+  return !!data?.success;
+}
+
 export { API_BASE };
+export async function getProjectWithRelations(projectId: string): Promise<any | null> {
+  const res = await apiFetch('/projects');
+  if (!res.ok) throw new Error(`Failed to fetch project: ${res.status}`);
+  const projects = await res.json();
+  return (projects as any[]).find((p) => String(p?.id) === String(projectId)) || null;
+}

@@ -16,6 +16,8 @@ import { ProjectView } from './components/ProjectView';
 import { SettingsScreen } from './components/SettingsScreen';
 import { AIAssistant } from './components/AIAssistant';
 import { OnboardingScreen } from './components/OnboardingScreen';
+import { AppLayout } from './components/AppLayout';
+import NotificationScreen from './components/NotificationScreen';
 
 function LandingRoute() {
   const navigate = useNavigate();
@@ -28,6 +30,7 @@ function LandingRoute() {
           dashboard: '/dashboard',
           login: '/login',
           signup: '/signup',
+          signup_providers: '/signup/providers',
           settings: '/settings',
         };
         navigate(map[view] || '/');
@@ -95,7 +98,6 @@ function DashboardRoute() {
         };
         navigate(map[view] || '/dashboard');
       }}
-      onOpenCreateProject={() => {}}
     />
   );
 }
@@ -115,6 +117,10 @@ function OnboardingRoute() {
   return <OnboardingScreen onComplete={() => navigate('/dashboard')} />;
 }
 
+function NotificationRoute() {
+  return <NotificationScreen />;
+}
+
 function AppRouter() {
   return (
     <ThemeProvider>
@@ -126,9 +132,11 @@ function AppRouter() {
           <Route path="/signup/providers" element={<SignupProvidersRoute />} />
           <Route path="/signup/email" element={<EmailSignupRoute />} />
           <Route path="/signup/username" element={<UsernameRoute />} />
-          <Route path="/dashboard" element={<DashboardRoute />} />
-          <Route path="/project/:id" element={<ProjectRoute />} />
-          <Route path="/settings" element={<SettingsRoute />} />
+          <Route path="/onboarding" element={<OnboardingRoute />} />
+          <Route path="/dashboard" element={<AppLayout><DashboardRoute /></AppLayout>} />
+          <Route path="/project/:id" element={<AppLayout><ProjectRoute /></AppLayout>} />
+          <Route path="/settings" element={<AppLayout><SettingsRoute /></AppLayout>} />
+          <Route path="/notifications" element={<AppLayout><NotificationRoute /></AppLayout>} />
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
