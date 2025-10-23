@@ -27,8 +27,9 @@ export class Notification {
   @CreateDateColumn()
   createdAt!: Date;
 
+  // Avoid design:type circular reference; TypeORM uses lambda target
   @ManyToOne(() => User, (user) => user.notifications)
-  user!: User;
+  user!: any;
 
   @ManyToOne(() => Project, { nullable: true })
   project?: Project;

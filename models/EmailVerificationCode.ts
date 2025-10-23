@@ -21,7 +21,8 @@ export class EmailVerificationCode {
   @Column({ default: false })
   isUsed!: boolean;
 
+  // Avoid design:type circular reference like in Notification
   @ManyToOne(() => User)
   @JoinColumn({ name: "userId" })
-  user?: User;
+  user?: any;
 }
