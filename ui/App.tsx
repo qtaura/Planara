@@ -47,7 +47,47 @@ function AppContent() {
     return () => window.removeEventListener('auth:needs_username', handler);
   }, []);
 
+  const viewToPath = (view: ViewType): string => {
+    switch (view) {
+      case 'landing': return '/';
+      case 'login': return '/login';
+      case 'signup': return '/signup';
+      case 'signup_providers': return '/signup';
+      case 'signup_email': return '/signup/email';
+      case 'signup_username': return '/signup/username';
+      case 'dashboard': return '/dashboard';
+      case 'onboarding': return '/onboarding';
+      case 'settings': return '/settings';
+      case 'project': return selectedProject ? `/projects/${selectedProject}` : '/project';
+      default: return '/';
+    }
+  };
+
+  const pathToView = (path: string): ViewType => {
+    if (path.startsWith('/signup/username')) return 'signup_username';
+    if (path.startsWith('/signup/email')) return 'signup_email';
+    if (path.startsWith('/signup')) return 'signup_providers';
+    if (path.startsWith('/login')) return 'login';
+    if (path.startsWith('/dashboard')) return 'dashboard';
+    if (path.startsWith('/onboarding')) return 'onboarding';
+    if (path.startsWith('/settings')) return 'settings';
+    if (path.startsWith('/projects/')) return 'project';
+    return 'landing';
+  };
+
+  useEffect(() => {
+    // Initialize view from current path and listen to browser navigation
+    setCurrentView(pathToView(window.location.pathname));
+    const onPop = () => setCurrentView(pathToView(window.location.pathname));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   const handleNavigate = (view: ViewType) => {
+    const path = viewToPath(view);
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
     setCurrentView(view);
   };
 
