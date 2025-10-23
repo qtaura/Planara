@@ -59,6 +59,7 @@ function AppContent() {
       case 'dashboard': return '/dashboard';
       case 'onboarding': return '/onboarding';
       case 'settings': return '/settings';
+      case 'notifications': return '/notifications';
       case 'project': return selectedProject ? `/projects/${selectedProject}` : '/project';
       default: return '/';
     }
@@ -72,6 +73,7 @@ function AppContent() {
     if (path.startsWith('/dashboard')) return 'dashboard';
     if (path.startsWith('/onboarding')) return 'onboarding';
     if (path.startsWith('/settings')) return 'settings';
+    if (path.startsWith('/notifications')) return 'notifications';
     if (path.startsWith('/projects/')) return 'project';
     return 'landing';
   };
