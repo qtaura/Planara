@@ -12,6 +12,16 @@ export class EmailService {
   private static readonly SUBJECT = 'Verify your Planara account';
 
   static async sendVerificationCode(data: EmailVerificationData): Promise<void> {
+    // Development fallback: if no RESEND_API_KEY, simulate send instead of failing
+    if (!process.env.RESEND_API_KEY) {
+      console.warn('[DEV] RESEND_API_KEY not set. Simulating verification email send', {
+        to: data.email,
+        username: data.username,
+        code: data.code,
+      });
+      return;
+    }
+
     const htmlTemplate = this.getVerificationEmailTemplate(data);
 
     try {

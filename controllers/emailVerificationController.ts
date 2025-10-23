@@ -82,6 +82,8 @@ export class EmailVerificationController {
         success: true,
         message: 'Verification code sent successfully',
         expiresAt: expiresAt.toISOString(),
+        // Development helper: include devCode when email provider is not configured
+        devCode: process.env.RESEND_API_KEY ? undefined : code,
       });
 
     } catch (error) {
