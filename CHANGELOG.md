@@ -13,6 +13,11 @@ This project follows the "Keep a Changelog" format and Semantic Versioning.
 - OAuth verification events include `email`, `provider`, `needsUsername`.
 - Skip verification UI for already verified users.
 - Verification status polling via `getVerificationStatus`.
+- Segmented 6-cell OTP input with auto-advance and paste handling.
+- Resend cooldown with timer (60s), disables resend until cooldown ends.
+- Expiry countdown using `expiresAt`, allow re-send immediately after expiry.
+- Error states surfaced clearly: invalid, expired, too many attempts (client-side), network.
+- Accessibility improvements: focus management, ARIA announcements, inline errors.
 
 ### Changed
 - App routing guards use `currentUser.isVerified` to bypass verification.
