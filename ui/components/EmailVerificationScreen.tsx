@@ -4,7 +4,7 @@ import { Input } from './ui/input';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 import { toast } from 'sonner';
-import { sendVerificationCode, verifyEmailCode, getVerificationStatus } from '@lib/api';
+import { sendVerificationCode, verifyEmailCode, getVerificationStatus, getCurrentUser, setCurrentUser } from '@lib/api';
 
 interface EmailVerificationScreenProps {
   email?: string;
@@ -64,8 +64,16 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
       if (res?.success) {
         setStatus('verified');
         toast.success('Email verified');
-        // Confirm status and proceed
+        // Confirm status and persist verification locally
         try { await getVerificationStatus(email); } catch {}
+        try {
+          const user = getCurrentUser();
+          if (user) {
+            const updated = { ...user, isVerified: true };
+            setCurrentUser(updated);
+            window.dispatchEvent(new CustomEvent('auth:verified', { detail: { email } }));
+          }
+        } catch {}
         onVerified();
       } else {
         toast.error('Invalid code');

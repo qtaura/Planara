@@ -10,7 +10,7 @@ import { CreateProjectModal } from './components/CreateProjectModal';
 import { Toaster } from './components/ui/sonner';
 import { ThemeProvider } from './lib/theme-context';
 import { ViewType } from './types';
-import { getToken } from '@lib/api';
+import { getToken, getCurrentUser } from '@lib/api';
 import { LoginScreen } from './components/LoginScreen';
 import NotificationScreen from './components/NotificationScreen';
 import { SignupScreen } from './components/SignupScreen';
@@ -28,6 +28,7 @@ function AppContent() {
   const [signupEmail, setSignupEmail] = useState<string>('');
   const [signupPassword, setSignupPassword] = useState<string>('');
   const [verificationEmail, setVerificationEmail] = useState<string>('');
+  const [postVerifyView, setPostVerifyView] = useState<ViewType>('dashboard');
 
   useEffect(() => {
     const handler = () => setCurrentView('login');
@@ -53,6 +54,16 @@ function AppContent() {
     const goVerify = (e: Event) => {
       const detail: any = (e as CustomEvent).detail || {};
       if (detail?.email) setVerificationEmail(detail.email);
+      const needsUsername = !!detail?.needsUsername || !!detail?.created;
+      setPostVerifyView(needsUsername ? 'signup_username' : 'dashboard');
+      try {
+        const user = getCurrentUser();
+        if (user && (user.isVerified || user.verified)) {
+          // Already verified; skip verification UI
+          setCurrentView(needsUsername ? 'signup_username' : 'dashboard');
+          return;
+        }
+      } catch {}
       setCurrentView('verify' as any);
     };
     window.addEventListener('auth:verification_required', goVerify as any);
@@ -145,6 +156,7 @@ function AppContent() {
           setSignupEmail(email);
           setSignupPassword(password);
           setVerificationEmail(email);
+          setPostVerifyView('signup_username');
           setCurrentView('verify' as any);
         }}
       />
@@ -200,7 +212,7 @@ function AppContent() {
       {currentView === 'verify' && (
         <EmailVerificationScreen
           email={verificationEmail}
-          onVerified={() => setCurrentView('dashboard')}
+          onVerified={() => setCurrentView(postVerifyView)}
           onCancel={() => setCurrentView('dashboard')}
         />
       )}

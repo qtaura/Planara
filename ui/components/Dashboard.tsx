@@ -53,7 +53,9 @@ export function Dashboard({ onNavigate, onSelectProject }: DashboardProps) {
         } catch {}
         if (data.verificationRequired) {
           toast.message('Verify your email to complete sign-in');
-          try { window.dispatchEvent(new CustomEvent('auth:needs_verification')); } catch {}
+          const email = data.email || data.user?.email;
+          const needsUsername = !!data.created;
+          try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email, needsUsername, provider: data.provider } })); } catch {}
         } else {
           toast.success(`Welcome, ${data.user?.username || data.user?.email || 'user'}!`);
           try { window.dispatchEvent(new CustomEvent('auth:logged_in')); } catch {}

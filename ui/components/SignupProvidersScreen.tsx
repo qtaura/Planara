@@ -22,7 +22,8 @@ export function SignupProvidersScreen({ onChooseEmail, onChooseProvider, onSkip 
         try {
           toast.message('Check your email for a verification code');
           const email = data.email || data.user?.email;
-          window.dispatchEvent(new CustomEvent('auth:verification_required', { detail: { email } }));
+          const needsUsername = !!data.created;
+          window.dispatchEvent(new CustomEvent('auth:verification_required', { detail: { email, needsUsername, provider: data.provider } }));
         } catch {}
         return;
       }
