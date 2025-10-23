@@ -367,3 +367,38 @@ export async function getVerificationStatus(email: string): Promise<any> {
   if (!res.ok) throw new Error(`Failed to get status: ${res.status}`);
   return res.json();
 }
+
+export async function adminUnlock(email: string, adminToken: string): Promise<any> {
+  const res = await apiFetch('/users/auth/admin/unlock', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to unlock: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getLockoutState(email: string, adminToken: string): Promise<any> {
+  const res = await apiFetch(`/users/auth/admin/lockout-state/${encodeURIComponent(email)}`, {
+    headers: { 'x-admin-token': adminToken },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to fetch lockout state: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getSecurityEvents(email: string, adminToken: string): Promise<any> {
+  const res = await apiFetch(`/users/auth/admin/events/${encodeURIComponent(email)}`, {
+    headers: { 'x-admin-token': adminToken },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to fetch events: ${res.status}`);
+  }
+  return res.json();
+}

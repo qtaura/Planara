@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../lib/theme-context';
 import { toast } from 'sonner';
-import { getCurrentUser, getCurrentUserFromAPI, updateUser, setCurrentUser } from '../lib/api';
+import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents } from '../lib/api';
 
 export function SettingsScreen() {
   const [activeSection, setActiveSection] = useState('profile');
@@ -92,6 +92,12 @@ export function SettingsScreen() {
             {activeSection === 'notifications' && <NotificationsSection />}
             {activeSection === 'team' && <TeamSection />}
             {activeSection === 'account' && <AccountSection />}
+            {/* Admin controls available only to planara account */}
+            {user?.email === 'hello@planara.org' && (
+              <div className="mt-8">
+                <AdminSection />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -390,3 +396,88 @@ function SettingToggle({ label, description, defaultChecked }: SettingToggleProp
     </div>
   );
 }
+
+function AdminSection() {
+  const [adminToken, setAdminToken] = useState('');
+  const [targetEmail, setTargetEmail] = useState('');
+  const [lockoutState, setLockoutState] = useState<any | null>(null);
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchLockout() {
+    setLoading(true); setError(null); setMessage(null);
+    try {
+      const state = await getLockoutState(targetEmail.trim(), adminToken.trim());
+      setLockoutState(state);
+      setMessage('Fetched lockout state');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to fetch lockout state');
+    } finally { setLoading(false); }
+  }
+
+  async function fetchEvents() {
+    setLoading(true); setError(null); setMessage(null);
+    try {
+      const list = await getSecurityEvents(targetEmail.trim(), adminToken.trim());
+      setEvents(Array.isArray(list) ? list : []);
+      setMessage('Fetched recent events');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to fetch events');
+    } finally { setLoading(false); }
+  }
+
+  async function doUnlock() {
+    setLoading(true); setError(null); setMessage(null);
+    try {
+      await adminUnlock(targetEmail.trim(), adminToken.trim());
+      setMessage('Unlock triggered successfully');
+      await fetchLockout();
+      await fetchEvents();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to unlock');
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <section className="settings-section" aria-label="Admin Controls">
+      <h3>Admin Controls</h3>
+      <p className="muted">Restricted to planara account (hello@planara.org). Requires admin token.</p>
+      <div className="form-grid">
+        <label>Admin Token
+          <input type="password" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} placeholder="Enter admin token" />
+        </label>
+        <label>Target Email
+          <input type="email" value={targetEmail} onChange={(e) => setTargetEmail(e.target.value)} placeholder="user@example.com" />
+        </label>
+      </div>
+      <div className="actions">
+        <button disabled={loading || !adminToken || !targetEmail} onClick={fetchLockout}>View Lockout State</button>
+        <button disabled={loading || !adminToken || !targetEmail} onClick={fetchEvents}>View Recent Events</button>
+        <button disabled={loading || !adminToken || !targetEmail} onClick={doUnlock} className="danger">Unlock Account</button>
+      </div>
+      {message && <div className="notice success">{message}</div>}
+      {error && <div className="notice error">{error}</div>}
+      {lockoutState && (
+        <div className="card">
+          <h4>Lockout State</h4>
+          <pre>{JSON.stringify(lockoutState, null, 2)}</pre>
+        </div>
+      )}
+      {events && events.length > 0 && (
+        <div className="card">
+          <h4>Recent Security Events</h4>
+          <ul>
+            {events.map((ev: any, i: number) => (
+              <li key={ev?.id || i}>
+                <strong>{ev?.eventType}</strong> — {ev?.email || ''} — {new Date(ev?.createdAt).toLocaleString()} — {ev?.ip || ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+// Removed duplicate tail after deleting duplicated SettingsScreen

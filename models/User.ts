@@ -47,6 +47,9 @@ export class User {
   @Column({ nullable: true })
   sendBackoffUntil?: Date;
 
+  @Column({ nullable: true })
+  verificationSecret?: string;
+
   @OneToMany(() => Task, (task) => task.assignee)
   tasks?: Task[];
 

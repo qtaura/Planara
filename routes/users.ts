@@ -20,6 +20,8 @@ router.post("/auth/verify-code", perEmailVerifyLimiter, emailVerificationAttempt
 router.get("/auth/verification-status/:email", EmailVerificationController.getVerificationStatus);
 
 // Admin bypass to clear lockouts/backoffs
-router.post("/auth/admin/unlock", adminOnly, EmailVerificationController.adminUnlock);
+router.post("/auth/admin/unlock", authenticate, adminOnly, EmailVerificationController.adminUnlock);
+router.get("/auth/admin/lockout-state/:email", authenticate, adminOnly, EmailVerificationController.getLockoutState);
+router.get("/auth/admin/events/:email", authenticate, adminOnly, EmailVerificationController.getSecurityEvents);
 
 export default router;
