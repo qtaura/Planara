@@ -8,7 +8,8 @@ export type ViewType =
   | 'onboarding' 
   | 'dashboard' 
   | 'project' 
-  | 'settings';
+  | 'settings'
+  | 'verify';
 
 export type ProjectTab = 'roadmap' | 'kanban' | 'calendar' | 'files';
 

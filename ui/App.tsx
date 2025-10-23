@@ -13,11 +13,11 @@ import { ViewType } from './types';
 import { getToken } from '@lib/api';
 import { LoginScreen } from './components/LoginScreen';
 import NotificationScreen from './components/NotificationScreen';
-
 import { SignupScreen } from './components/SignupScreen';
 import { SignupProvidersScreen } from './components/SignupProvidersScreen';
 import { EmailSignupScreen } from './components/EmailSignupScreen';
 import { SetUsernameScreen } from './components/SetUsernameScreen';
+import { EmailVerificationScreen } from './components/EmailVerificationScreen';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('landing');
@@ -27,6 +27,7 @@ function AppContent() {
   // signup flow state
   const [signupEmail, setSignupEmail] = useState<string>('');
   const [signupPassword, setSignupPassword] = useState<string>('');
+  const [verificationEmail, setVerificationEmail] = useState<string>('');
 
   useEffect(() => {
     const handler = () => setCurrentView('login');
@@ -48,6 +49,20 @@ function AppContent() {
     return () => window.removeEventListener('auth:needs_username', handler);
   }, []);
 
+  useEffect(() => {
+    const goVerify = (e: Event) => {
+      const detail: any = (e as CustomEvent).detail || {};
+      if (detail?.email) setVerificationEmail(detail.email);
+      setCurrentView('verify' as any);
+    };
+    window.addEventListener('auth:verification_required', goVerify as any);
+    window.addEventListener('auth:needs_verification', goVerify as any);
+    return () => {
+      window.removeEventListener('auth:verification_required', goVerify as any);
+      window.removeEventListener('auth:needs_verification', goVerify as any);
+    };
+  }, []);
+
   const viewToPath = (view: ViewType): string => {
     switch (view) {
       case 'landing': return '/';
@@ -56,6 +71,7 @@ function AppContent() {
       case 'signup_providers': return '/signup';
       case 'signup_email': return '/signup/email';
       case 'signup_username': return '/signup/username';
+      case 'verify': return '/verify';
       case 'dashboard': return '/dashboard';
       case 'onboarding': return '/onboarding';
       case 'settings': return '/settings';
@@ -70,6 +86,7 @@ function AppContent() {
     if (path.startsWith('/signup/email')) return 'signup_email';
     if (path.startsWith('/signup')) return 'signup_providers';
     if (path.startsWith('/login')) return 'login';
+    if (path.startsWith('/verify')) return 'verify' as any;
     if (path.startsWith('/dashboard')) return 'dashboard';
     if (path.startsWith('/onboarding')) return 'onboarding';
     if (path.startsWith('/settings')) return 'settings';
@@ -127,7 +144,8 @@ function AppContent() {
         onNext={({ email, password }) => {
           setSignupEmail(email);
           setSignupPassword(password);
-          setCurrentView('signup_username');
+          setVerificationEmail(email);
+          setCurrentView('verify' as any);
         }}
       />
     );
@@ -179,6 +197,13 @@ function AppContent() {
 
       {currentView === 'settings' && <SettingsScreen />}
       {currentView === 'notifications' && <NotificationScreen />}
+      {currentView === 'verify' && (
+        <EmailVerificationScreen
+          email={verificationEmail}
+          onVerified={() => setCurrentView('dashboard')}
+          onCancel={() => setCurrentView('dashboard')}
+        />
+      )}
 
       <AIAssistant />
 

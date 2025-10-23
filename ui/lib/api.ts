@@ -335,3 +335,35 @@ export async function getProjectWithRelations(projectId: string): Promise<any | 
   const projects = await res.json();
   return (projects as any[]).find((p) => String(p?.id) === String(projectId)) || null;
 }
+
+export async function sendVerificationCode(email: string): Promise<any> {
+  const res = await apiFetch('/users/auth/send-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to send code: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function verifyEmailCode(email: string, code: string): Promise<any> {
+  const res = await apiFetch('/users/auth/verify-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to verify code: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getVerificationStatus(email: string): Promise<any> {
+  const res = await apiFetch(`/users/auth/verification-status/${encodeURIComponent(email)}`);
+  if (!res.ok) throw new Error(`Failed to get status: ${res.status}`);
+  return res.json();
+}
