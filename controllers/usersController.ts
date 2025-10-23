@@ -3,6 +3,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { AppDataSource } from "../db/data-source.js";
 import { User } from "../models/User.js";
+import { EmailVerificationCode } from "../models/EmailVerificationCode.js";
+import { EmailService } from "../services/emailService.js";
+import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 
@@ -67,35 +70,24 @@ export async function login(req: Request, res: Response) {
   res.json({ token, user: sanitize(user) });
 }
 
-export async function updateProfile(req: Request, res: Response) {
-  const userIdFromToken = (req as any).userId as number | undefined;
-  const id = Number(req.params.id ?? userIdFromToken);
-  if (!id) return res.status(401).json({ error: "unauthorized" });
-
+export async function updateUser(req: Request, res: Response) {
+  const id = Number(req.params.id);
+  const { username, email, password, teamId, avatar } = req.body;
   const repo = AppDataSource.getRepository(User);
   const user = await repo.findOne({ where: { id } });
-  if (!user) return res.status(404).json({ error: "user not found" });
+  if (!user) return res.status(404).json({ error: "not found" });
 
-  const { username, email, password, teamId, avatar } = req.body as Partial<{ username: string; email: string; password: string; teamId: number; avatar: string }>;
-
-  // Enforce one-change limit and case-insensitive uniqueness for username
-  if (username && username.toLowerCase() !== (user.usernameLower || user.username.toLowerCase())) {
-    const changeCount = (user.usernameChangeCount ?? 0);
-    if (changeCount >= 1) {
-      return res.status(403).json({ error: "username change limit reached" });
-    }
-    const desiredLower = String(username).toLowerCase();
-    const conflict = await repo.findOne({ where: { usernameLower: desiredLower } });
+  if (username) {
+    const usernameLower = String(username).toLowerCase();
+    const conflict = await repo.findOne({ where: { usernameLower } });
     if (conflict && conflict.id !== user.id) {
       return res.status(409).json({ error: "username already exists" });
     }
     user.username = username;
-    user.usernameLower = desiredLower;
-    user.usernameChangeCount = changeCount + 1;
+    user.usernameLower = usernameLower;
   }
 
-  // Case-insensitive email uniqueness
-  if (email && email.toLowerCase() !== (user.email || '').toLowerCase()) {
+  if (email) {
     const conflict = await repo.createQueryBuilder('user').where('LOWER(user.email) = :email', { email: String(email).toLowerCase() }).getOne();
     if (conflict && conflict.id !== user.id) {
       return res.status(409).json({ error: "email already exists" });
@@ -110,6 +102,8 @@ export async function updateProfile(req: Request, res: Response) {
   await repo.save(user);
   res.json(sanitize(user));
 }
+// Provide backward compatibility for routes importing updateProfile
+export const updateProfile = updateUser;
 
 export async function startOAuth(req: Request, res: Response) {
   const provider = String(req.params.provider || '');
@@ -138,21 +132,18 @@ export async function startOAuth(req: Request, res: Response) {
     if (!clientId) return res.status(500).send('Slack OAuth not configured');
     const redirectUri = `${req.protocol}://${req.get('host')}/api/users/oauth/slack/callback`;
     const state = Buffer.from(JSON.stringify({ origin })).toString('base64');
-    const authorizeUrl = `https://slack.com/oauth/v2/authorize?client_id=${clientId}&user_scope=${encodeURIComponent('identity.basic,identity.email')}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
+    const authorizeUrl = `https://slack.com/oauth/v2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('identity.basic identity.email')}&state=${encodeURIComponent(state)}`;
     return res.redirect(authorizeUrl);
   }
 
-  return res.status(400).json({ error: 'unsupported provider' });
+  return res.status(400).send('unsupported provider');
 }
 
 export async function oauthCallback(req: Request, res: Response) {
-  const provider = String(req.params.provider || '');
-  const stateParam = String((req.query.state as string) || '');
-  const code = String((req.query.code as string) || '');
-
   try {
-    const state = stateParam ? JSON.parse(Buffer.from(stateParam, 'base64').toString()) : {};
-    const origin = state.origin || 'http://localhost:5173';
+    const provider = String(req.params.provider || '');
+    const origin = (() => { try { const b = Buffer.from(String(req.query.state || ''), 'base64').toString('utf8'); return JSON.parse(b || '{}')?.origin || 'http://localhost:5173'; } catch { return 'http://localhost:5173'; } })();
+    const code = String(req.query.code || '');
 
     if (provider === 'github') {
       const clientId = process.env.GITHUB_CLIENT_ID;
@@ -161,22 +152,15 @@ export async function oauthCallback(req: Request, res: Response) {
       const redirectUri = `${req.protocol}://${req.get('host')}/api/users/oauth/github/callback`;
 
       const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code, redirect_uri: redirectUri }),
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code, redirect_uri: redirectUri })
       });
       const tokenJson = await tokenRes.json() as any;
-      const accessToken = tokenJson.access_token as string | undefined;
+      const accessToken = tokenJson?.access_token;
       if (!accessToken) return res.status(400).send('oauth failed');
 
-      const userRes = await fetch('https://api.github.com/user', {
-        headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'Planara' },
-      });
-      const ghUser: any = await userRes.json();
-
-      const emailsRes = await fetch('https://api.github.com/user/emails', {
-        headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'Planara' },
-      });
+      const userRes = await fetch('https://api.github.com/user', { headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'Planara' } });
+      const ghUser = await userRes.json() as any;
+      const emailsRes = await fetch('https://api.github.com/user/emails', { headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'Planara' } });
       const emails = await emailsRes.json() as any[];
       const primaryEmail = (Array.isArray(emails) && emails.find((e: any) => e.primary && e.verified)?.email)
         || (Array.isArray(emails) && emails[0]?.email)
@@ -191,7 +175,7 @@ export async function oauthCallback(req: Request, res: Response) {
         .getOne();
       let created = false;
       if (!user) {
-        let username = ghUser?.login || `github_${ghUser?.id}`;
+        let username = ghUser?.name || ghUser?.login || `github_${ghUser?.id}`;
         let suffix = 0;
         while (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } })) { suffix += 1; username = `${ghUser?.login}${suffix}`; }
         const hashedPassword = await bcrypt.hash(`oauth:github:${ghUser?.id}:${Date.now()}`, 10);
@@ -200,8 +184,25 @@ export async function oauthCallback(req: Request, res: Response) {
         created = true;
       }
 
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-      const payload = { token, user: sanitize(user), created, provider: 'github', accessToken };
+      // Gate by email verification
+      if (!(user as any).isVerified) {
+        const codeRepo = AppDataSource.getRepository(EmailVerificationCode);
+        // Invalidate existing codes
+        await codeRepo.update({ userId: (user as any).id, isUsed: false }, { isUsed: true });
+        const vcode = crypto.randomInt(100000, 999999).toString();
+        const expiresAt = new Date();
+        expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+        const rec = codeRepo.create({ userId: (user as any).id, code: vcode, expiresAt });
+        await codeRepo.save(rec);
+        await EmailService.sendVerificationCode({ email: (user as any).email, username: (user as any).username, code: vcode });
+        const payload = { verificationRequired: true, email: (user as any).email, user: sanitize(user as any), created, provider: 'github' };
+        const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',verificationRequired:true,email:data.email,user:data.user,created:data.created,provider:data.provider},origin);}catch(e){}window.close();</script></body></html>`;
+        res.setHeader('Content-Type', 'text/html');
+        return res.send(html);
+      }
+
+      const token = jwt.sign({ userId: (user as any).id }, JWT_SECRET, { expiresIn: '7d' });
+      const payload = { token, user: sanitize(user as any), created, provider: 'github', accessToken };
       const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',token:data.token,user:data.user,created:data.created,provider:data.provider,accessToken:data.accessToken},origin);}catch(e){}window.close();</script></body></html>`;
       res.setHeader('Content-Type', 'text/html');
       return res.send(html);
@@ -245,8 +246,24 @@ export async function oauthCallback(req: Request, res: Response) {
         created = true;
       }
 
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-      const payload = { token, user: sanitize(user), created };
+      // Gate by email verification
+      if (!(user as any).isVerified) {
+        const codeRepo = AppDataSource.getRepository(EmailVerificationCode);
+        await codeRepo.update({ userId: (user as any).id, isUsed: false }, { isUsed: true });
+        const vcode = crypto.randomInt(100000, 999999).toString();
+        const expiresAt = new Date();
+        expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+        const rec = codeRepo.create({ userId: (user as any).id, code: vcode, expiresAt });
+        await codeRepo.save(rec);
+        await EmailService.sendVerificationCode({ email: (user as any).email, username: (user as any).username, code: vcode });
+        const payload = { verificationRequired: true, email: (user as any).email, user: sanitize(user as any), created, provider: 'google' };
+        const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',verificationRequired:true,email:data.email,user:data.user,created:data.created,provider:data.provider},origin);}catch(e){}window.close();</script></body></html>`;
+        res.setHeader('Content-Type', 'text/html');
+        return res.send(html);
+      }
+
+      const token = jwt.sign({ userId: (user as any).id }, JWT_SECRET, { expiresIn: '7d' });
+      const payload = { token, user: sanitize(user as any), created };
       const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',token:data.token,user:data.user,created:data.created},origin);}catch(e){}window.close();</script></body></html>`;
       res.setHeader('Content-Type', 'text/html');
       return res.send(html);
@@ -292,8 +309,24 @@ export async function oauthCallback(req: Request, res: Response) {
         created = true;
       }
 
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-      const payload = { token, user: sanitize(user), created };
+      // Gate by email verification
+      if (!(user as any).isVerified) {
+        const codeRepo = AppDataSource.getRepository(EmailVerificationCode);
+        await codeRepo.update({ userId: (user as any).id, isUsed: false }, { isUsed: true });
+        const vcode = crypto.randomInt(100000, 999999).toString();
+        const expiresAt = new Date();
+        expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+        const rec = codeRepo.create({ userId: (user as any).id, code: vcode, expiresAt });
+        await codeRepo.save(rec);
+        await EmailService.sendVerificationCode({ email: (user as any).email, username: (user as any).username, code: vcode });
+        const payload = { verificationRequired: true, email: (user as any).email, user: sanitize(user as any), created, provider: 'slack' };
+        const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',verificationRequired:true,email:data.email,user:data.user,created:data.created,provider:data.provider},origin);}catch(e){}window.close();</script></body></html>`;
+        res.setHeader('Content-Type', 'text/html');
+        return res.send(html);
+      }
+
+      const token = jwt.sign({ userId: (user as any).id }, JWT_SECRET, { expiresIn: '7d' });
+      const payload = { token, user: sanitize(user as any), created };
       const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',token:data.token,user:data.user,created:data.created},origin);}catch(e){}window.close();</script></body></html>`;
       res.setHeader('Content-Type', 'text/html');
       return res.send(html);

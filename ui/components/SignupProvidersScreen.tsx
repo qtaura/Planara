@@ -17,6 +17,15 @@ export function SignupProvidersScreen({ onChooseEmail, onChooseProvider, onSkip 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       const data = (e && (e as any).data) || null;
+      // If verification is required, route to email verification
+      if (data && data.type === 'oauth' && data.verificationRequired) {
+        try {
+          toast.message('Check your email for a verification code');
+          const email = data.email || data.user?.email;
+          window.dispatchEvent(new CustomEvent('auth:verification_required', { detail: { email } }));
+        } catch {}
+        return;
+      }
       if (data && data.type === 'oauth' && data.token) {
         try {
           setToken(data.token);
@@ -36,10 +45,10 @@ export function SignupProvidersScreen({ onChooseEmail, onChooseProvider, onSkip 
     return () => window.removeEventListener('message', handler as any);
   }, []);
 
-  const startProvider = (provider: 'github' | 'google' | 'slack') => {
+  function startProvider(provider: 'github' | 'google' | 'slack') {
     const url = `${API_BASE}/users/oauth/${provider}/start?origin=${encodeURIComponent(window.location.origin)}`;
     window.open(url, 'oauth', 'width=600,height=700');
-  };
+  }
 
   // Header
   return (
