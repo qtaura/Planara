@@ -7,9 +7,18 @@ export interface EmailVerificationData {
 }
 
 export class EmailService {
-  private static resend = new Resend(process.env.RESEND_API_KEY);
+  private static resend: Resend | null = null;
   private static readonly FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'hello@planara.org';
   private static readonly SUBJECT = 'Verify your Planara account';
+
+  private static getClient(): Resend {
+    if (!EmailService.resend) {
+      const key = process.env.RESEND_API_KEY;
+      if (!key) throw new Error('RESEND_API_KEY not configured');
+      EmailService.resend = new Resend(key);
+    }
+    return EmailService.resend;
+  }
 
   static async sendVerificationCode(data: EmailVerificationData): Promise<void> {
     // Development fallback: if no RESEND_API_KEY, simulate send instead of failing
@@ -25,7 +34,7 @@ export class EmailService {
     const htmlTemplate = this.getVerificationEmailTemplate(data);
 
     try {
-      await this.resend.emails.send({
+      await this.getClient().emails.send({
         from: this.FROM_EMAIL,
         to: data.email,
         subject: this.SUBJECT,
@@ -79,13 +88,13 @@ export class EmailService {
         }
         .greeting {
             font-size: 16px;
-            color: #6b7280;
-            margin-bottom: 24px;
+            color: #4b5563;
+            margin-bottom: 16px;
         }
         .code-container {
-            background: #f3f4f6;
-            border: 2px dashed #d1d5db;
-            border-radius: 8px;
+            background: #f1f5f9;
+            border: 2px dashed #94a3b8;
+            border-radius: 12px;
             padding: 24px;
             text-align: center;
             margin: 24px 0;
@@ -93,38 +102,35 @@ export class EmailService {
         .code {
             font-size: 32px;
             font-weight: bold;
-            letter-spacing: 8px;
-            color: #3b82f6;
-            font-family: 'Courier New', monospace;
+            letter-spacing: 4px;
+            color: #1f2937;
+            margin-bottom: 8px;
         }
         .code-label {
             font-size: 14px;
             color: #6b7280;
-            margin-top: 8px;
         }
         .instructions {
             font-size: 16px;
-            color: #4b5563;
-            margin: 24px 0;
+            color: #374151;
+            margin-bottom: 16px;
         }
         .warning {
-            background: #fef3c7;
-            border-left: 4px solid #f59e0b;
+            background: #fff7ed;
+            border: 1px solid #fdba74;
+            border-radius: 12px;
             padding: 16px;
-            margin: 24px 0;
-            border-radius: 4px;
+            margin-top: 16px;
         }
         .warning-text {
+            color: #9a3412;
             font-size: 14px;
-            color: #92400e;
         }
         .footer {
-            text-align: center;
-            margin-top: 32px;
-            padding-top: 24px;
-            border-top: 1px solid #e5e7eb;
-            font-size: 14px;
+            margin-top: 24px;
+            font-size: 12px;
             color: #6b7280;
+            text-align: center;
         }
         .link {
             color: #3b82f6;
@@ -136,12 +142,13 @@ export class EmailService {
     <div class="container">
         <div class="header">
             <div class="logo">Planara</div>
-            <h1 class="title">Verify Your Email Address</h1>
-            <p class="greeting">Hi ${data.username},</p>
+            <div class="title">Verify Your Email</div>
         </div>
 
+        <p class="greeting">
+            Hi ${data.username},
+        </p>
         <p class="instructions">
-            Welcome to Planara! To complete your account setup and start managing your projects, 
             please verify your email address using the code below:
         </p>
 

@@ -46,6 +46,30 @@ export class EmailVerificationController {
         return;
       }
 
+      // Enforce resend cooldown per email
+      const RESEND_COOLDOWN_MS = 60_000;
+      const codeRepository = AppDataSource.getRepository(EmailVerificationCode);
+      const lastActiveCode = await codeRepository.findOne({
+        where: { userId: (user as any).id, isUsed: false },
+        order: { createdAt: 'DESC' as any },
+      });
+      if (lastActiveCode) {
+        const createdMs = new Date(lastActiveCode.createdAt).getTime();
+        const nowMs = Date.now();
+        const elapsed = nowMs - createdMs;
+        if (elapsed < RESEND_COOLDOWN_MS) {
+          const cooldownUntil = new Date(createdMs + RESEND_COOLDOWN_MS);
+          const secondsLeft = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+          res.status(429).json({
+            success: false,
+            error: `Please wait ${secondsLeft}s before requesting another code.`,
+            cooldownUntil: cooldownUntil.toISOString(),
+            secondsLeft,
+          });
+          return;
+        }
+      }
+
       // Generate 6-digit code
       const code = crypto.randomInt(100000, 999999).toString();
       
@@ -54,8 +78,6 @@ export class EmailVerificationController {
       expiresAt.setMinutes(expiresAt.getMinutes() + 10);
 
       // Save verification code to database
-      const codeRepository = AppDataSource.getRepository(EmailVerificationCode);
-      
       // Invalidate any existing codes for this user
       await codeRepository.update(
         { userId: (user as any).id, isUsed: false },

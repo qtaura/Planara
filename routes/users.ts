@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getUsers, signup, login, updateProfile, startOAuth, oauthCallback } from "../controllers/usersController.js";
 import { EmailVerificationController } from "../controllers/emailVerificationController.js";
 import { authenticate } from "../middlewares/auth.js";
-import { emailVerificationLimiter, emailVerificationAttemptLimiter, authLimiter } from "../middlewares/rateLimiter.js";
+import { emailVerificationLimiter, emailVerificationAttemptLimiter, authLimiter, perEmailSendLimiter, perEmailVerifyLimiter } from "../middlewares/rateLimiter.js";
 
 const router = Router();
 
@@ -14,8 +14,8 @@ router.get("/oauth/:provider/callback", oauthCallback);
 router.put("/:id", authenticate, updateProfile);
 
 // Email verification routes with rate limiting
-router.post("/auth/send-code", emailVerificationLimiter, EmailVerificationController.sendCode);
-router.post("/auth/verify-code", emailVerificationAttemptLimiter, EmailVerificationController.verifyCode);
+router.post("/auth/send-code", perEmailSendLimiter, emailVerificationLimiter, EmailVerificationController.sendCode);
+router.post("/auth/verify-code", perEmailVerifyLimiter, emailVerificationAttemptLimiter, EmailVerificationController.verifyCode);
 router.get("/auth/verification-status/:email", EmailVerificationController.getVerificationStatus);
 
 export default router;

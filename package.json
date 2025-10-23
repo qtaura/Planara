@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "tsx watch index.ts",
     "build": "tsc -p tsconfig.server.json && npm --prefix ui ci --include=dev && npm --prefix ui run build && node -e \"require('fs').rmSync('ui/node_modules',{recursive:true,force:true})\"",
+    "build:server": "tsc -p tsconfig.server.json",
     "build:ui": "npm --prefix ui ci --include=dev && npm --prefix ui run build",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "test:run": "npm run build:server && vitest run"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -32,7 +35,10 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.7",
     "@types/node": "^20.14.9",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.4",
     "tsx": "^4.16.2",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.3",
+    "vitest": "^4.0.2"
   }
 }
