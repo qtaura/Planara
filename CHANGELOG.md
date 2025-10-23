@@ -3,6 +3,29 @@
 All notable changes to this project are documented here.
 This project follows the "Keep a Changelog" format and Semantic Versioning.
 
+## 0.4.0 - 2025-10-23
+
+### Added
+- Unified signup + OAuth verification flow with consistent redirects.
+- Email verification screen with send/resend, code entry, and toasts.
+- Client `user.isVerified` persistence and global `auth:verified` event.
+- Automatic routing to verification after email signup.
+- OAuth verification events include `email`, `provider`, `needsUsername`.
+- Skip verification UI for already verified users.
+- Verification status polling via `getVerificationStatus`.
+
+### Changed
+- App routing guards use `currentUser.isVerified` to bypass verification.
+- OAuth/Dashboard message handling emits structured verification details.
+- SignupProviders and Dashboard aligned on event names and payloads.
+
+### Fixed
+- Edge case where verified users were shown verification UI again.
+- OAuth flows inconsistently routing post-verification across providers.
+
+### Docs
+- Updated this changelog to reflect the new auth and verification flow.
+
 ## 0.3.0 - 2025-10-20
 
 ### Added
