@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal } from './Modal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card } from './ui/card';
@@ -74,46 +74,52 @@ export function GitHubRepoPicker({ isOpen, accessToken, onClose, onLinked }: Git
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Import from GitHub">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-          <Github className="h-4 w-4" />
-          <span className="text-sm">Select a repository to import</span>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Import from GitHub</DialogTitle>
+        </DialogHeader>
+        
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+            <Github className="h-4 w-4" />
+            <span className="text-sm">Select a repository to import</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={switchAccount} title="Switch GitHub account">
+            <RefreshCw className="h-4 w-4" />
+            <span className="ml-2">Switch account</span>
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" onClick={switchAccount} title="Switch GitHub account">
-          <RefreshCw className="h-4 w-4" />
-          <span className="ml-2">Switch account</span>
-        </Button>
-      </div>
 
-      <div className="mb-3 flex items-center gap-2">
-        <Search className="h-4 w-4 text-slate-400" />
-        <Input placeholder="Filter repositories" value={query} onChange={(e) => setQuery(e.target.value)} />
-      </div>
-
-      {loading ? (
-        <p className="text-sm text-slate-600 dark:text-slate-400">Loading repositories…</p>
-      ) : error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : filtered.length === 0 ? (
-        <Card className="p-4">
-          <p className="text-sm text-slate-600 dark:text-slate-400">No repositories found</p>
-        </Card>
-      ) : (
-        <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2">
-          {filtered.map((repo) => (
-            <Card key={repo.id} className="p-3 flex items-center justify-between">
-              <div>
-                <p className="text-slate-900 dark:text-white">{repo.owner?.login}/{repo.name}</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  {repo.private ? 'Private' : 'Public'} • Updated {new Date(repo.updated_at).toLocaleDateString()}
-                </p>
-              </div>
-              <Button size="sm" onClick={() => linkRepository(repo)}>Link</Button>
-            </Card>
-          ))}
+        <div className="mb-3 flex items-center gap-2">
+          <Search className="h-4 w-4 text-slate-400" />
+          <Input placeholder="Filter repositories" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
-      )}
-    </Modal>
+
+        {loading ? (
+          <p className="text-sm text-slate-600 dark:text-slate-400">Loading repositories…</p>
+        ) : error ? (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        ) : filtered.length === 0 ? (
+          <Card className="p-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400">No repositories found</p>
+          </Card>
+        ) : (
+          <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2">
+            {filtered.map((repo) => (
+              <Card key={repo.id} className="p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-slate-900 dark:text-white">{repo.owner?.login}/{repo.name}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    {repo.private ? 'Private' : 'Public'} • Updated {new Date(repo.updated_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => linkRepository(repo)}>Link</Button>
+              </Card>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
