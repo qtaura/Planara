@@ -20,9 +20,10 @@ export function GitHubRepoPicker({ isOpen, accessToken, onClose, onLinked }: Git
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
+  // Only fetch when the dialog is open and we have a token
   useEffect(() => {
     async function fetchRepos() {
-      if (!accessToken) return;
+      if (!accessToken || !isOpen) return;
       setLoading(true);
       setError(null);
       try {
@@ -40,7 +41,7 @@ export function GitHubRepoPicker({ isOpen, accessToken, onClose, onLinked }: Git
       }
     }
     fetchRepos().catch(() => {});
-  }, [accessToken]);
+  }, [accessToken, isOpen]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();

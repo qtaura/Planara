@@ -32,7 +32,9 @@ const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map((s) => s.
 const corsOptions = allowedOrigins.length ? { origin: allowedOrigins } : undefined;
 app.use(cors(corsOptions as any));
 
-app.use(bodyParser.json());
+// Increase payload limits to support larger JSON bodies (e.g., avatars)
+app.use(bodyParser.json({ limit: '5mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '5mb' }));
 app.use(morgan("dev"));
 
 app.get("/health", (_req, res) => {
