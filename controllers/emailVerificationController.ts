@@ -71,6 +71,9 @@ export class EmailVerificationController {
 
       await codeRepository.save(verificationCode);
 
+      // Log code for local testing visibility
+      console.log('[DEV] Email verification code issued', { email: (user as any).email, code });
+
       // Send email
       await EmailService.sendVerificationCode({
         email: (user as any).email,
