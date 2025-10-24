@@ -13,14 +13,14 @@ export class RefreshToken {
   @Column()
   jti!: string;
 
-  // SQLite supports 'datetime' type via TypeORM
-  @Column({ type: "datetime" })
+  // Use Postgres-compatible timestamp type
+  @Column({ type: "timestamp" })
   expiresAt!: Date;
 
   @Column({ default: false })
   isRevoked!: boolean;
 
-  @Column({ type: "datetime", default: () => "CURRENT_TIMESTAMP" })
+  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
   createdAt!: Date;
 
   @Column({ nullable: true })
