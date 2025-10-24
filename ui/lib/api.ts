@@ -1,55 +1,56 @@
 import type { Project, Task, Milestone, SubTask } from '../types';
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE || '/api';
 const TOKEN_KEY = 'planara_token';
 const CURRENT_USER_KEY = 'planara_current_user';
+const ADMIN_TOKEN_KEY = 'admin_token';
 
-export function getToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
+const API_BASE_ORIGIN = (import.meta as any).env?.VITE_API_BASE || '';
+const API_BASE_PATH = '/api';
+export const API_BASE = `${API_BASE_ORIGIN}${API_BASE_PATH}`;
+
+export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  const token = getToken();
+  const headers = new Headers(init?.headers || {});
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(`${API_BASE}${path}`, { ...init, headers });
 }
 
 export function setToken(token: string) {
-  try {
-    localStorage.setItem(TOKEN_KEY, token);
-  } catch {}
+  try { localStorage.setItem(TOKEN_KEY, token); } catch {}
 }
-
+export function getToken(): string | null {
+  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+}
 export function clearToken() {
-  try {
-    localStorage.removeItem(TOKEN_KEY);
-  } catch {}
+  try { localStorage.removeItem(TOKEN_KEY); } catch {}
 }
 
 export function setCurrentUser(user: any) {
-  try {
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  } catch {}
+  try { localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user)); } catch {}
 }
-
 export function getCurrentUser(): any | null {
-  try {
-    const raw = localStorage.getItem(CURRENT_USER_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  try { const raw = localStorage.getItem(CURRENT_USER_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+export function clearCurrentUser() {
+  try { localStorage.removeItem(CURRENT_USER_KEY); } catch {}
 }
 
-export function clearCurrentUser() {
-  try {
-    localStorage.removeItem(CURRENT_USER_KEY);
-  } catch {}
+// Admin token persistence for a session
+export function setAdminTokenSession(token: string) {
+  try { sessionStorage.setItem(ADMIN_TOKEN_KEY, token); } catch {}
+}
+export function getAdminTokenSession(): string {
+  try { return sessionStorage.getItem(ADMIN_TOKEN_KEY) || ''; } catch { return ''; }
+}
+export function clearAdminTokenSession() {
+  try { sessionStorage.removeItem(ADMIN_TOKEN_KEY); } catch {}
 }
 
 export function signOut() {
   try {
     clearToken();
     clearCurrentUser();
-    // Signal the app to show the login screen
+    clearAdminTokenSession();
     window.dispatchEvent(new CustomEvent('auth:required'));
   } catch {}
 }
@@ -66,14 +67,6 @@ function decodeUserIdFromToken(token: string | null): number | null {
   }
 }
 
-async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  const token = getToken();
-  const headers: Record<string, string> = {
-    ...(init?.headers as Record<string, string> || {}),
-  };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  return fetch(`${API_BASE}${path}`, { ...init, headers });
-}
 
 export async function getUserById(id: number): Promise<any | null> {
   const res = await apiFetch(`/users`);
@@ -328,7 +321,7 @@ export async function deleteNotification(notificationId: number): Promise<boolea
   return !!data?.success;
 }
 
-export { API_BASE };
+
 export async function getProjectWithRelations(projectId: string): Promise<any | null> {
   const res = await apiFetch('/projects');
   if (!res.ok) throw new Error(`Failed to fetch project: ${res.status}`);
@@ -392,8 +385,16 @@ export async function getLockoutState(email: string, adminToken: string): Promis
   return res.json();
 }
 
-export async function getSecurityEvents(email: string, adminToken: string): Promise<any> {
-  const res = await apiFetch(`/users/auth/admin/events/${encodeURIComponent(email)}`, {
+export type AdminEventFilters = { type?: string; ip?: string; from?: Date | string; to?: Date | string; limit?: number };
+export async function getSecurityEvents(email: string, adminToken: string, filters?: AdminEventFilters): Promise<any> {
+  const params = new URLSearchParams();
+  if (filters?.type) params.set('type', filters.type);
+  if (filters?.ip) params.set('ip', filters.ip);
+  if (filters?.from) params.set('from', typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString());
+  if (filters?.to) params.set('to', typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString());
+  if (filters?.limit) params.set('limit', String(filters.limit));
+  const qs = params.toString();
+  const res = await apiFetch(`/users/auth/admin/events/${encodeURIComponent(email)}${qs ? `?${qs}` : ''}`, {
     headers: { 'x-admin-token': adminToken },
   });
   if (!res.ok) {
@@ -401,4 +402,39 @@ export async function getSecurityEvents(email: string, adminToken: string): Prom
     throw new Error(text || `Failed to fetch events: ${res.status}`);
   }
   return res.json();
+}
+export async function getRotationHistory(email: string, adminToken: string, filters?: { from?: Date | string; to?: Date | string; limit?: number }): Promise<any> {
+  const params = new URLSearchParams();
+  if (filters?.from) params.set('from', typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString());
+  if (filters?.to) params.set('to', typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString());
+  if (filters?.limit) params.set('limit', String(filters.limit));
+  const qs = params.toString();
+  const res = await apiFetch(`/users/auth/admin/rotations/${encodeURIComponent(email)}${qs ? `?${qs}` : ''}`, {
+    headers: { 'x-admin-token': adminToken },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to fetch rotations: ${res.status}`);
+  }
+  return res.json();
+}
+export async function adminBanUser(email: string, adminToken: string, reason?: string): Promise<any> {
+  const res = await apiFetch('/users/admin/ban', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+    body: JSON.stringify({ email, reason }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || `Ban failed: ${res.status}`);
+  return json;
+}
+export async function adminSetUsername(email: string, newUsername: string, adminToken: string): Promise<any> {
+  const res = await apiFetch('/users/admin/set-username', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+    body: JSON.stringify({ email, newUsername }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || `Set username failed: ${res.status}`);
+  return json;
 }

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../lib/theme-context';
 import { toast } from 'sonner';
-import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents } from '../lib/api';
+import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents, getRotationHistory, adminBanUser, adminSetUsername, setAdminTokenSession, getAdminTokenSession } from '../lib/api';
 
 export function SettingsScreen() {
   const [activeSection, setActiveSection] = useState('profile');
@@ -402,9 +402,29 @@ function AdminSection() {
   const [targetEmail, setTargetEmail] = useState('');
   const [lockoutState, setLockoutState] = useState<any | null>(null);
   const [events, setEvents] = useState<any[]>([]);
+  const [rotations, setRotations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string>('');
+  const [ipFilter, setIpFilter] = useState<string>('');
+  const [from, setFrom] = useState<string>(''); // ISO or datetime-local value
+  const [to, setTo] = useState<string>('');
+  const [limit, setLimit] = useState<number>(50);
+  const [banReason, setBanReason] = useState<string>('');
+  const [newUsername, setNewUsername] = useState<string>('');
+
+  useEffect(() => {
+    // Load persisted admin token for this session
+    try {
+      const t = getAdminTokenSession();
+      if (t) setAdminToken(t);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    // Persist admin token while typing
+    try { if (adminToken) setAdminTokenSession(adminToken); } catch {}
+  }, [adminToken]);
 
   async function fetchLockout() {
     setLoading(true); setError(null); setMessage(null);
@@ -420,11 +440,32 @@ function AdminSection() {
   async function fetchEvents() {
     setLoading(true); setError(null); setMessage(null);
     try {
-      const list = await getSecurityEvents(targetEmail.trim(), adminToken.trim());
+      const list = await getSecurityEvents(targetEmail.trim(), adminToken.trim(), {
+        type: typeFilter || undefined,
+        ip: ipFilter || undefined,
+        from: from || undefined,
+        to: to || undefined,
+        limit: limit || undefined,
+      });
       setEvents(Array.isArray(list) ? list : []);
       setMessage('Fetched recent events');
     } catch (e: any) {
       setError(e?.message || 'Failed to fetch events');
+    } finally { setLoading(false); }
+  }
+
+  async function fetchRotationHistory() {
+    setLoading(true); setError(null); setMessage(null);
+    try {
+      const list = await getRotationHistory(targetEmail.trim(), adminToken.trim(), {
+        from: from || undefined,
+        to: to || undefined,
+        limit: limit || undefined,
+      });
+      setRotations(Array.isArray(list) ? list : []);
+      setMessage('Fetched rotation history');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to fetch rotation history');
     } finally { setLoading(false); }
   }
 
@@ -440,6 +481,30 @@ function AdminSection() {
     } finally { setLoading(false); }
   }
 
+  async function doBan() {
+    setLoading(true); setError(null); setMessage(null);
+    try {
+      await adminBanUser(targetEmail.trim(), adminToken.trim(), banReason || undefined);
+      setMessage('User banned and account purged (email remains banned)');
+      setLockoutState(null);
+      setEvents([]);
+      setRotations([]);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to ban user');
+    } finally { setLoading(false); }
+  }
+
+  async function doChangeUsername() {
+    setLoading(true); setError(null); setMessage(null);
+    try {
+      if (!newUsername.trim()) throw new Error('New username required');
+      await adminSetUsername(targetEmail.trim(), newUsername.trim(), adminToken.trim());
+      setMessage('Username updated');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to change username');
+    } finally { setLoading(false); }
+  }
+
   return (
     <section className="settings-section" aria-label="Admin Controls">
       <h3>Admin Controls</h3>
@@ -452,11 +517,45 @@ function AdminSection() {
           <input type="email" value={targetEmail} onChange={(e) => setTargetEmail(e.target.value)} placeholder="user@example.com" />
         </label>
       </div>
+
+      <div className="form-grid" style={{ marginTop: 12 }}>
+        <label>Event Type
+          <input type="text" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} placeholder="e.g. login_failed, secret_rotated" />
+        </label>
+        <label>IP Filter
+          <input type="text" value={ipFilter} onChange={(e) => setIpFilter(e.target.value)} placeholder="e.g. 203.0.113.5" />
+        </label>
+        <label>From
+          <input type="datetime-local" value={from} onChange={(e) => setFrom(e.target.value)} />
+        </label>
+        <label>To
+          <input type="datetime-local" value={to} onChange={(e) => setTo(e.target.value)} />
+        </label>
+        <label>Limit
+          <input type="number" min={1} max={500} value={limit} onChange={(e) => setLimit(Number(e.target.value || 50))} />
+        </label>
+      </div>
+
       <div className="actions">
         <button disabled={loading || !adminToken || !targetEmail} onClick={fetchLockout}>View Lockout State</button>
         <button disabled={loading || !adminToken || !targetEmail} onClick={fetchEvents}>View Recent Events</button>
+        <button disabled={loading || !adminToken || !targetEmail} onClick={fetchRotationHistory}>View Rotation History</button>
         <button disabled={loading || !adminToken || !targetEmail} onClick={doUnlock} className="danger">Unlock Account</button>
       </div>
+
+      <div className="form-grid" style={{ marginTop: 12 }}>
+        <label>Ban Reason (optional)
+          <input type="text" value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Reason for ban" />
+        </label>
+        <label>New Username
+          <input type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="new_username" />
+        </label>
+      </div>
+      <div className="actions">
+        <button disabled={loading || !adminToken || !targetEmail} onClick={doBan} className="danger">Ban & Purge Account</button>
+        <button disabled={loading || !adminToken || !targetEmail || !newUsername} onClick={doChangeUsername}>Change Username</button>
+      </div>
+
       {message && <div className="notice success">{message}</div>}
       {error && <div className="notice error">{error}</div>}
       {lockoutState && (
@@ -472,6 +571,18 @@ function AdminSection() {
             {events.map((ev: any, i: number) => (
               <li key={ev?.id || i}>
                 <strong>{ev?.eventType}</strong> — {ev?.email || ''} — {new Date(ev?.createdAt).toLocaleString()} — {ev?.ip || ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {rotations && rotations.length > 0 && (
+        <div className="card">
+          <h4>Rotation History</h4>
+          <ul>
+            {rotations.map((ev: any, i: number) => (
+              <li key={ev?.id || i}>
+                <strong>{ev?.eventType}</strong> — {new Date(ev?.createdAt).toLocaleString()} — {ev?.ip || ''}
               </li>
             ))}
           </ul>

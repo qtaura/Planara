@@ -6,6 +6,7 @@ import { User } from "../models/User.js";
 import { EmailVerificationCode } from "../models/EmailVerificationCode.js";
 import { EmailService } from "../services/emailService.js";
 import crypto from 'crypto';
+import { BannedEmail } from "../models/BannedEmail.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 
@@ -24,6 +25,14 @@ export async function signup(req: Request, res: Response) {
   const { username, email, password } = req.body;
   if (!username || !email || !password) {
     return res.status(400).json({ error: "username, email and password are required" });
+  }
+  // Block signups for banned emails
+  const bannedRepo = AppDataSource.getRepository(BannedEmail);
+  const banned = await bannedRepo.createQueryBuilder('b')
+    .where('LOWER(b.email) = :email', { email: String(email).toLowerCase() })
+    .getOne();
+  if (banned) {
+    return res.status(403).json({ error: "This email is banned from signing up" });
   }
   const repo = AppDataSource.getRepository(User);
   // Case-insensitive checks and set usernameLower
@@ -47,9 +56,15 @@ export async function login(req: Request, res: Response) {
   if (!usernameOrEmail || !password) {
     return res.status(400).json({ error: "usernameOrEmail and password are required" });
   }
+  const candidate = String(usernameOrEmail);
+  // Disallow logins for banned emails
+  const bannedRepo = AppDataSource.getRepository(BannedEmail);
+  if (candidate.includes('@')) {
+    const banned = await bannedRepo.createQueryBuilder('b').where('LOWER(b.email) = :email', { email: candidate.toLowerCase() }).getOne();
+    if (banned) return res.status(403).json({ error: "This account is banned" });
+  }
   const repo = AppDataSource.getRepository(User);
   // Case-insensitive lookup by email or username
-  const candidate = String(usernameOrEmail);
   let user: User | null = null;
   if (candidate.includes('@')) {
     user = await repo
@@ -335,5 +350,49 @@ export async function oauthCallback(req: Request, res: Response) {
     return res.status(400).send('unsupported provider');
   } catch (e) {
     return res.status(400).send('oauth error');
+  }
+}
+
+// Admin: ban a user by email and free their username, but persist ban
+export async function adminBanUser(req: Request, res: Response) {
+  try {
+    const email = String(req.body?.email || '');
+    const reason = (req.body?.reason ? String(req.body.reason) : null);
+    if (!email || !email.includes('@')) return res.status(400).json({ success: false, error: 'Invalid email' });
+    const userRepo = AppDataSource.getRepository(User);
+    const bannedRepo = AppDataSource.getRepository(BannedEmail);
+    const user = await userRepo.createQueryBuilder('user').where('LOWER(user.email) = :email', { email: email.toLowerCase() }).getOne();
+    // Insert ban record
+    const bexists = await bannedRepo.createQueryBuilder('b').where('LOWER(b.email) = :email', { email: email.toLowerCase() }).getOne();
+    if (!bexists) {
+      await bannedRepo.save(bannedRepo.create({ email, reason, createdAt: new Date() }));
+    }
+    // Delete user row to free username (if exists)
+    if (user) {
+      await userRepo.delete({ id: (user as any).id });
+    }
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: 'Failed to ban user' });
+  }
+}
+
+// Admin: change a user's username
+export async function adminSetUsername(req: Request, res: Response) {
+  try {
+    const email = String(req.body?.email || '');
+    const newUsername = String(req.body?.newUsername || '');
+    if (!email || !email.includes('@') || !newUsername) return res.status(400).json({ success: false, error: 'Invalid input' });
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.createQueryBuilder('user').where('LOWER(user.email) = :email', { email: email.toLowerCase() }).getOne();
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    const unameLower = newUsername.toLowerCase();
+    // Ensure new username is available
+    const conflict = await userRepo.findOne({ where: { usernameLower: unameLower } });
+    if (conflict && conflict.id !== (user as any).id) return res.status(409).json({ success: false, error: 'Username already taken' });
+    await userRepo.update({ id: (user as any).id }, { username: newUsername, usernameLower: unameLower, usernameChangeCount: ((user as any).usernameChangeCount || 0) + 1 } as any);
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: 'Failed to change username' });
   }
 }
