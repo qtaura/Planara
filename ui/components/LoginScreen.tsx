@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
 import { Github, Mail, MessageSquare } from 'lucide-react';
-import { login, setToken, API_BASE, setCurrentUser } from '@lib/api';
+import { login, setToken, API_BASE, setCurrentUser, setRefreshToken } from '@lib/api';
 import { ThemeToggle } from './ThemeToggle';
 import { Logo } from './Logo';
 
@@ -20,39 +20,45 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       const data = (e && (e as any).data) || null;
-      // If verification is required, route to email verification
-      if (data && data.type === 'oauth' && data.verificationRequired) {
+      if (data && data.type === 'oauth' && (data.token || data.verificationRequired)) {
         try {
-          toast.message('Check your email for a verification code');
-          const email = data.email || data.user?.email;
-          const needsUsername = !!data.created;
-          window.dispatchEvent(new CustomEvent('auth:verification_required', { detail: { email, needsUsername, provider: data.provider } }));
-        } catch {}
-        return;
-      }
-      if (data && data.type === 'oauth' && data.token) {
-        try {
-          setToken(data.token);
+          if (data.token) setToken(data.token);
           if (data.user) setCurrentUser(data.user);
         } catch {}
-        toast.success(`Welcome back, ${data.user?.username || data.user?.email || 'user'}!`);
-        try { window.dispatchEvent(new CustomEvent('auth:logged_in')); } catch {}
-        onSuccess();
+        if (data.verificationRequired) {
+          toast.message('Verify your email to complete sign-in');
+          const email = data.email || data.user?.email;
+          const needsUsername = !!data.created;
+          try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email, needsUsername, provider: data.provider } })); } catch {}
+        } else {
+          toast.success(`Welcome, ${data.user?.username || data.user?.email || 'user'}!`);
+          try { window.dispatchEvent(new CustomEvent('auth:logged_in')); } catch {}
+          onSuccess();
+        }
       }
     };
-    window.addEventListener('message', handler as any);
-    return () => window.removeEventListener('message', handler as any);
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
   }, [onSuccess]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      const { token, user } = await login(usernameOrEmail, password);
+      const { token, user, refreshToken } = await login(usernameOrEmail, password);
       setToken(token);
-      toast.success(`Welcome back, ${user.username || user.email || 'user'}!`);
-      window.dispatchEvent(new CustomEvent('auth:logged_in'));
-      onSuccess();
+      setCurrentUser(user);
+      if (refreshToken) setRefreshToken(refreshToken);
+
+      if (user && (user.isVerified || user.verified)) {
+        toast.success(`Welcome back, ${user.username || user.email || 'user'}!`);
+        window.dispatchEvent(new CustomEvent('auth:logged_in'));
+        onSuccess();
+      } else {
+        toast.message('Verify your email to complete sign-in');
+        const email = user?.email;
+        try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email, needsUsername: false } })); } catch {}
+      }
     } catch (err: any) {
       const baseMsg = err?.message || 'Login failed';
       const msg = capsLockOn ? `${baseMsg}. Caps Lock is on.` : baseMsg;
@@ -76,76 +82,54 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center bg-white dark:bg-[#0A0A0A] px-4">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-      <div className="w-full max-w-sm p-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <div className="flex justify-center mb-4"><Logo size="lg" /></div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-1">Sign in</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Use your username or email and password</p>
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0A0A0A]">
+      <div className="w-full max-w-sm p-6 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0A0A0A] shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <Logo />
+          <ThemeToggle />
+        </div>
+        <h1 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Sign in</h1>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Username or Email</label>
             <Input
+              type="text"
+              placeholder="Username or email"
               value={usernameOrEmail}
               onChange={(e) => setUsernameOrEmail(e.target.value)}
-              placeholder="alex or alex@example.com"
-              required
+              className="bg-white dark:bg-[#0A0A0A]"
             />
           </div>
           <div>
-            <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Password</label>
             <Input
               type="password"
+              placeholder="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={handlePasswordKeyEvent}
               onKeyUp={handlePasswordKeyEvent}
-              onFocus={(e) => {
-                try {
-                  const on = (e as any).target?.getModifierState?.('CapsLock');
-                  setCapsLockOn(!!on);
-                } catch {}
-              }}
-              placeholder="••••••••"
-              required
+              onChange={(e) => setPassword(e.target.value)}
+              className="bg-white dark:bg-[#0A0A0A]"
             />
             {capsLockOn && (
-              <p className="mt-1 text-xs text-amber-600">Caps Lock is on</p>
+              <p className="mt-2 text-xs text-yellow-600 dark:text-yellow-400">Caps Lock is on</p>
             )}
           </div>
-          <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
-            {loading ? 'Signing in…' : 'Sign in'}
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>
 
-        <div className="mt-6 space-y-3">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Or continue with</p>
-          <Button
-            variant="outline"
-            className="w-full justify-start border-slate-200 dark:border-slate-800"
-            onClick={() => startProvider('github')}
-          >
-            <Github className="w-4 h-4 mr-2" />
-            Continue with GitHub
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-start border-slate-200 dark:border-slate-800"
-            onClick={() => startProvider('google')}
-          >
-            <Mail className="w-4 h-4 mr-2" />
-            Continue with Google
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-start border-slate-200 dark:border-slate-800"
-            onClick={() => startProvider('slack')}
-          >
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Continue with Slack
-          </Button>
+        <div className="mt-6">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Or sign in with</p>
+          <div className="grid grid-cols-3 gap-2">
+            <Button variant="outline" onClick={() => startProvider('github')}>
+              <Github className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" onClick={() => startProvider('google')}>
+              <Mail className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" onClick={() => startProvider('slack')}>
+              <MessageSquare className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

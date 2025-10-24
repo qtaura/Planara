@@ -3,6 +3,7 @@ import type { Project, Task, Milestone, SubTask } from '../types';
 const TOKEN_KEY = 'planara_token';
 const CURRENT_USER_KEY = 'planara_current_user';
 const ADMIN_TOKEN_KEY = 'admin_token';
+const REFRESH_TOKEN_KEY = 'planara_refresh_token';
 
 const API_BASE_ORIGIN = (import.meta as any).env?.VITE_API_BASE || '';
 const API_BASE_PATH = '/api';
@@ -12,7 +13,32 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   const token = getToken();
   const headers = new Headers(init?.headers || {});
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  return fetch(`${API_BASE}${path}`, { ...init, headers });
+  let res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  if (res.status === 401) {
+    const refreshed = await refreshAccessToken().catch(() => null);
+    if (refreshed) {
+      const headers2 = new Headers(init?.headers || {});
+      const newToken = getToken();
+      if (newToken) headers2.set('Authorization', `Bearer ${newToken}`);
+      res = await fetch(`${API_BASE}${path}`, { ...init, headers: headers2 });
+    } else {
+      signOut();
+    }
+    return res;
+  }
+  if (res.status === 403) {
+    try {
+      const cloned = res.clone();
+      const text = await cloned.text();
+      const data = JSON.parse(text);
+      const errMsg = String(data?.error || '');
+      if (errMsg.toLowerCase().includes('verification')) {
+        const cu = getCurrentUser();
+        try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email: cu?.email } })); } catch {}
+      }
+    } catch {}
+  }
+  return res;
 }
 
 export function setToken(token: string) {
@@ -23,6 +49,16 @@ export function getToken(): string | null {
 }
 export function clearToken() {
   try { localStorage.removeItem(TOKEN_KEY); } catch {}
+}
+
+export function setRefreshToken(token: string) {
+  try { localStorage.setItem(REFRESH_TOKEN_KEY, token); } catch {}
+}
+export function getRefreshToken(): string | null {
+  try { return localStorage.getItem(REFRESH_TOKEN_KEY); } catch { return null; }
+}
+export function clearRefreshToken() {
+  try { localStorage.removeItem(REFRESH_TOKEN_KEY); } catch {}
 }
 
 export function setCurrentUser(user: any) {
@@ -51,6 +87,7 @@ export function signOut() {
     clearToken();
     clearCurrentUser();
     clearAdminTokenSession();
+    clearRefreshToken();
     window.dispatchEvent(new CustomEvent('auth:required'));
   } catch {}
 }
@@ -203,7 +240,7 @@ export async function deleteTask(taskId: string): Promise<boolean> {
   return !!data?.ok;
 }
 
-export async function login(usernameOrEmail: string, password: string): Promise<{ token: string; user: any }>{
+export async function login(usernameOrEmail: string, password: string): Promise<{ token: string; user: any; refreshToken?: string }>{
   // Improved error handling: normalize invalid credentials and network errors
   try {
     const res = await fetch(`${API_BASE}/users/login`, {
@@ -262,6 +299,36 @@ export async function signup(payload: { username: string; email: string; passwor
     }
     throw new Error('Network error during signup. Please try again.');
   }
+}
+
+export async function refreshAccessToken(): Promise<string | null> {
+  const rt = getRefreshToken();
+  if (!rt) return null;
+  try {
+    const res = await fetch(`${API_BASE}/users/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: rt }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.token) setToken(String(data.token));
+    if (data?.refreshToken) setRefreshToken(String(data.refreshToken));
+    return data?.token || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function adminSetUsername(email: string, newUsername: string, adminToken: string): Promise<any> {
+  const res = await apiFetch('/users/admin/set-username', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+    body: JSON.stringify({ email, newUsername }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || `Set username failed: ${res.status}`);
+  return json;
 }
 
 // Notification API functions
@@ -426,15 +493,5 @@ export async function adminBanUser(email: string, adminToken: string, reason?: s
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json?.error || `Ban failed: ${res.status}`);
-  return json;
-}
-export async function adminSetUsername(email: string, newUsername: string, adminToken: string): Promise<any> {
-  const res = await apiFetch('/users/admin/set-username', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
-    body: JSON.stringify({ email, newUsername }),
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || `Set username failed: ${res.status}`);
   return json;
 }
