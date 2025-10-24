@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getUsers, signup, login, updateProfile, startOAuth, oauthCallback, adminBanUser, adminSetUsername } from "../controllers/usersController.js";
+import { getUsers, signup, login, updateProfile, startOAuth, oauthCallback, adminBanUser, adminSetUsername, refresh } from "../controllers/usersController.js";
 import { EmailVerificationController } from "../controllers/emailVerificationController.js";
 import { authenticate } from "../middlewares/auth.js";
 import { emailVerificationLimiter, emailVerificationAttemptLimiter, authLimiter, perEmailSendLimiter, perEmailVerifyLimiter } from "../middlewares/rateLimiter.js";
@@ -10,6 +10,7 @@ const router = Router();
 router.get("/", getUsers);
 router.post("/signup", authLimiter, signup);
 router.post("/login", authLimiter, login);
+router.post("/refresh", refresh);
 router.get("/oauth/:provider/start", startOAuth);
 router.get("/oauth/:provider/callback", oauthCallback);
 router.put("/:id", authenticate, updateProfile);

@@ -7,12 +7,31 @@ import { EmailVerificationCode } from "../models/EmailVerificationCode.js";
 import { EmailService } from "../services/emailService.js";
 import crypto from 'crypto';
 import { BannedEmail } from "../models/BannedEmail.js";
+import { RefreshToken } from "../models/RefreshToken.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
+const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "dev_refresh_secret";
+const REFRESH_TTL_DAYS = Number(process.env.REFRESH_TOKEN_TTL_DAYS || 30);
 
 function sanitize(user: User) {
   const { hashedPassword, ...rest } = user as any;
   return rest;
+}
+
+function daysFromNow(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+async function issueRefreshToken(userId: number) {
+  const repo = AppDataSource.getRepository(RefreshToken);
+  const jti = crypto.randomUUID();
+  const expiresAt = daysFromNow(REFRESH_TTL_DAYS);
+  const record = repo.create({ userId, jti, expiresAt, isRevoked: false });
+  await repo.save(record);
+  const token = jwt.sign({ userId, jti, type: 'refresh' }, REFRESH_SECRET, { expiresIn: `${REFRESH_TTL_DAYS}d` });
+  return { refreshToken: token, jti, expiresAt };
 }
 
 export async function getUsers(_req: Request, res: Response) {
@@ -81,8 +100,33 @@ export async function login(req: Request, res: Response) {
   if (!ok) {
     return res.status(401).json({ error: "invalid credentials" });
   }
-  const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, user: sanitize(user) });
+  const token = jwt.sign({ userId: (user as any).id }, JWT_SECRET, { expiresIn: "15m" });
+  const { refreshToken } = await issueRefreshToken((user as any).id);
+  res.json({ token, refreshToken, user: sanitize(user) });
+}
+
+export async function refresh(req: Request, res: Response) {
+  try {
+    const refreshToken = String(req.body?.refreshToken || '');
+    if (!refreshToken) return res.status(400).json({ error: 'missing refreshToken' });
+    const payload = jwt.verify(refreshToken, REFRESH_SECRET) as any;
+    if (!payload?.jti || !payload?.userId || payload?.type !== 'refresh') {
+      return res.status(401).json({ error: 'invalid refresh token' });
+    }
+    const repo = AppDataSource.getRepository(RefreshToken);
+    const rec = await repo.findOne({ where: { jti: String(payload.jti), userId: Number(payload.userId) } });
+    if (!rec || rec.isRevoked || rec.expiresAt < new Date()) {
+      return res.status(401).json({ error: 'refresh token expired or revoked' });
+    }
+    // Rotate refresh token
+    await repo.update({ id: rec.id }, { isRevoked: true });
+    const { refreshToken: newRefreshToken } = await issueRefreshToken(Number(payload.userId));
+    // Issue new access token reflecting current verification
+    const token = jwt.sign({ userId: Number(payload.userId) }, JWT_SECRET, { expiresIn: "15m" });
+    return res.json({ token, refreshToken: newRefreshToken });
+  } catch (e) {
+    return res.status(401).json({ error: 'invalid or expired refresh token' });
+  }
 }
 
 export async function updateUser(req: Request, res: Response) {
