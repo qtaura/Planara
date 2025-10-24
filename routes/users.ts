@@ -12,7 +12,7 @@ router.post("/signup", authLimiter, signup);
 router.post("/login", authLimiter, login);
 router.get("/oauth/:provider/start", startOAuth);
 router.get("/oauth/:provider/callback", oauthCallback);
-router.put(":id", authenticate, updateProfile);
+router.put("/:id", authenticate, updateProfile);
 
 // Email verification routes with rate limiting
 router.post("/auth/send-code", perEmailSendLimiter, emailVerificationLimiter, EmailVerificationController.sendCode);
