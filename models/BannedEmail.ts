@@ -12,6 +12,6 @@ export class BannedEmail {
   @Column({ type: 'varchar', length: 255, nullable: true })
   reason!: string | null;
 
-  @Column({ type: 'datetime' })
+  @Column({ type: 'timestamp' })
   createdAt!: Date;
 }

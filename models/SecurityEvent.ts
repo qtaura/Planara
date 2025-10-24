@@ -23,6 +23,6 @@ export class SecurityEvent {
   @Column({ type: 'json', nullable: true })
   metadata!: any | null;
 
-  @Column({ type: 'datetime' })
+  @Column({ type: 'timestamp' })
   createdAt!: Date;
 }
