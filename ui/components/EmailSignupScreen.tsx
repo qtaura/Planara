@@ -3,6 +3,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
+import { toast } from 'sonner';
+import { signup, setCurrentUser } from '@lib/api';
 
 interface EmailSignupScreenProps {
   onNext: (data: { email: string; password: string }) => void;
@@ -13,13 +15,30 @@ export function EmailSignupScreen({ onNext }: EmailSignupScreenProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  function generateTempUsername(email: string) {
+    const base = String(email.split('@')[0] || 'user').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 12);
+    const suffix = Math.random().toString(36).slice(2, 8);
+    return `${base || 'user'}_${suffix}`.toLowerCase();
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const tempUsername = generateTempUsername(email);
+      // Create provisional account so verification can be sent
+      const res = await signup({ username: tempUsername, email, password });
+      if (res?.user) {
+        try { setCurrentUser(res.user); } catch {}
+      }
+      // Continue to verification step
       onNext({ email, password });
+    } catch (err: any) {
+      const msg = err?.message || 'Could not start email signup';
+      toast.error(msg);
+    } finally {
       setLoading(false);
-    }, 250);
+    }
   }
 
   return (

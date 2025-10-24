@@ -21,10 +21,14 @@ export function SetUsernameScreen({ email, password, onSuccess }: SetUsernameScr
     setLoading(true);
     try {
       if (email && password) {
-        await signup({ username, email, password });
+        // Email signup path: account was created provisionally earlier.
+        // Log in to get token and current user, then update username.
         const { token, user } = await login(email, password);
         setToken(token);
-        toast.success(`Welcome, ${user.username || user.email || 'new user'}!`);
+        if (!user?.id) throw new Error('Login failed: no user id');
+        const updated = await updateUser(Number(user.id), { username });
+        setCurrentUser(updated);
+        toast.success(`Welcome, ${updated.username || updated.email || 'user'}!`);
         window.dispatchEvent(new CustomEvent('auth:logged_in'));
       } else {
         // OAuth case: update the current user's username via API
