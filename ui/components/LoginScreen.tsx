@@ -20,6 +20,16 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       const data = (e && (e as any).data) || null;
+      // If verification is required, route to email verification
+      if (data && data.type === 'oauth' && data.verificationRequired) {
+        try {
+          toast.message('Check your email for a verification code');
+          const email = data.email || data.user?.email;
+          const needsUsername = !!data.created;
+          window.dispatchEvent(new CustomEvent('auth:verification_required', { detail: { email, needsUsername, provider: data.provider } }));
+        } catch {}
+        return;
+      }
       if (data && data.type === 'oauth' && data.token) {
         try {
           setToken(data.token);
