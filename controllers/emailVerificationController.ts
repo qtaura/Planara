@@ -90,6 +90,11 @@ export class EmailVerificationController {
       // Rotate per-user verification secret for revocation control
       const newSecret = crypto.randomBytes(16).toString('hex');
       await userRepository.update({ id: (user as any).id }, { verificationSecret: newSecret } as any);
+      // Log verification secret rotation
+      try {
+        const evRepo = AppDataSource.getRepository(SecurityEvent);
+        await evRepo.save(evRepo.create({ email: (user as any).email, userId: (user as any).id, eventType: 'rotation', ip: req.ip, metadata: null, createdAt: new Date() }));
+      } catch {}
       const codeHash = hmacCode(code, newSecret);
 
       // Set expiration time (10 minutes)
@@ -330,6 +335,31 @@ export class EmailVerificationController {
       });
     } catch (error) {
       res.status(500).json({ success: false, error: 'Failed to fetch lockout state' });
+    }
+  }
+
+  // Admin: list rotation history events for a user
+  static async getRotationHistory(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.params as any;
+      if (!email || !z.string().email().safeParse(email).success) {
+        res.status(400).json({ success: false, error: 'Invalid email address' });
+        return;
+      }
+      const { from, to, limit } = req.query as any;
+      const evRepo = AppDataSource.getRepository(SecurityEvent);
+      let qb = evRepo
+        .createQueryBuilder('ev')
+        .where('ev.email = :email', { email })
+        .andWhere('ev.eventType = :etype', { etype: 'rotation' })
+        .orderBy('ev.createdAt', 'DESC');
+      if (from) qb = qb.andWhere('ev.createdAt >= :from', { from: new Date(String(from)) });
+      if (to) qb = qb.andWhere('ev.createdAt <= :to', { to: new Date(String(to)) });
+      qb = qb.limit(Math.max(1, Math.min(500, Number(limit) || 50)));
+      const events = await qb.getMany();
+      res.status(200).json({ success: true, events });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Failed to fetch rotation history' });
     }
   }
 
