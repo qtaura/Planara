@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { getMilestones, createMilestone, updateMilestone, deleteMilestone } from "../controllers/milestonesController.js";
-import { authenticate } from "../middlewares/auth.js";
+import { authenticate, requireVerified } from "../middlewares/auth.js";
 
 const router = Router();
 
 router.use(authenticate);
+router.use(requireVerified);
 
 router.get("/", getMilestones);
 router.post("/", createMilestone);

@@ -7,12 +7,13 @@ import {
   markAllAsRead, 
   deleteNotification 
 } from "../controllers/notificationsController.js";
-import { authenticate } from "../middlewares/auth.js";
+import { authenticate, requireVerified } from "../middlewares/auth.js";
 
 const router = Router();
 
 // All notification routes require authentication
 router.use(authenticate);
+router.use(requireVerified);
 
 // GET /api/notifications - Get all notifications for the user
 router.get("/", getNotifications);
