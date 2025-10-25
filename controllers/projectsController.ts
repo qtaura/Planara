@@ -31,8 +31,10 @@ export const getProjects = async (req: Request, res: Response) => {
 
 export const createProject = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).userId as number | undefined;
     const { name, description, teamId } = req.body;
+
+    if (!userId) return res.status(401).json({ error: "unauthorized" });
 
     const projectRepo = AppDataSource.getRepository(Project);
     const userRepo = AppDataSource.getRepository(User);

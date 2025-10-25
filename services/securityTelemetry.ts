@@ -40,3 +40,38 @@ export async function recordUsernameRejected(opts: {
     // Best-effort telemetry; never throw from logging
   }
 }
+
+export async function recordCommentEvent(opts: {
+  req: Request;
+  eventType: 'comment_created' | 'comment_replied' | 'comment_reacted';
+  userId?: number | null;
+  email?: string | null;
+  commentId?: number | null;
+  taskId?: number | null;
+  threadId?: number | null;
+  parentCommentId?: number | null;
+  reaction?: { type: string; op: 'add' | 'remove' } | null;
+  extra?: Record<string, any> | null;
+}) {
+  try {
+    const repo = AppDataSource.getRepository(SecurityEvent);
+    const ev = repo.create({
+      email: opts.email ?? null,
+      userId: opts.userId ?? null,
+      eventType: opts.eventType,
+      ip: opts.req?.ip || null,
+      metadata: {
+        path: opts.req?.originalUrl || null,
+        ua: opts.req?.headers['user-agent'] || null,
+        commentId: opts.commentId ?? null,
+        taskId: opts.taskId ?? null,
+        threadId: opts.threadId ?? null,
+        parentCommentId: opts.parentCommentId ?? null,
+        reaction: opts.reaction ?? null,
+        ...(opts.extra || {}),
+      },
+      createdAt: new Date(),
+    });
+    await repo.save(ev);
+  } catch {}
+}

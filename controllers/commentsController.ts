@@ -5,6 +5,7 @@ import { Task } from "../models/Task.js";
 import { User } from "../models/User.js";
 import { Thread } from "../models/Thread.js";
 import { Notification } from "../models/Notification.js";
+import { recordCommentEvent } from "../services/securityTelemetry.js";
 
 function extractMentions(content: string): string[] {
   const matches = content.match(/@([a-z0-9_]+)/gi) || [];
@@ -33,7 +34,18 @@ export async function getComments(req: Request, res: Response) {
   const repo = AppDataSource.getRepository(Comment);
   const where = taskId ? { task: { id: taskId } } : {};
   const comments = await repo.find({ where, relations: { task: true, author: true, parentComment: true, thread: true } });
-  res.json(comments);
+  const payload = comments.map((c) => ({
+    id: c.id,
+    content: c.content,
+    taskId: (c.task as any)?.id,
+    authorId: c.author ? (c.author as any).id : undefined,
+    parentCommentId: c.parentComment ? (c.parentComment as any).id : null,
+    threadId: c.thread ? (c.thread as any).id : null,
+    createdAt: c.createdAt,
+    reactions: c.reactions || {},
+    mentions: c.mentions || [],
+  }));
+  res.json(payload);
 }
 
 export async function createComment(req: Request, res: Response) {
@@ -67,10 +79,44 @@ export async function createComment(req: Request, res: Response) {
     const io = getIO();
     const projectId = (task.project as any)?.id;
     if (io && projectId) {
-      io.to(`project:${projectId}`).emit('comment:created', { comment, taskId });
+      io.to(`project:${projectId}`).emit('comment:created', { comment: {
+        id: comment.id,
+        content: comment.content,
+        taskId: task.id,
+        authorId: comment.author ? (comment.author as any).id : undefined,
+        parentCommentId: null,
+        threadId: thread.id,
+        createdAt: comment.createdAt,
+        reactions: comment.reactions || {},
+        mentions: comment.mentions || [],
+      }, taskId });
     }
   } catch {}
-  res.status(201).json(comment);
+  try {
+    await recordCommentEvent({
+      req,
+      eventType: 'comment_created',
+      userId: comment.author?.id ?? null,
+      email: (comment.author as any)?.email ?? null,
+      commentId: comment.id,
+      taskId: task.id,
+      threadId: thread.id,
+      parentCommentId: null,
+      extra: { mentions },
+    });
+  } catch {}
+  const payload = {
+    id: comment.id,
+    content: comment.content,
+    taskId: task.id,
+    authorId: comment.author ? (comment.author as any).id : undefined,
+    parentCommentId: null,
+    threadId: thread.id,
+    createdAt: comment.createdAt,
+    reactions: comment.reactions || {},
+    mentions: comment.mentions || [],
+  };
+  res.status(201).json(payload);
 }
 
 export async function deleteComment(req: Request, res: Response) {

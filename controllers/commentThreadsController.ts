@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../db/data-source.js";
+import { Thread } from "../models/Thread.js";
 import { Comment } from "../models/Comment.js";
 import { Task } from "../models/Task.js";
 import { User } from "../models/User.js";
-import { Thread } from "../models/Thread.js";
+import { recordCommentEvent } from "../services/securityTelemetry.js";
 import { Notification } from "../models/Notification.js";
 
 const ALLOWED_REACTIONS = ["thumbs_up", "heart", "laugh", "hooray", "rocket", "eyes"] as const;
@@ -32,37 +33,41 @@ async function notifyMentions(usernamesLower: string[], task: Task, author?: Use
 }
 
 export async function createReply(req: Request, res: Response) {
-  const { parentCommentId, authorId, content } = req.body;
-  if (!parentCommentId || !content) return res.status(400).json({ error: "parentCommentId and content are required" });
+  const { id } = req.params; // parent comment id
+  const { content, authorId } = req.body;
   const commentRepo = AppDataSource.getRepository(Comment);
   const threadRepo = AppDataSource.getRepository(Thread);
   const userRepo = AppDataSource.getRepository(User);
-  const parent = await commentRepo.findOne({ where: { id: Number(parentCommentId) }, relations: { task: { project: true }, parentComment: true, thread: true } });
+
+  const parent = await commentRepo.findOne({ where: { id: Number(id) }, relations: { thread: true, task: true, author: true, parentComment: true } });
   if (!parent) return res.status(404).json({ error: "parent comment not found" });
 
-  // Enforce max depth of 3
-  let depth = 0; let cur: Comment | null | undefined = parent;
-  while (cur && depth < 4) { depth++; cur = cur.parentComment || undefined; }
-  if (depth >= 3) return res.status(400).json({ error: "max thread depth reached" });
+  // Ensure thread exists; create if replying to a root without thread
+  let thread = parent.thread as Thread | null;
+  if (!thread) {
+    thread = threadRepo.create({ task: parent.task });
+    await threadRepo.save(thread);
+    parent.thread = thread;
+    await commentRepo.save(parent);
+  }
 
-  const reply = commentRepo.create({ content, task: parent.task, parentComment: parent });
+  // Enforce max thread depth = 4 (root + 3 replies)
+  let depth = 0;
+  let cur: Comment | null = parent;
+  while (cur) {
+    depth++;
+    if (!cur.parentComment) break;
+    const next = await commentRepo.findOne({ where: { id: (cur.parentComment as any).id }, relations: { parentComment: true } });
+    cur = next || null;
+  }
+  if (depth >= 4) return res.status(400).json({ error: "max thread depth reached" });
+
+  const reply = commentRepo.create({ content, task: parent.task, thread, parentComment: parent });
   if (authorId) {
     const author = await userRepo.findOne({ where: { id: Number(authorId) } });
     if (author) reply.author = author;
   }
-  // Ensure thread exists; create if replying to a root without thread (fallback)
-  if (!parent.thread) {
-    const t = threadRepo.create({ task: parent.task });
-    await threadRepo.save(t);
-    parent.thread = t;
-    await commentRepo.save(parent);
-  }
-  reply.thread = parent.thread!;
-  // Mentions
-  const mentions = extractMentions(content);
-  reply.mentions = mentions;
   await commentRepo.save(reply);
-  try { await notifyMentions(mentions, parent.task!, reply.author); } catch {}
 
   try {
     const { getIO } = await import('./realtime.js');
@@ -70,18 +75,54 @@ export async function createReply(req: Request, res: Response) {
     const projectId = (parent.task?.project as any)?.id;
     const taskId = parent.task?.id;
     if (io && projectId) {
-      io.to(`project:${projectId}`).emit('comment:reply_created', { comment: reply, taskId, parentCommentId });
+      io.to(`project:${projectId}`).emit('comment:replied', { comment: {
+        id: reply.id,
+        content: reply.content,
+        taskId,
+        authorId: reply.author ? (reply.author as any).id : undefined,
+        parentCommentId: parent.id,
+        threadId: thread!.id,
+        createdAt: reply.createdAt,
+        reactions: reply.reactions || {},
+        mentions: reply.mentions || [],
+      }, taskId, parentCommentId: parent.id });
     }
   } catch {}
-  res.status(201).json(reply);
+  try {
+    await recordCommentEvent({
+      req,
+      eventType: 'comment_replied',
+      userId: reply.author?.id ?? null,
+      email: (reply.author as any)?.email ?? null,
+      commentId: reply.id,
+      taskId: parent.task?.id ?? null,
+      threadId: thread!.id,
+      parentCommentId: parent.id,
+    });
+  } catch {}
+
+  const payload = {
+    id: reply.id,
+    content: reply.content,
+    taskId: parent.task?.id ?? null,
+    authorId: reply.author ? (reply.author as any).id : undefined,
+    parentCommentId: parent.id,
+    threadId: thread!.id,
+    createdAt: reply.createdAt,
+    reactions: reply.reactions || {},
+    mentions: reply.mentions || [],
+  };
+  res.status(201).json(payload);
 }
 
 export async function getThread(req: Request, res: Response) {
-  const threadId = Number(req.params.threadId);
-  if (!threadId) return res.status(400).json({ error: "threadId required" });
-  const commentRepo = AppDataSource.getRepository(Comment);
-  const comments = await commentRepo.find({ where: { thread: { id: threadId } }, order: { createdAt: "ASC" }, relations: { author: true, parentComment: true, task: true } });
-  res.json(comments);
+  const { threadId } = req.params;
+  const repo = AppDataSource.getRepository(Comment);
+  const threadRepo = AppDataSource.getRepository(Thread);
+  const thread = await threadRepo.findOne({ where: { id: Number(threadId) }, relations: { task: true, rootComment: true } });
+  if (!thread) return res.status(404).json({ error: "thread not found" });
+  const comments = await repo.find({ where: { thread: { id: thread.id } }, relations: { author: true, parentComment: true } });
+  res.json({ thread, comments });
 }
 
 export async function reactToComment(req: Request, res: Response) {
@@ -89,13 +130,16 @@ export async function reactToComment(req: Request, res: Response) {
   const { type, op } = req.body as { type: ReactionType; op: "add" | "remove" };
   if (!ALLOWED_REACTIONS.includes(type)) return res.status(400).json({ error: "invalid reaction type" });
   const repo = AppDataSource.getRepository(Comment);
-  const comment = await repo.findOne({ where: { id }, relations: { task: { project: true } } });
+  const userRepo = AppDataSource.getRepository(User);
+  const comment = await repo.findOne({ where: { id }, relations: { task: { project: true }, thread: true, parentComment: true } });
   if (!comment) return res.status(404).json({ error: "comment not found" });
-  const reactions = comment.reactions || {};
+
+  const reactions = (comment.reactions || {}) as Record<string, number>;
   const cur = Number(reactions[type] || 0);
   reactions[type] = Math.max(0, cur + (op === "add" ? 1 : -1));
   comment.reactions = reactions;
   await repo.save(comment);
+
   try {
     const { getIO } = await import('./realtime.js');
     const io = getIO();
@@ -105,5 +149,21 @@ export async function reactToComment(req: Request, res: Response) {
       io.to(`project:${projectId}`).emit('comment:reaction', { commentId: id, reactions, taskId });
     }
   } catch {}
+  try {
+    const actorId = (req as any).userId as number | undefined;
+    const actor = actorId ? await userRepo.findOne({ where: { id: Number(actorId) } }) : null;
+    await recordCommentEvent({
+      req,
+      eventType: 'comment_reacted',
+      userId: actor?.id ?? null,
+      email: (actor as any)?.email ?? null,
+      commentId: comment.id,
+      taskId: comment.task?.id ?? null,
+      threadId: comment.thread?.id ?? null,
+      parentCommentId: comment.parentComment?.id ?? null,
+      extra: { type, op, reactions },
+    });
+  } catch {}
+
   res.json({ ok: true, reactions });
 }
