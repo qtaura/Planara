@@ -34,17 +34,18 @@ export class EmailVerificationController {
    */
   static async sendCode(req: Request, res: Response): Promise<void> {
     try {
-      const { email } = sendCodeSchema.parse(req.body);
+      const { email: rawEmail } = sendCodeSchema.parse(req.body);
+      const email = rawEmail.trim().toLowerCase();
 
       const userRepository = AppDataSource.getRepository(User);
-      const user = await userRepository.findOne({ where: { email } });
-      if (!user) {
-        res.status(404).json({ success: false, error: 'User not found with this email address' });
-        return;
-      }
+      const user = await userRepository
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = :email', { email })
+        .getOne();
 
-      if ((user as any).isVerified) {
-        res.status(400).json({ success: false, error: 'Email address is already verified' });
+      // Generic success for nonexistent or already verified to prevent enumeration
+      if (!user || (user as any).isVerified) {
+        res.status(200).json({ success: true, message: 'If an account exists for this email, a verification code has been sent.' });
         return;
       }
 
@@ -140,16 +141,22 @@ export class EmailVerificationController {
    */
   static async verifyCode(req: Request, res: Response): Promise<void> {
     try {
-      const { email, code } = verifyCodeSchema.parse(req.body);
+      const { email: rawEmail, code } = verifyCodeSchema.parse(req.body);
+      const email = rawEmail.trim().toLowerCase();
 
       const userRepository = AppDataSource.getRepository(User);
-      const user = await userRepository.findOne({ where: { email } });
+      const user = await userRepository
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = :email', { email })
+        .getOne();
       if (!user) {
-        res.status(404).json({ success: false, error: 'User not found with this email address' });
+        // Avoid user enumeration by returning a generic invalid response
+        res.status(400).json({ success: false, error: 'Invalid verification code' });
         return;
       }
       if ((user as any).isVerified) {
-        res.status(400).json({ success: false, error: 'Email address is already verified' });
+        // Already verified — do not reveal status difference to client
+        res.status(400).json({ success: false, error: 'Invalid verification code' });
         return;
       }
 
@@ -261,13 +268,17 @@ export class EmailVerificationController {
    */
   static async getVerificationStatus(req: Request, res: Response): Promise<void> {
     try {
-      const { email } = req.params;
-      if (!email || !z.string().email().safeParse(email).success) {
+      const { email: rawEmail } = req.params;
+      if (!rawEmail || !z.string().email().safeParse(rawEmail).success) {
         res.status(400).json({ success: false, error: 'Invalid email address' });
         return;
       }
+      const email = rawEmail.trim().toLowerCase();
       const userRepository = AppDataSource.getRepository(User);
-      const user = await userRepository.findOne({ where: { email } });
+      const user = await userRepository
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = :email', { email })
+        .getOne();
       if (!user) {
         res.status(404).json({ success: false, error: 'User not found with this email address' });
         return;
@@ -286,9 +297,13 @@ export class EmailVerificationController {
   static async adminUnlock(req: Request, res: Response): Promise<void> {
     try {
       const emailSchema = z.object({ email: z.string().email() });
-      const { email } = emailSchema.parse(req.body);
+      const { email: rawEmail } = emailSchema.parse(req.body);
+      const email = rawEmail.trim().toLowerCase();
       const userRepository = AppDataSource.getRepository(User);
-      const user = await userRepository.findOne({ where: { email } });
+      const user = await userRepository
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = :email', { email })
+        .getOne();
       if (!user) {
         res.status(404).json({ success: false, error: 'User not found' });
         return;
@@ -312,13 +327,17 @@ export class EmailVerificationController {
   // Admin: get lockout/backoff state for a user
   static async getLockoutState(req: Request, res: Response): Promise<void> {
     try {
-      const { email } = req.params as any;
-      if (!email || !z.string().email().safeParse(email).success) {
+      const { email: rawEmail } = req.params as any;
+      if (!rawEmail || !z.string().email().safeParse(rawEmail).success) {
         res.status(400).json({ success: false, error: 'Invalid email address' });
         return;
       }
+      const email = rawEmail.trim().toLowerCase();
       const userRepository = AppDataSource.getRepository(User);
-      const user = await userRepository.findOne({ where: { email } });
+      const user = await userRepository
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = :email', { email })
+        .getOne();
       if (!user) {
         res.status(404).json({ success: false, error: 'User not found' });
         return;

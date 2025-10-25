@@ -9,18 +9,35 @@ const API_BASE_ORIGIN = (import.meta as any).env?.VITE_API_BASE || '';
 const API_BASE_PATH = '/api';
 export const API_BASE = `${API_BASE_ORIGIN}${API_BASE_PATH}`;
 
+import { isOffline } from './network';
+
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const token = getToken();
   const headers = new Headers(init?.headers || {});
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  let res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  } catch (err: any) {
+    if (isOffline()) {
+      throw new Error('Network offline');
+    }
+    throw err;
+  }
   if (res.status === 401) {
     const refreshed = await refreshAccessToken().catch(() => null);
     if (refreshed) {
       const headers2 = new Headers(init?.headers || {});
       const newToken = getToken();
       if (newToken) headers2.set('Authorization', `Bearer ${newToken}`);
-      res = await fetch(`${API_BASE}${path}`, { ...init, headers: headers2 });
+      try {
+        res = await fetch(`${API_BASE}${path}`, { ...init, headers: headers2 });
+      } catch (err: any) {
+        if (isOffline()) {
+          throw new Error('Network offline');
+        }
+        throw err;
+      }
     } else {
       signOut();
     }
@@ -397,10 +414,11 @@ export async function getProjectWithRelations(projectId: string): Promise<any | 
 }
 
 export async function sendVerificationCode(email: string): Promise<any> {
+  const normalized = String(email || '').trim().toLowerCase();
   const res = await apiFetch('/users/auth/send-code', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email: normalized }),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -410,10 +428,11 @@ export async function sendVerificationCode(email: string): Promise<any> {
 }
 
 export async function verifyEmailCode(email: string, code: string): Promise<any> {
+  const normalized = String(email || '').trim().toLowerCase();
   const res = await apiFetch('/users/auth/verify-code', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, code }),
+    body: JSON.stringify({ email: normalized, code }),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -423,16 +442,21 @@ export async function verifyEmailCode(email: string, code: string): Promise<any>
 }
 
 export async function getVerificationStatus(email: string): Promise<any> {
-  const res = await apiFetch(`/users/auth/verification-status/${encodeURIComponent(email)}`);
-  if (!res.ok) throw new Error(`Failed to get status: ${res.status}`);
+  const normalized = String(email || '').trim().toLowerCase();
+  const res = await apiFetch(`/users/auth/verification-status/${encodeURIComponent(normalized)}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to get status: ${res.status}`);
+  }
   return res.json();
 }
 
 export async function adminUnlock(email: string, adminToken: string): Promise<any> {
+  const normalized = String(email || '').trim().toLowerCase();
   const res = await apiFetch('/users/auth/admin/unlock', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email: normalized }),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -442,7 +466,8 @@ export async function adminUnlock(email: string, adminToken: string): Promise<an
 }
 
 export async function getLockoutState(email: string, adminToken: string): Promise<any> {
-  const res = await apiFetch(`/users/auth/admin/lockout-state/${encodeURIComponent(email)}`, {
+  const normalized = String(email || '').trim().toLowerCase();
+  const res = await apiFetch(`/users/auth/admin/lockout-state/${encodeURIComponent(normalized)}`, {
     headers: { 'x-admin-token': adminToken },
   });
   if (!res.ok) {

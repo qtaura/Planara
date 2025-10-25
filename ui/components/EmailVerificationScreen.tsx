@@ -5,6 +5,7 @@ import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 import { toast } from 'sonner';
 import { sendVerificationCode, verifyEmailCode, getVerificationStatus, getCurrentUser, setCurrentUser } from '@lib/api';
+import { isOffline, waitForOnline } from '@lib/network';
 import { OtpInput } from './OtpInput';
 
 interface EmailVerificationScreenProps {
@@ -23,6 +24,7 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
   const [attempts, setAttempts] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [ariaMessage, setAriaMessage] = useState('');
+  const pendingAction = useRef<null | 'send' | 'verify'>(null);
 
   const now = Date.now();
   const cooldownSeconds = useMemo(() => {
@@ -57,6 +59,12 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
     (async () => {
       try {
         setLoading(true);
+        // Offline-aware: wait until back online before attempting
+        if (isOffline()) {
+          toast.message("You're offline — will send when back online.");
+          setAriaMessage('Offline. Will retry sending when online.');
+          await waitForOnline(120000);
+        }
         const res = await sendVerificationCode(email);
         setStatus('sent');
         setErrorMsg(null);
@@ -80,10 +88,17 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
   }, [email, status]);
 
   async function handleSendCode() {
-    if (!email) { toast.error('Enter your email'); setErrorMsg('Please enter your email address'); return; }
+    const normalized = String(email || '').trim().toLowerCase();
+    if (!normalized) { toast.error('Enter your email'); setErrorMsg('Please enter your email address'); return; }
     setLoading(true);
     try {
-      const res = await sendVerificationCode(email);
+      if (isOffline()) {
+        toast.message("You're offline — will send when back online.");
+        setAriaMessage('Offline. Will retry sending when online.');
+        pendingAction.current = 'send';
+        await waitForOnline(120000);
+      }
+      const res = await sendVerificationCode(normalized);
       setStatus('sent');
       setErrorMsg(null);
       setAttempts(0);
@@ -98,6 +113,7 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
       setErrorMsg(msg);
       setAriaMessage('Error sending verification code');
     } finally {
+      pendingAction.current = null;
       setLoading(false);
     }
   }
@@ -105,7 +121,8 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
   async function handleVerify(e?: React.FormEvent) {
     if (e) e.preventDefault();
     setErrorMsg(null);
-    if (!email || !code || code.length !== 6) { const msg = 'Enter the 6-digit code'; toast.error(msg); setErrorMsg(msg); return; }
+    const normalized = String(email || '').trim().toLowerCase();
+    if (!normalized || !code || code.length !== 6) { const msg = 'Enter the 6-digit code'; toast.error(msg); setErrorMsg(msg); return; }
 
     // Simple client-side attempt limit to prevent brute force: 5 attempts then 60s lockout
     if (attempts >= 5) {
@@ -119,19 +136,25 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
     setLoading(true);
     setStatus('verifying');
     try {
-      const res = await verifyEmailCode(email, code);
+      if (isOffline()) {
+        toast.message("You're offline — will verify when back online.");
+        setAriaMessage('Offline. Will retry verification when online.');
+        pendingAction.current = 'verify';
+        await waitForOnline(120000);
+      }
+      const res = await verifyEmailCode(normalized, code);
       if (res?.success) {
         setStatus('verified');
         toast.success('Email verified');
         setAriaMessage('Email verified');
         // Confirm status and persist verification locally
-        try { await getVerificationStatus(email); } catch {}
+        try { await getVerificationStatus(normalized); } catch {}
         try {
           const user = getCurrentUser();
           if (user) {
             const updated = { ...user, isVerified: true };
             setCurrentUser(updated);
-            window.dispatchEvent(new CustomEvent('auth:verified', { detail: { email } }));
+            window.dispatchEvent(new CustomEvent('auth:verified', { detail: { email: normalized } }));
           }
         } catch {}
         onVerified();
@@ -160,6 +183,7 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
 
       setAttempts((a) => a + 1);
     } finally {
+      pendingAction.current = null;
       setLoading(false);
     }
   }
