@@ -1,6 +1,9 @@
 import express from "express";
 import { authenticate } from "../middlewares/auth.js";
-import { inviteToTeam, acceptTeamInvite } from "../controllers/usersController.js";
+import { adminOnly } from "../middlewares/admin.js";
+import { authLimiter, perEmailSendLimiter, emailVerificationLimiter, perEmailVerifyLimiter, emailVerificationAttemptLimiter } from "../middlewares/rateLimiter.js";
+import { EmailVerificationController } from "../controllers/emailVerificationController.js";
+import { getUsers, signup, login, refresh, startOAuth, oauthCallback, updateProfile, adminBanUser, adminSetUsername, inviteToTeam, acceptTeamInvite } from "../controllers/usersController.js";
 
 const router = express.Router();
 
