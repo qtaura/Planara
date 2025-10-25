@@ -24,8 +24,8 @@ export class Task {
   @Column("simple-array", { nullable: true })
   labels?: string[];
 
-  // Use a cross-db compatible type for date-time
-  @Column({ type: "datetime", nullable: true })
+  // Let TypeORM infer the proper date/time column type per driver
+  @Column({ nullable: true })
   dueDate?: Date | null;
 
   @ManyToOne(() => Milestone, { nullable: true, onDelete: "SET NULL" })
