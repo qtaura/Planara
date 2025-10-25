@@ -5,11 +5,14 @@
 </p>
 
 <p align="center">
-  Modern verification-first workspace. Production-grade UX, end-to-end TypeScript, and secure email-based onboarding.
+  Collaborative planning and execution platform for product and engineering teams.
 </p>
 
 <p align="center">
   <a href="#overview">Overview</a> •
+  <a href="#what-is-planara">What Is Planara</a> •
+  <a href="#key-capabilities">Key Capabilities</a> •
+  <a href="#use-cases">Use Cases</a> •
   <a href="#verification-flow">Verification Flow</a> •
   <a href="#quickstart">Quickstart</a> •
   <a href="#configuration">Configuration</a> •
@@ -17,19 +20,46 @@
   <a href="#api">API</a> •
   <a href="#testing">Testing</a> •
   <a href="#monitoring">Monitoring</a> •
-  <a href="#troubleshooting">Troubleshooting</a>
+  <a href="#troubleshooting">Troubleshooting</a> •
+  <a href="#project-structure">Project Structure</a> •
+  <a href="#contributing">Contributing</a>
 </p>
 
 ---
 
 ## Overview
-Planara is a full-stack TypeScript application with a React + Vite frontend and an Express + TypeORM backend. It focuses on a secure, enumeration-safe email verification journey and a clean developer experience.
+Planara is a full-stack TypeScript application with a React + Vite frontend and an Express + TypeORM backend. It delivers a secure, enumeration-safe email verification journey and a modern, accessible UI.
 
 - End-to-end TypeScript with strict configs.
 - Modern UI with Tailwind v4, dark/light theme, and accessible flows.
 - Robust email verification: case-insensitive, rate-limited, and lockout-protected.
 - Optional monitoring hooks (Sentry) without hard dependencies.
 
+## What Is Planara
+Planara is a verification-first, collaborative workspace that helps teams plan, execute, and track work with clarity. It brings projects, tasks, milestones, roadmaps, files, and team communication into a cohesive experience designed for everyday momentum and high-level visibility.
+
+- Single place to organize projects, tasks, and timelines.
+- Clear progress tracking with milestones and dashboards.
+- Collaboration via comments and notifications.
+- Reliable onboarding using secure email verification (plus OAuth options).
+
+## Key Capabilities
+- Project and Task Management: create, assign, and track progress.
+- Kanban Boards: drag-and-drop task management in a modern interface.
+- Calendar & Roadmap Views: visualize schedules and longer-term plans.
+- Comments & Notifications: keep conversations and alerts in context.
+- Dashboard: quick overview of what matters across projects.
+- Files View: organize relevant assets for project delivery.
+- GitHub Repo Picker: connect repos to projects (for code-centric teams).
+- AI Assistant: contextual guidance integrated into the workspace.
+- Theming: dark/light modes with persistent preferences.
+
+## Use Cases
+- Product Planning: roadmap alignment across squads and milestones.
+- Execution Tracking: operational heartbeat for sprints and releases.
+- Milestone Reviews: ensure critical deliverables stay on track.
+- Onboarding: verify emails securely and start collaborating fast.
+- Team Visibility: shared source of truth for project status.
 
 ## Verification Flow
 Email verification is designed to be secure, predictable, and user-friendly.
@@ -48,7 +78,6 @@ Endpoints (under `GET/POST /api/users/...`):
 - `POST /auth/send-code` – Request a verification code.
 - `POST /auth/verify-code` – Submit the 6-digit code to verify.
 - `GET /auth/verification-status/:email` – Check a user’s verification status.
-
 
 ## Quickstart
 ### Prerequisites
@@ -87,7 +116,6 @@ VITE_API_URL=http://localhost:3010/api npm run dev
 # Dev server at http://localhost:5173 (or next free port)
 ```
 
-
 ## Configuration
 ### Backend
 - `PORT` – API port (default: `3001`).
@@ -104,7 +132,6 @@ VITE_API_URL=http://localhost:3010/api npm run dev
   - `VITE_SENTRY_DSN` – Enable frontend monitoring (if set).
   - `VITE_SENTRY_TRACES_SAMPLE_RATE` – Optional traces sampling rate.
 
-
 ## Dev Mode
 Purpose: make local development easy without external providers.
 
@@ -112,7 +139,6 @@ Purpose: make local development easy without external providers.
 - Emails are always normalized (trim + lowercase) across all endpoints.
 - Responses are enumeration-safe: nonexistence and already-verified states do not leak.
 - UI detects offline mode and surfaces helpful messaging for retry.
-
 
 ## API
 Detailed request/response examples for verification are available at:
@@ -129,13 +155,11 @@ Admin endpoints:
 - `GET /api/users/auth/admin/events/:email` – Recent security events (auth required).
 - `GET /api/users/auth/admin/rotations/:email` – Verification secret rotations (auth required).
 
-
 ## Testing
 - Backend tests (integration): `npm run test:run`
 - UI tests (vitest):
   - From `ui/`: `npm run test`
   - Email normalization and offline behavior covered in `ui/components/__tests__/`.
-
 
 ## Monitoring
 Sentry instrumentation is optional and uses runtime-only imports:
@@ -144,13 +168,11 @@ Sentry instrumentation is optional and uses runtime-only imports:
 
 Errors are captured via global handlers in both backend and UI.
 
-
 ## Troubleshooting
 - Port conflicts: change `PORT` for backend or `VITE_API_URL` for UI.
 - Decorators: build the backend before starting (`npm run build`).
 - Offline UI: UI shows offline toasts and retries once network reconnects.
 - Windows build EPERM: ensure dev servers are stopped before running UI build or run terminal as Administrator.
-
 
 ## Project Structure
 ```
