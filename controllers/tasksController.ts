@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { AppDataSource } from "../data-source.js";
+import { AppDataSource } from "../db/data-source.js";
 import { Task } from "../models/Task.js";
 import { Project } from "../models/Project.js";
 import { Milestone } from "../models/Milestone.js";
@@ -13,7 +13,7 @@ async function recalcMilestoneProgress(milestoneId: number) {
   // Fetch tasks explicitly to avoid relation where-count quirks
   const tasks = await taskRepo.find({ where: { milestone: { id: milestoneId } } });
   const total = tasks.length;
-  const done = tasks.filter((t) => t.status === "done").length;
+  const done = tasks.filter((t: Task) => t.status === "done").length;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
   const milestone = await milestoneRepo.findOne({ where: { id: milestoneId } });
@@ -23,15 +23,13 @@ async function recalcMilestoneProgress(milestoneId: number) {
   }
 }
 
-export const getTasks = async (req, res) => {
+export const getTasks = async (req: Request, res: Response) => {
   const userId = (req as any).userId as number | undefined;
   const repo = AppDataSource.getRepository(Task);
   const projectRepo = AppDataSource.getRepository(Project);
   const projectId = req.query.projectId ? Number(req.query.projectId) : undefined;
   const teamId = req.query.teamId ? Number(req.query.teamId) : undefined;
-  const projectId = req.query.projectId ? Number(req.query.projectId) : undefined;
   const taskRepo = AppDataSource.getRepository(Task);
-  const projectRepo = AppDataSource.getRepository(Project);
   if (projectId) {
     const project = await projectRepo.findOne({ where: { id: projectId }, relations: { team: true } });
     if (!project) return res.status(404).json({ error: "Project not found" });

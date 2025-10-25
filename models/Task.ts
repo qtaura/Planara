@@ -24,6 +24,9 @@ export class Task {
   @Column("simple-array", { nullable: true })
   labels?: string[];
 
+  @Column({ type: "datetime", nullable: true })
+  dueDate?: Date | null;
+
   @ManyToOne(() => Milestone, { nullable: true, onDelete: "SET NULL" })
   milestone?: Milestone | null;
 

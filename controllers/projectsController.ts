@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { AppDataSource } from "../data-source.js";
+import { AppDataSource } from "../db/data-source.js";
 import { Project } from "../models/Project.js";
 import { Task } from "../models/Task.js";
 import { User } from "../models/User.js";
@@ -45,7 +45,7 @@ export const createProject = async (req: Request, res: Response) => {
     project.owner = owner;
 
     if (teamId) {
-      const team = await teamRepo.findOne({ where: { id: Number(teamId) }, relations: { organization: true } });
+      const team = await teamRepo.findOne({ where: { id: Number(teamId) }, relations: { org: true } });
       if (!team) return res.status(404).json({ error: "Team not found" });
       project.team = team;
     }
@@ -76,7 +76,7 @@ export const updateProject = async (req: Request, res: Response) => {
 
     // If teamId provided, enforce org boundary: project.team must match
     if (teamId) {
-      const team = await teamRepo.findOne({ where: { id: Number(teamId) }, relations: { organization: true } });
+      const team = await teamRepo.findOne({ where: { id: Number(teamId) }, relations: { org: true } });
       if (!team) return res.status(404).json({ error: "Team not found" });
       if (project.team && project.team.id !== team.id) {
         return res.status(403).json({ error: "Cross-team update forbidden" });
