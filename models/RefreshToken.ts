@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, Index, CreateDateColumn } from "typeorm";
 
 @Entity()
 export class RefreshToken {
@@ -13,14 +13,14 @@ export class RefreshToken {
   @Column()
   jti!: string;
 
-  // Use Postgres-compatible timestamp type
-  @Column({ type: "timestamp" })
+  // Cross-database compatible datetime for sqlite/postgres
+  @Column({ type: "datetime" })
   expiresAt!: Date;
 
   @Column({ default: false })
   isRevoked!: boolean;
 
-  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
+  @CreateDateColumn()
   createdAt!: Date;
 
   @Column({ nullable: true })

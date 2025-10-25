@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, Index, CreateDateColumn } from "typeorm";
 
 @Entity()
 export class SecurityEvent {
@@ -23,6 +23,6 @@ export class SecurityEvent {
   @Column({ type: 'json', nullable: true })
   metadata!: any | null;
 
-  @Column({ type: 'timestamp' })
+  @CreateDateColumn()
   createdAt!: Date;
 }

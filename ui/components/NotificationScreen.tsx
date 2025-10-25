@@ -83,14 +83,27 @@ export default function NotificationScreen() {
     }
   }
 
+  function parseTeamId(actionUrl?: string): number | null {
+    if (!actionUrl) return null;
+    try {
+      const url = new URL(actionUrl);
+      const tid = url.searchParams.get('teamId');
+      return tid ? Number(tid) : null;
+    } catch {
+      const m = actionUrl.match(/[?&]teamId=(\d+)/);
+      return m ? Number(m[1]) : null;
+    }
+  }
+
   async function handleAcceptInvite(notification: Notification) {
     const inviterId = parseInviterId(notification.actionUrl);
+    const teamId = parseTeamId(notification.actionUrl);
     if (!inviterId) {
       toast.error('Invalid invite link');
       return;
     }
     try {
-      await acceptTeamInvite(inviterId);
+      await acceptTeamInvite(inviterId, teamId || undefined);
       toast.success('Joined the team successfully');
       // Mark as read and remove from list
       setNotifications(prev => prev.filter(n => n.id !== notification.id));

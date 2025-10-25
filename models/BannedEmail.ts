@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, Index, CreateDateColumn } from "typeorm";
 
 @Entity()
 export class BannedEmail {
@@ -12,6 +12,6 @@ export class BannedEmail {
   @Column({ type: 'varchar', length: 255, nullable: true })
   reason!: string | null;
 
-  @Column({ type: 'timestamp' })
+  @CreateDateColumn()
   createdAt!: Date;
 }

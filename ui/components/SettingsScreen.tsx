@@ -20,7 +20,7 @@ import {
 import { useTheme } from '../lib/theme-context';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from './ui/alert-dialog';
-import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents, getRotationHistory, adminBanUser, adminSetUsername, setAdminTokenSession, getAdminTokenSession, inviteToTeam } from '../lib/api';
+import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents, getRotationHistory, adminBanUser, adminSetUsername, setAdminTokenSession, getAdminTokenSession, inviteToTeam, getOrganizations, createOrganization, updateOrganization, deleteOrganization, transferOrgOwnership, listTeams, createTeam, listMembers, changeRole, transferTeamOwnership, leaveTeam } from '../lib/api';
 
 export function SettingsScreen() {
   const [activeSection, setActiveSection] = useState('profile');
@@ -55,6 +55,7 @@ export function SettingsScreen() {
     { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
     { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
     { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
+    { id: 'organizations', label: 'Organizations', icon: <Users className="w-4 h-4" /> },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4" /> },
     { id: 'account', label: 'Account', icon: <Shield className="w-4 h-4" /> },
   ];
@@ -91,6 +92,7 @@ export function SettingsScreen() {
             {activeSection === 'profile' && <ProfileSection user={user} onUserUpdated={(u) => setUser(u)} />}
             {activeSection === 'appearance' && <AppearanceSection />}
             {activeSection === 'notifications' && <NotificationsSection />}
+            {activeSection === 'organizations' && <OrganizationSection />}
             {activeSection === 'team' && <TeamSection />}
             {activeSection === 'account' && <AccountSection />}
             {/* Admin controls available only to planara account */}
@@ -274,6 +276,105 @@ function NotificationsSection() {
           </div>
         </div>
       </div>
+    </Card>
+  );
+}
+
+function OrganizationSection() {
+  const [orgs, setOrgs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [newOrgName, setNewOrgName] = useState('');
+  const [editing, setEditing] = useState<Record<number, string>>({});
+  const [transfers, setTransfers] = useState<Record<number, string>>({});
+
+  useEffect(() => { loadOrgs(); }, []);
+
+  async function loadOrgs() {
+    setLoading(true);
+    try {
+      const list = await getOrganizations();
+      setOrgs(Array.isArray(list) ? list : []);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to load organizations');
+    } finally { setLoading(false); }
+  }
+
+  async function handleCreate() {
+    const name = newOrgName.trim();
+    if (!name) { toast.error('Enter organization name'); return; }
+    try {
+      await createOrganization(name);
+      toast.success('Organization created');
+      setNewOrgName('');
+      await loadOrgs();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to create organization');
+    }
+  }
+
+  async function handleUpdate(id: number) {
+    const name = (editing[id] || '').trim();
+    if (!name) { toast.error('Enter a name'); return; }
+    try {
+      await updateOrganization(id, name);
+      toast.success('Organization updated');
+      await loadOrgs();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to update organization');
+    }
+  }
+
+  async function handleDelete(id: number) {
+    try {
+      await deleteOrganization(id);
+      toast.success('Organization deleted');
+      await loadOrgs();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to delete organization');
+    }
+  }
+
+  async function handleTransfer(id: number) {
+    const newOwnerUserId = Number(transfers[id] || '');
+    if (!newOwnerUserId) { toast.error('Enter new owner userId'); return; }
+    try {
+      await transferOrgOwnership(id, newOwnerUserId);
+      toast.success('Ownership transferred');
+      setTransfers((s) => ({ ...s, [id]: '' }));
+      await loadOrgs();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to transfer ownership');
+    }
+  }
+
+  return (
+    <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
+      <h3 className="text-slate-900 dark:text-white mb-4">Organizations</h3>
+      <div className="mb-6 flex gap-2">
+        <Input placeholder="New organization name" value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} />
+        <Button onClick={handleCreate} disabled={loading || !newOrgName.trim()} className="bg-indigo-600 text-white">Create</Button>
+      </div>
+      {orgs.length === 0 ? (
+        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+          <p className="text-sm text-slate-600 dark:text-slate-400">No organizations yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {orgs.map((org: any) => (
+            <div key={org.id} className="rounded-md border border-slate-200 dark:border-slate-800 p-4">
+              <div className="flex items-center gap-3">
+                <Input className="flex-1" value={editing[org.id] ?? org.name} onChange={(e) => setEditing((s) => ({ ...s, [org.id]: e.target.value }))} />
+                <Button variant="outline" onClick={() => handleUpdate(org.id)}>Update</Button>
+                <Button variant="destructive" onClick={() => handleDelete(org.id)}><Trash2 className="w-4 h-4 mr-1" />Delete</Button>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <Input placeholder="New owner userId" value={transfers[org.id] ?? ''} onChange={(e) => setTransfers((s) => ({ ...s, [org.id]: e.target.value }))} />
+                <Button variant="outline" onClick={() => handleTransfer(org.id)}>Transfer ownership</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }

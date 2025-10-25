@@ -534,15 +534,143 @@ export async function inviteToTeam(identifier: string) {
   return res.json();
 }
 
-export async function acceptTeamInvite(from: number) {
+export async function acceptTeamInvite(from: number, teamId?: number) {
   const res = await apiFetch('/users/auth/team/accept', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from }),
+    body: JSON.stringify({ from, teamId }),
   });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Failed to accept invite: ${res.status}`);
+  }
+  return res.json();
+}
+
+// Organization APIs
+export async function getOrganizations(): Promise<any[]> {
+  const res = await apiFetch('/orgs');
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to fetch organizations: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createOrganization(name: string): Promise<any> {
+  const res = await apiFetch('/orgs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to create organization: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function updateOrganization(id: number, name: string): Promise<any> {
+  const res = await apiFetch(`/orgs/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to update organization: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteOrganization(id: number): Promise<void> {
+  const res = await apiFetch(`/orgs/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to delete organization: ${res.status}`);
+  }
+}
+
+export async function transferOrgOwnership(id: number, newOwnerUserId: number): Promise<any> {
+  const res = await apiFetch(`/orgs/${id}/transfer-ownership`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ newOwnerUserId }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to transfer ownership: ${res.status}`);
+  }
+  return res.json();
+}
+
+// Team APIs
+export async function listTeams(orgId: number): Promise<any[]> {
+  const res = await apiFetch(`/teams/${orgId}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to list teams: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createTeam(orgId: number, name: string): Promise<any> {
+  const res = await apiFetch(`/teams/${orgId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to create team: ${res.status}`);
+  }
+  return res.json();
+}
+
+// Members management
+export async function listMembers(teamId: number): Promise<any[]> {
+  const res = await apiFetch(`/teams/members/${teamId}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to list members: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function changeRole(teamId: number, userId: number, role: 'member' | 'admin' | 'owner'): Promise<any> {
+  const res = await apiFetch(`/teams/members/${teamId}/change-role`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, role }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to change role: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function transferTeamOwnership(teamId: number, newOwnerUserId: number): Promise<any> {
+  const res = await apiFetch(`/teams/members/${teamId}/transfer-ownership`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ newOwnerUserId }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to transfer ownership: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function leaveTeam(teamId: number): Promise<any> {
+  const res = await apiFetch(`/teams/members/${teamId}/leave`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to leave team: ${res.status}`);
   }
   return res.json();
 }

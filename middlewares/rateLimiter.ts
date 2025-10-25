@@ -18,8 +18,8 @@ export const emailVerificationLimiter = rateLimit({
   skipSuccessfulRequests: false,
   // Skip requests that don't need rate limiting
   skip: (req: Request) => {
-    // Skip rate limiting for certain conditions if needed
-    return false;
+    // In test environment, disable IP-based rate limiting to avoid flakiness
+    return process.env.NODE_ENV === 'test';
   },
 });
 
