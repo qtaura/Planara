@@ -26,6 +26,14 @@ export async function createComment(req: Request, res: Response) {
     if (author) comment.author = author;
   }
   await commentRepo.save(comment);
+  try {
+    const { getIO } = await import('./realtime.js');
+    const io = getIO();
+    const projectId = (task.project as any)?.id;
+    if (io && projectId) {
+      io.to(`project:${projectId}`).emit('comment:created', { comment, taskId });
+    }
+  } catch {}
   res.status(201).json(comment);
 }
 
@@ -43,5 +51,14 @@ export async function deleteComment(req: Request, res: Response) {
     if (!isAuthor && !isProjectOwner) return res.status(403).json({ error: "forbidden" });
   }
   await repo.remove(comment);
+  try {
+    const { getIO } = await import('./realtime.js');
+    const io = getIO();
+    const projectId = (comment.task?.project as any)?.id;
+    const taskId = comment.task?.id;
+    if (io && projectId) {
+      io.to(`project:${projectId}`).emit('comment:deleted', { commentId: id, taskId });
+    }
+  } catch {}
   res.json({ ok: true });
 }

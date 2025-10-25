@@ -22,6 +22,7 @@ import { Project, Task } from '../types';
 
 import { getProjectWithRelations } from '@lib/api';
 import { toast } from 'sonner';
+import { Avatar, AvatarFallback } from './ui/avatar';
 
 interface ProjectViewProps {
   projectId: string;
@@ -33,6 +34,7 @@ export function ProjectView({ projectId }: ProjectViewProps) {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [presentUsers, setPresentUsers] = useState<number[]>([]);
 
   async function refreshProject() {
     setLoading(true);
@@ -61,6 +63,18 @@ export function ProjectView({ projectId }: ProjectViewProps) {
       window.removeEventListener('tasks:changed', onTasksChanged as EventListener);
       window.removeEventListener('projects:changed', onProjectsChanged as EventListener);
     };
+  }, [projectId]);
+
+  useEffect(() => {
+    function onPresence(e: any) {
+      const detail = e?.detail || e;
+      const expectedRoom = `project:${Number(projectId)}`;
+      if (detail?.room === expectedRoom && Array.isArray(detail?.users)) {
+        setPresentUsers(detail.users as number[]);
+      }
+    }
+    window.addEventListener('presence:update', onPresence as EventListener);
+    return () => window.removeEventListener('presence:update', onPresence as EventListener);
   }, [projectId]);
 
   if (loading) {
@@ -111,124 +125,103 @@ export function ProjectView({ projectId }: ProjectViewProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2">
+                {presentUsers.slice(0, 5).map((uid) => (
+                  <Avatar key={uid} className="h-6 w-6 border border-white dark:border-slate-800">
+                    <AvatarFallback className="text-[10px]">{String(uid)}</AvatarFallback>
+                  </Avatar>
+                ))}
+                {presentUsers.length > 5 && (
+                  <Avatar className="h-6 w-6 border border-white dark:border-slate-800">
+                    <AvatarFallback className="text-[10px]">+{presentUsers.length - 5}</AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
               <Button variant="outline" size="sm">
                 <Users className="w-4 h-4 mr-2" /> Share
               </Button>
               <Button variant="outline" size="sm">
                 <Settings className="w-4 h-4 mr-2" /> Settings
               </Button>
-              <Button variant="outline" size="icon">
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
-            <StatCard
-              label="Progress"
-              value={`${project.progress}%`}
-              icon={<TrendingUp className="w-4 h-4" />}
-            />
-            <StatCard
-              label="Tasks"
-              value={project.tasks.length.toString()}
-              icon={<ListTodo className="w-4 h-4" />}
-            />
-            <StatCard
-              label="Milestones"
-              value={project.milestones.length.toString()}
-              icon={<Calendar className="w-4 h-4" />}
-            />
-            <StatCard
-              label="Velocity"
-              value={project.velocity.toString()}
-              icon={<TrendingUp className="w-4 h-4" />}
-            />
-          </div>
-
-          {/* Progress Bar */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-slate-600 dark:text-slate-400">Overall progress</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {new Date(project.startDate).toLocaleDateString()} -{' '}
-                {new Date(project.endDate).toLocaleDateString()}
-              </span>
+          <div className="grid grid-cols-3 gap-6">
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-slate-800 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-indigo-600" />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Progress</span>
+                </div>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Q3</span>
+              </div>
+              <Progress value={45} className="h-2" />
             </div>
-            <Progress value={project.progress} className="h-1.5" />
-          </div>
 
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-slate-100 dark:bg-slate-900/50 border-0">
-              <TabsTrigger value="roadmap" className="text-sm">Roadmap</TabsTrigger>
-              <TabsTrigger value="kanban" className="text-sm">Tasks</TabsTrigger>
-              <TabsTrigger value="calendar" className="text-sm">Calendar</TabsTrigger>
-              <TabsTrigger value="files" className="text-sm">Files</TabsTrigger>
-            </TabsList>
-          </Tabs>
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-slate-800 rounded-lg p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Calendar className="w-4 h-4 text-indigo-600" />
+                <span className="text-sm text-slate-600 dark:text-slate-400">Upcoming milestones</span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Alpha release</span>
+                  <Badge variant="outline">Sep 15</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Beta release</span>
+                  <Badge variant="outline">Oct 30</Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-slate-800 rounded-lg p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <ListTodo className="w-4 h-4 text-indigo-600" />
+                <span className="text-sm text-slate-600 dark:text-slate-400">Open tasks</span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">High priority</span>
+                  <Badge variant="outline">12</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Overdue</span>
+                  <Badge variant="outline">3</Badge>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Content */}
       <div className="p-6">
-        <Tabs value={activeTab}>
-          <TabsContent value="roadmap" className="mt-0">
-            <RoadmapView milestones={project.milestones} />
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="roadmap">Roadmap</TabsTrigger>
+            <TabsTrigger value="kanban">Kanban</TabsTrigger>
+            <TabsTrigger value="calendar">Calendar</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
+          </TabsList>
+          <TabsContent value="roadmap">
+            <RoadmapView projectId={projectId} />
           </TabsContent>
-
-          <TabsContent value="kanban" className="mt-0">
-            <KanbanView
-              tasks={project.tasks}
-              onTaskClick={(task) => setSelectedTask(task)}
-            />
+          <TabsContent value="kanban">
+            <KanbanView projectId={projectId} onOpenTask={(t) => setSelectedTask(t)} />
           </TabsContent>
-
-          <TabsContent value="calendar" className="mt-0">
-            <CalendarView
-              tasks={project.tasks}
-              milestones={project.milestones}
-              onTaskClick={(task) => setSelectedTask(task)}
-            />
+          <TabsContent value="calendar">
+            <CalendarView projectId={projectId} />
           </TabsContent>
-
-          <TabsContent value="files" className="mt-0">
-            <FilesView />
+          <TabsContent value="files">
+            <FilesView projectId={projectId} />
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Task Modal */}
-      <TaskModal
-        task={selectedTask}
-        isOpen={!!selectedTask}
-        onClose={() => setSelectedTask(null)}
-        teamId={project?.team?.id ?? null}
-      />
-    </div>
-  );
-}
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-}
-
-function StatCard({ label, value, icon }: StatCardProps) {
-  return (
-    <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg">
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/50 text-indigo-600 dark:text-indigo-400">
-          {icon}
-        </div>
-        <div>
-          <p className="text-xl text-slate-900 dark:text-white">{value}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-        </div>
-      </div>
+      {selectedTask && (
+        <TaskModal task={selectedTask} onClose={() => setSelectedTask(null)} />
+      )}
     </div>
   );
 }

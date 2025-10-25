@@ -84,6 +84,13 @@ export async function createTask(req: Request, res: Response) {
   if (task.milestone?.id) {
     await recalcMilestoneProgress(task.milestone.id);
   }
+  try {
+    const { getIO } = await import('./realtime.js');
+    const io = getIO();
+    if (io && project?.id) {
+      io.to(`project:${project.id}`).emit('task:created', { taskId: task.id, task });
+    }
+  } catch {}
   res.status(201).json(task);
 }
 
@@ -108,6 +115,14 @@ export async function updateTask(req: Request, res: Response) {
     task.assignee = assignee || null;
   }
   await repo.save(task);
+  try {
+    const { getIO } = await import('./realtime.js');
+    const io = getIO();
+    const projectId = (task.project as any)?.id || req.body?.projectId;
+    if (io && projectId) {
+      io.to(`project:${projectId}`).emit('task:updated', { taskId: task.id, task });
+    }
+  } catch {}
   res.json(task);
 }
 

@@ -101,12 +101,18 @@ if (fs.existsSync(path.join(uiDist, "index.html"))) {
   });
 }
 
+import http from 'http';
+import { initRealtime } from './controllers/realtime.js';
+
 const port = Number(process.env.PORT) || 3001;
 const host = process.env.HOST || '0.0.0.0';
 
 await initDB();
 
-app.listen(port, host as any, () => {
+const server = http.createServer(app);
+initRealtime(server);
+
+server.listen(port, host as any, () => {
   const url = `http://${host}:${port}`;
   const publicDomain = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_STATIC_URL;
   const hint = publicDomain ? ` (public: https://${publicDomain})` : '';

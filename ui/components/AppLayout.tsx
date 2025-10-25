@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
+import { getSocket, joinProjectRoom, leaveCurrentRoom } from '../lib/socket';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -15,8 +16,22 @@ export function AppLayout({ children }: AppLayoutProps) {
     const p = location.pathname;
     if (p.startsWith('/settings')) return 'settings';
     if (p.startsWith('/notifications')) return 'notifications';
-    if (p.startsWith('/project')) return 'project';
+    if (p.startsWith('/projects/')) return 'project';
     return 'dashboard';
+  }, [location.pathname]);
+
+  useEffect(() => {
+    // Initialize socket connection (auth handled via token in getSocket)
+    getSocket();
+  }, []);
+
+  useEffect(() => {
+    // Extract project id from URL
+    const match = location.pathname.match(/\/projects\/(\d+)/);
+    const pId = match?.[1] || null;
+    setSelectedProject(pId);
+    if (pId) joinProjectRoom(pId);
+    else leaveCurrentRoom();
   }, [location.pathname]);
 
   function handleNavigate(view: string) {
@@ -31,10 +46,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         navigate('/notifications');
         break;
       case 'project':
-        navigate(selectedProject ? `/project/${selectedProject}` : '/dashboard');
+        navigate(selectedProject ? `/projects/${selectedProject}` : '/dashboard');
         break;
       case 'project_create':
-        // For now, keep user on dashboard; creation handled within Dashboard UI
         navigate('/dashboard');
         break;
       default:
@@ -44,11 +58,10 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   function handleSelectProject(id: string) {
     setSelectedProject(id);
-    navigate(`/project/${id}`);
+    navigate(`/projects/${id}`);
   }
 
   function handleOpenCreateProject() {
-    // No-op for now; dashboard handles its own picker/modal
     navigate('/dashboard');
   }
 

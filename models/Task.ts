@@ -24,7 +24,8 @@ export class Task {
   @Column("simple-array", { nullable: true })
   labels?: string[];
 
-  @Column({ type: "timestamptz", nullable: true })
+  // Use a cross-db compatible type for date-time
+  @Column({ type: "datetime", nullable: true })
   dueDate?: Date | null;
 
   @ManyToOne(() => Milestone, { nullable: true, onDelete: "SET NULL" })

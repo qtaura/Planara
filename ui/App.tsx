@@ -18,6 +18,7 @@ import { SignupProvidersScreen } from './components/SignupProvidersScreen';
 import { EmailSignupScreen } from './components/EmailSignupScreen';
 import { SetUsernameScreen } from './components/SetUsernameScreen';
 import { EmailVerificationScreen } from './components/EmailVerificationScreen';
+import { getSocket, joinProjectRoom, leaveCurrentRoom } from '@lib/socket';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('landing');
@@ -36,6 +37,20 @@ function AppContent() {
     return () => window.removeEventListener('auth:required', handler);
   }, []);
 
+  // Initialize socket connection and stay connected across views
+  useEffect(() => {
+    try { getSocket(); } catch {}
+  }, []);
+
+  // Join/leave project rooms based on current view
+  useEffect(() => {
+    if (currentView === 'project' && selectedProject) {
+      joinProjectRoom(selectedProject);
+    } else {
+      leaveCurrentRoom();
+    }
+  }, [currentView, selectedProject]);
+
   // Navigate after auth completes
   useEffect(() => {
     const handler = () => setCurrentView('dashboard');
@@ -51,28 +66,26 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    const goVerify = (e: Event) => {
-      const detail: any = (e as CustomEvent).detail || {};
-      if (detail?.email) setVerificationEmail(detail.email);
-      const needsUsername = !!detail?.needsUsername || !!detail?.created;
-      setPostVerifyView(needsUsername ? 'signup_username' : 'dashboard');
-      try {
-        const user = getCurrentUser();
-        if (user && (user.isVerified || user.verified)) {
-          // Already verified; skip verification UI
-          setCurrentView(needsUsername ? 'signup_username' : 'dashboard');
-          return;
-        }
-      } catch {}
-      setCurrentView('verify' as any);
+    const handler = () => {
+      const p = localStorage.getItem('navigate_to_project');
+      if (p) { setSelectedProject(p); setCurrentView('project'); localStorage.removeItem('navigate_to_project'); }
     };
-    window.addEventListener('auth:verification_required', goVerify as any);
-    window.addEventListener('auth:needs_verification', goVerify as any);
-    return () => {
-      window.removeEventListener('auth:verification_required', goVerify as any);
-      window.removeEventListener('auth:needs_verification', goVerify as any);
-    };
+    window.addEventListener('projects:open', handler);
+    return () => window.removeEventListener('projects:open', handler);
   }, []);
+
+  // Keep URL in sync with view for refresh-friendly navigation
+  useEffect(() => {
+    const path = viewToPath(currentView);
+    if (window.location.pathname !== path) {
+      window.history.replaceState({}, '', path);
+    }
+  }, [currentView, selectedProject]);
+
+  const handleNavigate = (view: ViewType, projectId?: string) => {
+    if (view === 'project' && projectId) setSelectedProject(projectId);
+    setCurrentView(view);
+  };
 
   const viewToPath = (view: ViewType): string => {
     switch (view) {
@@ -107,24 +120,13 @@ function AppContent() {
   };
 
   useEffect(() => {
-    // Initialize view from current path and listen to browser navigation
-    setCurrentView(pathToView(window.location.pathname));
-    const onPop = () => setCurrentView(pathToView(window.location.pathname));
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, []);
-
-  const handleNavigate = (view: ViewType) => {
-    const path = viewToPath(view);
-    if (window.location.pathname !== path) {
-      window.history.pushState({}, '', path);
-    }
+    const view = pathToView(window.location.pathname);
     setCurrentView(view);
-  };
-
-  const handleSelectProject = (projectId: string) => {
-    setSelectedProject(projectId);
-  };
+    if (view === 'project') {
+      const m = window.location.pathname.match(/\/projects\/(\d+)/);
+      if (m?.[1]) setSelectedProject(m[1]);
+    }
+  }, []);
 
   const handleCreateProject = () => {
     setShowCreateProject(false);
@@ -193,42 +195,25 @@ function AppContent() {
       <AppSidebar
         activeView={currentView}
         activeProject={selectedProject}
-        onNavigate={handleNavigate}
-        onSelectProject={handleSelectProject}
+        onNavigate={(v) => handleNavigate(v)}
+        onSelectProject={(id) => handleNavigate('project', id)}
         onOpenCreateProject={() => setShowCreateProject(true)}
       />
 
-      <div className="flex-1 relative overflow-auto">
-        {showUnverifiedBanner && user?.email && (
-          <div className="sticky top-0 z-20 bg-amber-50 dark:bg-amber-900/40 border-b border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 px-4 py-2 flex items-center justify-between">
-            <span className="text-sm">Your email is not verified. Some features are disabled.</span>
-            <button
-              className="text-sm font-medium underline"
-              onClick={() => {
-                setVerificationEmail(user.email);
-                setPostVerifyView(currentView);
-                setCurrentView('verify' as any);
-              }}
-            >
-              Verify now
-            </button>
+      <div className="flex-1 h-screen overflow-y-auto">
+        {showUnverifiedBanner && (
+          <div className="p-3 bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-400 text-sm text-center">
+            Please verify your email address to continue using Planara.
           </div>
         )}
 
         {currentView === 'dashboard' && (
-          <Dashboard
-            onSelectProject={handleSelectProject}
-            onNavigate={handleNavigate}
-            onOpenCreateProject={() => setShowCreateProject(true)}
-          />
-        )}
-
-        {currentView === 'project' && selectedProject && (
-          <ProjectView projectId={selectedProject} />
+          <Dashboard onOpenCreateProject={() => setShowCreateProject(true)} onOpenProject={(id) => handleNavigate('project', id)} />
         )}
 
         {currentView === 'settings' && <SettingsScreen />}
         {currentView === 'notifications' && <NotificationScreen />}
+        {currentView === 'project' && selectedProject && <ProjectView projectId={selectedProject} />}
         {currentView === 'verify' && (
           <EmailVerificationScreen
             email={verificationEmail}
