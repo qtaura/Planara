@@ -430,7 +430,7 @@ function AdminSection() {
     setLoading(true); setError(null); setMessage(null);
     try {
       const state = await getLockoutState(targetEmail.trim(), adminToken.trim());
-      setLockoutState(state);
+      setLockoutState(state || null);
       setMessage('Fetched lockout state');
     } catch (e: any) {
       setError(e?.message || 'Failed to fetch lockout state');
@@ -473,9 +473,7 @@ function AdminSection() {
     setLoading(true); setError(null); setMessage(null);
     try {
       await adminUnlock(targetEmail.trim(), adminToken.trim());
-      setMessage('Unlock triggered successfully');
-      await fetchLockout();
-      await fetchEvents();
+      setMessage('Account unlocked');
     } catch (e: any) {
       setError(e?.message || 'Failed to unlock');
     } finally { setLoading(false); }
@@ -506,89 +504,143 @@ function AdminSection() {
   }
 
   return (
-    <section className="settings-section" aria-label="Admin Controls">
-      <h3>Admin Controls</h3>
-      <p className="muted">Restricted to planara account (hello@planara.org). Requires admin token.</p>
-      <div className="form-grid">
-        <label>Admin Token
-          <input type="password" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} placeholder="Enter admin token" />
-        </label>
-        <label>Target Email
-          <input type="email" value={targetEmail} onChange={(e) => setTargetEmail(e.target.value)} placeholder="user@example.com" />
-        </label>
+    <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
+      <h3 className="text-slate-900 dark:text-white mb-2">Admin Controls</h3>
+      <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">Restricted to planara account (hello@planara.org). Requires admin token.</p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label className="mb-1 block">Admin Token</Label>
+          <Input type="password" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} placeholder="Enter admin token" />
+        </div>
+        <div>
+          <Label className="mb-1 block">Target Email</Label>
+          <Input type="email" value={targetEmail} onChange={(e) => setTargetEmail(e.target.value)} placeholder="user@example.com" />
+        </div>
       </div>
 
-      <div className="form-grid" style={{ marginTop: 12 }}>
-        <label>Event Type
-          <input type="text" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} placeholder="e.g. login_failed, secret_rotated" />
-        </label>
-        <label>IP Filter
-          <input type="text" value={ipFilter} onChange={(e) => setIpFilter(e.target.value)} placeholder="e.g. 203.0.113.5" />
-        </label>
-        <label>From
-          <input type="datetime-local" value={from} onChange={(e) => setFrom(e.target.value)} />
-        </label>
-        <label>To
-          <input type="datetime-local" value={to} onChange={(e) => setTo(e.target.value)} />
-        </label>
-        <label>Limit
-          <input type="number" min={1} max={500} value={limit} onChange={(e) => setLimit(Number(e.target.value || 50))} />
-        </label>
+      <Separator className="my-6" />
+
+      <h4 className="text-sm text-slate-900 dark:text-white mb-3">Filters</h4>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <Label className="mb-1 block">Event Type</Label>
+          <Input value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} placeholder="login_failed, verify_failed" />
+        </div>
+        <div>
+          <Label className="mb-1 block">IP Filter</Label>
+          <Input value={ipFilter} onChange={(e) => setIpFilter(e.target.value)} placeholder="203.0.113.5" />
+        </div>
+        <div>
+          <Label className="mb-1 block">Limit</Label>
+          <Input type="number" min={1} max={500} value={limit} onChange={(e) => setLimit(Number(e.target.value || 50))} />
+        </div>
+        <div>
+          <Label className="mb-1 block">From</Label>
+          <Input type="datetime-local" value={from} onChange={(e) => setFrom(e.target.value)} />
+        </div>
+        <div>
+          <Label className="mb-1 block">To</Label>
+          <Input type="datetime-local" value={to} onChange={(e) => setTo(e.target.value)} />
+        </div>
       </div>
 
-      <div className="actions">
-        <button disabled={loading || !adminToken || !targetEmail} onClick={fetchLockout}>View Lockout State</button>
-        <button disabled={loading || !adminToken || !targetEmail} onClick={fetchEvents}>View Recent Events</button>
-        <button disabled={loading || !adminToken || !targetEmail} onClick={fetchRotationHistory}>View Rotation History</button>
-        <button disabled={loading || !adminToken || !targetEmail} onClick={doUnlock} className="danger">Unlock Account</button>
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Button variant="outline" disabled={loading || !adminToken || !targetEmail} onClick={fetchLockout}>View Lockout State</Button>
+        <Button variant="outline" disabled={loading || !adminToken || !targetEmail} onClick={fetchEvents}>View Recent Events</Button>
+        <Button variant="outline" disabled={loading || !adminToken || !targetEmail} onClick={fetchRotationHistory}>View Rotation History</Button>
+        <Button className="bg-red-600 hover:bg-red-700 text-white" disabled={loading || !adminToken || !targetEmail} onClick={doUnlock}>Unlock Account</Button>
       </div>
 
-      <div className="form-grid" style={{ marginTop: 12 }}>
-        <label>Ban Reason (optional)
-          <input type="text" value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Reason for ban" />
-        </label>
-        <label>New Username
-          <input type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="new_username" />
-        </label>
+      <Separator className="my-6" />
+
+      <h4 className="text-sm text-slate-900 dark:text-white mb-3">Account Actions</h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label className="mb-1 block">Ban Reason (optional)</Label>
+          <Input value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Reason for ban" />
+        </div>
+        <div>
+          <Label className="mb-1 block">New Username</Label>
+          <Input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="new_username" />
+        </div>
       </div>
-      <div className="actions">
-        <button disabled={loading || !adminToken || !targetEmail} onClick={doBan} className="danger">Ban & Purge Account</button>
-        <button disabled={loading || !adminToken || !targetEmail || !newUsername} onClick={doChangeUsername}>Change Username</button>
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Button className="bg-red-600 hover:bg-red-700 text-white" disabled={loading || !adminToken || !targetEmail} onClick={doBan}>Ban & Purge Account</Button>
+        <Button disabled={loading || !adminToken || !targetEmail || !newUsername} onClick={doChangeUsername}>Change Username</Button>
       </div>
 
-      {message && <div className="notice success">{message}</div>}
-      {error && <div className="notice error">{error}</div>}
+      {message && (
+        <div role="alert" className="mt-6 rounded-md border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-200 p-3 text-sm">
+          {message}
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="mt-6 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200 p-3 text-sm">
+          {error}
+        </div>
+      )}
+
       {lockoutState && (
-        <div className="card">
-          <h4>Lockout State</h4>
-          <pre>{JSON.stringify(lockoutState, null, 2)}</pre>
+        <div className="mt-6 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+          <h4 className="text-sm text-slate-900 dark:text-white mb-2">Lockout State</h4>
+          <pre className="text-xs overflow-auto max-h-64 bg-slate-50 dark:bg-slate-900/30 p-3 rounded-md">{JSON.stringify(lockoutState, null, 2)}</pre>
         </div>
       )}
+
       {events && events.length > 0 && (
-        <div className="card">
-          <h4>Recent Security Events</h4>
-          <ul>
-            {events.map((ev: any, i: number) => (
-              <li key={ev?.id || i}>
-                <strong>{ev?.eventType}</strong> — {ev?.email || ''} — {new Date(ev?.createdAt).toLocaleString()} — {ev?.ip || ''}
-              </li>
-            ))}
-          </ul>
+        <div className="mt-6 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+          <h4 className="text-sm text-slate-900 dark:text-white mb-2">Recent Security Events</h4>
+          <div className="overflow-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="text-slate-600 dark:text-slate-400">
+                <tr>
+                  <th className="py-2">Type</th>
+                  <th className="py-2">Email</th>
+                  <th className="py-2">IP</th>
+                  <th className="py-2">Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((ev: any, i: number) => (
+                  <tr key={ev?.id || i} className="border-t border-slate-100 dark:border-slate-800">
+                    <td className="py-2">{ev?.eventType}</td>
+                    <td className="py-2">{ev?.email || ''}</td>
+                    <td className="py-2">{ev?.ip || ''}</td>
+                    <td className="py-2">{new Date(ev?.createdAt).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+
       {rotations && rotations.length > 0 && (
-        <div className="card">
-          <h4>Rotation History</h4>
-          <ul>
-            {rotations.map((ev: any, i: number) => (
-              <li key={ev?.id || i}>
-                <strong>{ev?.eventType}</strong> — {new Date(ev?.createdAt).toLocaleString()} — {ev?.ip || ''}
-              </li>
-            ))}
-          </ul>
+        <div className="mt-6 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+          <h4 className="text-sm text-slate-900 dark:text-white mb-2">Rotation History</h4>
+          <div className="overflow-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="text-slate-600 dark:text-slate-400">
+                <tr>
+                  <th className="py-2">Type</th>
+                  <th className="py-2">IP</th>
+                  <th className="py-2">Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rotations.map((ev: any, i: number) => (
+                  <tr key={ev?.id || i} className="border-t border-slate-100 dark:border-slate-800">
+                    <td className="py-2">{ev?.eventType}</td>
+                    <td className="py-2">{ev?.ip || ''}</td>
+                    <td className="py-2">{new Date(ev?.createdAt).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
-    </section>
+    </Card>
   );
 }
-// Removed duplicate tail after deleting duplicated SettingsScreen
