@@ -5,65 +5,66 @@
 </p>
 
 <p align="center">
-  Strategic planning platform with modern UX, TypeScript end-to-end, and OAuth-enabled authentication.
+  Modern verification-first workspace. Production-grade UX, end-to-end TypeScript, and secure email-based onboarding.
 </p>
 
 <p align="center">
-  <a href="#getting-started">Getting Started</a> •
-  <a href="#features">Features</a> •
-  <a href="#architecture">Architecture</a> •
+  <a href="#overview">Overview</a> •
+  <a href="#verification-flow">Verification Flow</a> •
+  <a href="#quickstart">Quickstart</a> •
   <a href="#configuration">Configuration</a> •
-  <a href="#api-overview">API Overview</a> •
-  <a href="#development">Development</a> •
-  <a href="#troubleshooting">Troubleshooting</a> •
-  <a href="#changelog">Changelog</a>
-</p>
-
-<p align="center">
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white"/>
-  <img alt="Vite" src="https://img.shields.io/badge/Vite-5.x-646CFF?logo=vite&logoColor=white"/>
-  <img alt="Node" src="https://img.shields.io/badge/Node-20+-339933?logo=node.js&logoColor=white"/>
-  <img alt="Build" src="https://img.shields.io/badge/Build-tsc%20%F0%9F%94%A7-blue"/>
+  <a href="#dev-mode">Dev Mode</a> •
+  <a href="#api">API</a> •
+  <a href="#testing">Testing</a> •
+  <a href="#monitoring">Monitoring</a> •
+  <a href="#troubleshooting">Troubleshooting</a>
 </p>
 
 ---
 
 ## Overview
-Planara is a full-stack TypeScript application that pairs a Vite + React UI with a Node.js + Express backend using TypeORM and SQLite for storage. It’s designed to feel production-grade while staying easy to run locally.
+Planara is a full-stack TypeScript application with a React + Vite frontend and an Express + TypeORM backend. It focuses on a secure, enumeration-safe email verification journey and a clean developer experience.
 
-- End-to-end TypeScript with strict configs and decorator metadata.
-- OAuth login (GitHub, Google, Slack) and classic username/password.
-- Case-insensitive usernames with conflict checks and a one-time change limit.
-- Modern UI: Tailwind v4, Radix UI, dark/light theme toggle, helpful login errors, Caps Lock detection.
-- Real-time-ish UI refresh via event dispatch for projects, tasks, and milestones.
+- End-to-end TypeScript with strict configs.
+- Modern UI with Tailwind v4, dark/light theme, and accessible flows.
+- Robust email verification: case-insensitive, rate-limited, and lockout-protected.
+- Optional monitoring hooks (Sentry) without hard dependencies.
 
-## Features
-- Authentication: JWT-based sessions, OAuth via GitHub/Google/Slack.
-- Projects/Tasks/Milestones: CRUD with progress calculations and toasts.
-- Profile: Avatar upload, immediate UI propagation after save.
-- Theming: Dark/light persisted via `localStorage`, toggle from Sign-In.
-- Robust UX: Clear error messages for login, inline Caps Lock hint.
 
-## Tech Stack
-- Frontend: React 18, Vite 5, Tailwind v4 (via `@tailwindcss/postcss`), Radix UI.
-- Backend: Node 20+, Express, TypeORM, SQLite.
-- Language: TypeScript across client and server.
+## Verification Flow
+Email verification is designed to be secure, predictable, and user-friendly.
 
-## Getting Started
+- Case-insensitive emails: all emails are trimmed and lowercased on receipt.
+- Enumeration-safe responses:
+  - Send Code returns a generic success even if the email does not exist or is already verified.
+  - Verify Code always returns a generic invalid response for nonexistent users or already-verified accounts.
+- Rate limiting and backoff:
+  - Resend cooldown (1 minute) with escalating backoff on rapid requests.
+  - Verify attempts use progressive backoff and temporary lockouts after repeated failures.
+- Replay protection: codes are marked used after verification and old codes are purged.
+- Status endpoint: provides verification state for known users.
+
+Endpoints (under `GET/POST /api/users/...`):
+- `POST /auth/send-code` – Request a verification code.
+- `POST /auth/verify-code` – Submit the 6-digit code to verify.
+- `GET /auth/verification-status/:email` – Check a user’s verification status.
+
+
+## Quickstart
 ### Prerequisites
-- Node.js 20+ (18 works, 20 recommended)
-- npm 9+
+- `Node.js 20+` (18 works, 20 recommended)
+- `npm 9+`
 
-### Clone & Install
+### Install
 ```bash
 # Clone
 git clone https://github.com/qtaura/Planara.git
 cd Planara
 
-# Install backend deps
+# Backend deps
 npm install
 
-# Install UI deps
+# UI deps
 cd ui
 npm install
 ```
@@ -71,113 +72,109 @@ npm install
 ### Run Backend
 ```bash
 cd ..
-# Compile TypeScript (ensures decorator metadata is emitted)
+# Build TypeScript (ensures decorator metadata for TypeORM)
 npm run build
-# Start API server on an open port (example 3010)
+# Start API server (example PORT=3010)
 PORT=3010 npm start
-# API will be available at http://localhost:3010/api
+# API available at http://localhost:3010/api
 ```
 
 ### Run Frontend
 ```bash
 cd ui
-# Point the UI at the API port you chose
+# Point UI at your API
 VITE_API_URL=http://localhost:3010/api npm run dev
-# Vite will start at http://localhost:5173 or the next free port
+# Dev server at http://localhost:5173 (or next free port)
 ```
 
-## Architecture
-- `ui/`: Vite React UI, Tailwind v4 styling, Radix components, domain data via `lib/api.ts`.
-- `controllers/`, `routes/`, `entities/`: Backend organization for business logic, HTTP routing, and DB models.
-- `tsconfig.server.json`: Enables `experimentalDecorators` and `emitDecoratorMetadata` for TypeORM.
-- Storage: SQLite via TypeORM `DataSource`, local file under `db/`.
 
 ## Configuration
-### Frontend (UI)
-- `VITE_API_URL`: Base URL for API calls (e.g., `http://localhost:3010/api`).
+### Backend
+- `PORT` – API port (default: `3001`).
+- `JWT_SECRET` – Secret for signing tokens.
+- `RESEND_API_KEY` – Email provider key (if absent, dev mode exposes `devCode`).
+- `CODE_SIGN_SECRET` – Optional HMAC secret for codes (default: dev secret).
+- Optional monitoring:
+  - `SENTRY_DSN` – Enable backend monitoring (if set).
+  - `SENTRY_TRACES_SAMPLE_RATE` – Optional traces sampling rate (e.g., `0.1`).
 
-### Backend (Server)
-- `PORT`: API port, defaults to 3001 but can be set (e.g., 3010).
-- `JWT_SECRET`: Secret used to sign tokens.
-- OAuth providers:
-  - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
-  - `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`
-  - `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (optional)
+### Frontend (ui/)
+- `VITE_API_URL` – Base API URL (e.g., `http://localhost:3010/api`).
+- Optional monitoring:
+  - `VITE_SENTRY_DSN` – Enable frontend monitoring (if set).
+  - `VITE_SENTRY_TRACES_SAMPLE_RATE` – Optional traces sampling rate.
 
-Ensure OAuth callback URLs match your configured `PORT`, e.g.:
-- `http://localhost:3010/api/users/oauth/google/callback`
-- `http://localhost:3010/api/users/oauth/slack/callback`
-- `http://localhost:3010/api/users/oauth/github/callback`
 
-## API Overview
-Base: `http://localhost:<PORT>/api`
+## Dev Mode
+Purpose: make local development easy without external providers.
 
-- `GET /health` — Service readiness
-- `POST /users/signup` — Create account
-- `POST /users/login` — Login with username/email + password
-- `GET /users` — List users
-- `POST /users/oauth/:provider/start` — Begin OAuth (popup)
-- `GET /users/oauth/:provider/callback` — OAuth callback → JWT
-- `PUT /users/:id` — Update profile (avatar, username; enforces uniqueness + change limit)
-- `CRUD /projects`, `CRUD /tasks`, `CRUD /milestones`, `CRUD /comments`
+- If `RESEND_API_KEY` is not set, `POST /auth/send-code` responds with `devCode` containing the 6-digit code so you can verify immediately.
+- Emails are always normalized (trim + lowercase) across all endpoints.
+- Responses are enumeration-safe: nonexistence and already-verified states do not leak.
+- UI detects offline mode and surfaces helpful messaging for retry.
 
-## Development
-- Server scripts:
-  - `npm run dev` — tsx watch (for development; decorators require correct config)
-  - `npm run build` — `tsc -p tsconfig.server.json`
-  - `npm start` — Run compiled server (`dist/index.js`)
-- UI scripts (inside `ui/`):
-  - `npm run dev` — Start Vite dev server
-  - `npm run build` — Type-check + build
-  - `npm run preview` — Serve built assets
 
-## Security & Auth Notes
-- Usernames are stored with a lowercase shadow column to enforce case-insensitive uniqueness.
-- Users can change their username once; further attempts are rejected with clear messaging.
-- JWT is issued for classic login and OAuth callbacks; tokens are handled by `ui/lib/api.ts`.
-- OAuth error messages are normalized to avoid leaking provider details.
+## API
+Detailed request/response examples for verification are available at:
+- `docs/api/email-verification.md`
 
-## UX Enhancements
-- Sign-In screen includes a dark/light mode toggle.
-- Caps Lock detection on password field with inline hint.
-- Normalized login errors: incorrect password, invalid credentials, and network issues.
-- Profile avatar saves broadcast UI updates to keep the app in sync.
+Summary:
+- `POST /api/users/auth/send-code`
+- `POST /api/users/auth/verify-code`
+- `GET /api/users/auth/verification-status/:email`
+
+Admin endpoints:
+- `POST /api/users/auth/admin/unlock` – Clear lockouts/backoffs for a user (auth required).
+- `GET /api/users/auth/admin/lockout-state/:email` – Inspect lockout/backoff state (auth required).
+- `GET /api/users/auth/admin/events/:email` – Recent security events (auth required).
+- `GET /api/users/auth/admin/rotations/:email` – Verification secret rotations (auth required).
+
+
+## Testing
+- Backend tests (integration): `npm run test:run`
+- UI tests (vitest):
+  - From `ui/`: `npm run test`
+  - Email normalization and offline behavior covered in `ui/components/__tests__/`.
+
+
+## Monitoring
+Sentry instrumentation is optional and uses runtime-only imports:
+- Backend: set `SENTRY_DSN` to enable; no package required unless configured.
+- Frontend: set `VITE_SENTRY_DSN` to enable.
+
+Errors are captured via global handlers in both backend and UI.
+
 
 ## Troubleshooting
-- `EADDRINUSE`: If the server port is busy, set `PORT` to an unused port (e.g., 3010).
-- Decorators: Always build with `npm run build` before `npm start` to ensure metadata is emitted.
-- Vite port: The UI chooses a free port automatically (5173+). Update `VITE_API_URL` if needed.
-- SQLite: Local DB files under `db/` should be ignored by Git; do not commit them.
+- Port conflicts: change `PORT` for backend or `VITE_API_URL` for UI.
+- Decorators: build the backend before starting (`npm run build`).
+- Offline UI: UI shows offline toasts and retries once network reconnects.
+- Windows build EPERM: ensure dev servers are stopped before running UI build or run terminal as Administrator.
 
-## Project Structure (monorepo)
+
+## Project Structure
 ```
 Planara/
 ├── README.md
-├── CHANGELOG.md
 ├── package.json
-├── tsconfig.server.json
-├── db/
-├── entities/
 ├── controllers/
+├── models/
 ├── routes/
+├── db/
+├── tests/
 ├── ui/
-│   ├── index.html
-│   ├── main.tsx
-│   ├── App (1).tsx
 │   ├── components/
-│   ├── styles/globals.css
 │   ├── lib/
+│   ├── styles/
 │   ├── types/
-│   ├── data/
-│   ├── postcss.config.js
 │   ├── vite.config.ts
 │   └── package.json
+└── docs/
+    ├── api/
+    ├── ux/
+    └── load-testing.md
 ```
 
 ## Contributing
-- Use Conventional Commits (e.g., `feat:`, `fix:`, `docs:`).
-- Keep code changes focused and aligned with existing style.
-- Open a PR with a clear description and testing notes.
-
-## Changelog
-See [`CHANGELOG.md`](./CHANGELOG.md) for detailed release notes.
+- Use focused PRs and conventional commits (e.g., `feat:`, `fix:`, `docs:`).
+- Keep changes minimal and aligned with existing style.
