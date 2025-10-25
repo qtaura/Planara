@@ -520,3 +520,29 @@ export async function adminBanUser(email: string, adminToken: string, reason?: s
   if (!res.ok) throw new Error(json?.error || `Ban failed: ${res.status}`);
   return json;
 }
+
+export async function inviteToTeam(identifier: string) {
+  const res = await apiFetch('/users/auth/team/invite', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to send invite: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function acceptTeamInvite(from: number) {
+  const res = await apiFetch('/users/auth/team/accept', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to accept invite: ${res.status}`);
+  }
+  return res.json();
+}

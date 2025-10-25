@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Check, CheckCheck, Trash2, AlertCircle, Info, CheckCircle, Clock } from 'lucide-react';
-import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '@lib/api';
+import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, acceptTeamInvite } from '@lib/api';
+import { toast } from 'sonner';
 
 interface Notification {
   id: number;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: string;
   read: boolean;
   createdAt: string;
   actionUrl?: string;
@@ -67,6 +68,36 @@ export default function NotificationScreen() {
       window.dispatchEvent(new CustomEvent('notifications:changed'));
     } catch (err) {
       console.error('Error deleting notification:', err);
+    }
+  }
+
+  function parseInviterId(actionUrl?: string): number | null {
+    if (!actionUrl) return null;
+    try {
+      const url = new URL(actionUrl);
+      const from = url.searchParams.get('from');
+      return from ? Number(from) : null;
+    } catch {
+      const m = actionUrl.match(/[?&]from=(\d+)/);
+      return m ? Number(m[1]) : null;
+    }
+  }
+
+  async function handleAcceptInvite(notification: Notification) {
+    const inviterId = parseInviterId(notification.actionUrl);
+    if (!inviterId) {
+      toast.error('Invalid invite link');
+      return;
+    }
+    try {
+      await acceptTeamInvite(inviterId);
+      toast.success('Joined the team successfully');
+      // Mark as read and remove from list
+      setNotifications(prev => prev.filter(n => n.id !== notification.id));
+      window.dispatchEvent(new CustomEvent('notifications:changed'));
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to accept invite';
+      toast.error(msg);
     }
   }
 
@@ -209,14 +240,14 @@ export default function NotificationScreen() {
                     </div>
                   </div>
                   
-                  {notification.actionUrl && (
+                  {notification.actionUrl && notification.type === 'team_invite' && (
                     <div className="mt-3">
-                      <a
-                        href={notification.actionUrl}
-                        className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+                      <button
+                        onClick={() => handleAcceptInvite(notification)}
+                        className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
                       >
-                        View Details →
-                      </a>
+                        Accept Invite
+                      </button>
                     </div>
                   )}
                 </div>

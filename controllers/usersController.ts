@@ -10,6 +10,8 @@ import { BannedEmail } from "../models/BannedEmail.js";
 import { RefreshToken } from "../models/RefreshToken.js";
 import { isUsernameDisallowed, disallowedReason, isUsernameFormatValid, sanitizeUsernameToAllowed } from "../services/usernamePolicy.js";
 import { recordUsernameRejected } from "../services/securityTelemetry.js";
+import { Notification } from "../models/Notification.js";
+import { authenticate } from "../middlewares/auth.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "dev_refresh_secret";
@@ -495,5 +497,85 @@ export async function adminSetUsername(req: Request, res: Response) {
     return res.status(200).json({ success: true });
   } catch (e) {
     return res.status(500).json({ success: false, error: 'Failed to change username' });
+  }
+}
+
+export async function inviteToTeam(req: Request, res: Response) {
+  try {
+    const inviterId = (req as any).userId as number | undefined;
+    if (!inviterId) return res.status(401).json({ error: 'unauthorized' });
+    const identifier = String(req.body?.identifier || '').trim();
+    if (!identifier) return res.status(400).json({ error: 'identifier is required' });
+
+    const userRepo = AppDataSource.getRepository(User);
+    const inviter = await userRepo.findOne({ where: { id: inviterId } });
+    if (!inviter) return res.status(404).json({ error: 'inviter not found' });
+
+    // Resolve target by username or email
+    let target: User | null = null;
+    if (identifier.includes('@')) {
+      target = await userRepo
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = :email', { email: identifier.toLowerCase() })
+        .getOne();
+    } else {
+      target = await userRepo.findOne({ where: { usernameLower: identifier.toLowerCase() } });
+    }
+    if (!target) return res.status(404).json({ error: 'user not found' });
+    if ((target as any).id === inviterId) return res.status(400).json({ error: 'cannot invite yourself' });
+
+    // Ensure inviter has a team id (use inviter.id as anchor if missing)
+    if (!(inviter as any).teamId) {
+      (inviter as any).teamId = (inviter as any).id;
+      await userRepo.save(inviter);
+    }
+    const teamId = (inviter as any).teamId as number;
+
+    // If already in same team, short-circuit
+    if ((target as any).teamId === teamId) {
+      return res.status(409).json({ error: 'user already in your team' });
+    }
+
+    const notifRepo = AppDataSource.getRepository(Notification);
+    const notification = notifRepo.create({
+      title: 'Team invite',
+      message: `${(inviter as any).username || 'A user'} invited you to join their team`,
+      type: 'team_invite',
+      user: target as any,
+      actionUrl: `planara://team-invite?from=${inviterId}`,
+    } as any);
+    await notifRepo.save(notification);
+
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ error: 'failed to send invite' });
+  }
+}
+
+export async function acceptTeamInvite(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number | undefined;
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    const inviterId = Number(String((req.query?.from ?? req.body?.from) || ''));
+    if (!inviterId) return res.status(400).json({ error: 'missing inviter' });
+
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({ where: { id: userId } });
+    const inviter = await userRepo.findOne({ where: { id: inviterId } });
+    if (!user || !inviter) return res.status(404).json({ error: 'not found' });
+
+    // Ensure inviter has a team id
+    if (!(inviter as any).teamId) {
+      (inviter as any).teamId = (inviter as any).id;
+      await userRepo.save(inviter);
+    }
+    const teamId = (inviter as any).teamId as number;
+
+    (user as any).teamId = teamId;
+    await userRepo.save(user);
+
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ error: 'failed to accept invite' });
   }
 }

@@ -16,7 +16,7 @@ export class Notification {
 
   @Column({ 
     type: "varchar",
-    enum: ["task_assigned", "task_completed", "project_updated", "comment_added", "milestone_due", "general"],
+    enum: ["task_assigned", "task_completed", "project_updated", "comment_added", "milestone_due", "general", "team_invite"],
     default: "general"
   })
   type!: string;

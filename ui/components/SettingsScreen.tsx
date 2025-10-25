@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../lib/theme-context';
 import { toast } from 'sonner';
-import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents, getRotationHistory, adminBanUser, adminSetUsername, setAdminTokenSession, getAdminTokenSession } from '../lib/api';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from './ui/alert-dialog';
+import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents, getRotationHistory, adminBanUser, adminSetUsername, setAdminTokenSession, getAdminTokenSession, inviteToTeam } from '../lib/api';
 
 export function SettingsScreen() {
   const [activeSection, setActiveSection] = useState('profile');
@@ -279,6 +280,9 @@ function NotificationsSection() {
 
 function TeamSection() {
   const [members, setMembers] = useState<any[]>([]);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [identifier, setIdentifier] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     const u = getCurrentUser();
@@ -291,13 +295,60 @@ function TeamSection() {
     }
   }, []);
 
+  async function handleSendInvite() {
+    const value = String(identifier || '').trim();
+    if (!value) {
+      toast.error('Please enter a username or email');
+      return;
+    }
+    setSending(true);
+    try {
+      await inviteToTeam(value);
+      toast.success('Invite sent successfully');
+      setInviteOpen(false);
+      setIdentifier('');
+    } catch (e: any) {
+      const msg = e?.message || 'Failed to send invite';
+      toast.error(msg);
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-slate-900 dark:text-white">Team members</h3>
-        <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">
-          Invite member
-        </Button>
+        <AlertDialog open={inviteOpen} onOpenChange={setInviteOpen}>
+          <AlertDialogTrigger asChild>
+            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              Invite member
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Invite to Team</AlertDialogTitle>
+              <AlertDialogDescription>
+                Type a username or email to send a team invite.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="invite-identifier">Username or Email</Label>
+              <Input
+                id="invite-identifier"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="e.g. alice or alice@example.com"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={sending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleSendInvite} disabled={sending || !identifier.trim()}>
+                {sending ? 'Sending…' : 'Send Invite'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {members.length === 0 ? (
@@ -313,18 +364,15 @@ function TeamSection() {
             >
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarFallback className="text-sm">
-                    {(member.username || member.email || 'U').slice(0,2).toUpperCase()}
-                  </AvatarFallback>
+                  <AvatarFallback className="text-sm">{String((member?.username || member?.email || 'U')).slice(0,2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm text-slate-900 dark:text-white">{member.username || 'You'}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{member.email || ''}</p>
+                  <div className="text-slate-900 dark:text-white">{member?.username || member?.email}</div>
+                  {member?.email && (
+                    <div className="text-slate-600 dark:text-slate-400 text-xs">{member.email}</div>
+                  )}
                 </div>
               </div>
-              <Badge variant="outline" className="text-xs">
-                {member.role || 'Member'}
-              </Badge>
             </div>
           ))}
         </div>

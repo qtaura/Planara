@@ -1,11 +1,8 @@
-import { Router } from "express";
-import { getUsers, signup, login, updateProfile, startOAuth, oauthCallback, adminBanUser, adminSetUsername, refresh } from "../controllers/usersController.js";
-import { EmailVerificationController } from "../controllers/emailVerificationController.js";
+import express from "express";
 import { authenticate } from "../middlewares/auth.js";
-import { emailVerificationLimiter, emailVerificationAttemptLimiter, authLimiter, perEmailSendLimiter, perEmailVerifyLimiter } from "../middlewares/rateLimiter.js";
-import { adminOnly } from "../middlewares/admin.js";
+import { inviteToTeam, acceptTeamInvite } from "../controllers/usersController.js";
 
-const router = Router();
+const router = express.Router();
 
 router.get("/", getUsers);
 router.post("/signup", authLimiter, signup);
@@ -29,5 +26,7 @@ router.get("/auth/admin/rotations/:email", authenticate, adminOnly, EmailVerific
 // Admin user management
 router.post("/admin/ban", authenticate, adminOnly, adminBanUser);
 router.post("/admin/set-username", authenticate, adminOnly, adminSetUsername);
+router.post("/auth/team/invite", authenticate, inviteToTeam);
+router.post("/auth/team/accept", authenticate, acceptTeamInvite);
 
 export default router;
