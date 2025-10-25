@@ -8,6 +8,7 @@ import { EmailService } from "../services/emailService.js";
 import crypto from 'crypto';
 import { BannedEmail } from "../models/BannedEmail.js";
 import { RefreshToken } from "../models/RefreshToken.js";
+import { isUsernameDisallowed } from "../services/usernamePolicy.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "dev_refresh_secret";
@@ -137,6 +138,10 @@ export async function updateUser(req: Request, res: Response) {
   if (!user) return res.status(404).json({ error: "not found" });
 
   if (username) {
+    // Username blacklist policy
+    if (isUsernameDisallowed(String(username))) {
+      return res.status(400).json({ error: "This username isn’t allowed" });
+    }
     const usernameLower = String(username).toLowerCase();
     const conflict = await repo.findOne({ where: { usernameLower } });
     if (conflict && conflict.id !== user.id) {
@@ -236,7 +241,10 @@ export async function oauthCallback(req: Request, res: Response) {
       if (!user) {
         let username = ghUser?.name || ghUser?.login || `github_${ghUser?.id}`;
         let suffix = 0;
-        while (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } })) { suffix += 1; username = `${ghUser?.login}${suffix}`; }
+        while (
+          isUsernameDisallowed(String(username)) ||
+          (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } }))
+        ) { suffix += 1; username = `${ghUser?.login}${suffix}`; }
         const hashedPassword = await bcrypt.hash(`oauth:github:${ghUser?.id}:${Date.now()}`, 10);
         user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
         await repo.save(user);
@@ -298,7 +306,10 @@ export async function oauthCallback(req: Request, res: Response) {
         let base = gUser?.name || (primaryEmail?.split('@')[0]) || `google_${gUser?.sub}`;
         let username = base;
         let suffix = 0;
-        while (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } })) { suffix += 1; username = `${base}${suffix}`; }
+        while (
+          isUsernameDisallowed(String(username)) ||
+          (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } }))
+        ) { suffix += 1; username = `${base}${suffix}`; }
         const hashedPassword = await bcrypt.hash(`oauth:google:${gUser?.sub}:${Date.now()}`, 10);
         user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
         await repo.save(user);
@@ -361,7 +372,10 @@ export async function oauthCallback(req: Request, res: Response) {
         let base = sUser?.name || (primaryEmail?.split('@')[0]) || `slack_${sUser?.id}`;
         let username = base;
         let suffix = 0;
-        while (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } })) { suffix += 1; username = `${base}${suffix}`; }
+        while (
+          isUsernameDisallowed(String(username)) ||
+          (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } }))
+        ) { suffix += 1; username = `${base}${suffix}`; }
         const hashedPassword = await bcrypt.hash(`oauth:slack:${sUser?.id}:${Date.now()}`, 10);
         user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
         await repo.save(user);
@@ -427,6 +441,8 @@ export async function adminSetUsername(req: Request, res: Response) {
     const email = String(req.body?.email || '');
     const newUsername = String(req.body?.newUsername || '');
     if (!email || !email.includes('@') || !newUsername) return res.status(400).json({ success: false, error: 'Invalid input' });
+    // Username blacklist policy
+    if (isUsernameDisallowed(String(newUsername))) return res.status(400).json({ success: false, error: 'This username isn’t allowed' });
     const userRepo = AppDataSource.getRepository(User);
     const user = await userRepo.createQueryBuilder('user').where('LOWER(user.email) = :email', { email: email.toLowerCase() }).getOne();
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
