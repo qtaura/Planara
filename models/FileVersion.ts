@@ -7,7 +7,7 @@ export class FileVersion {
   id!: number;
 
   @ManyToOne(() => Attachment, (att) => att.versions, { onDelete: "CASCADE" })
-  attachment!: Attachment;
+  attachment!: any;
 
   @Column({ type: "int" })
   versionNumber!: number;
