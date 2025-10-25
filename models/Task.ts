@@ -26,7 +26,7 @@ export class Task {
 
   // Let TypeORM infer the proper date/time column type per driver
   @Column({ nullable: true })
-  dueDate?: Date | null;
+  dueDate?: Date;
 
   @ManyToOne(() => Milestone, { nullable: true, onDelete: "SET NULL" })
   milestone?: Milestone | null;
