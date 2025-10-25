@@ -14,6 +14,33 @@ import commentsRouter from "./routes/comments.js";
 import notificationsRouter from "./routes/notifications.js";
 import { initDB } from "./db/data-source.js";
 
+// Optional Sentry monitoring (error tracking)
+if (process.env.SENTRY_DSN) {
+  (async () => {
+    try {
+      const Sentry = await import('@sentry/node');
+      const Profiling = await import('@sentry/profiling-node');
+      Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        integrations: [
+          new Profiling.ProfilingIntegration(),
+        ],
+        tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0),
+      } as any);
+      // Basic global handlers
+      process.on('uncaughtException', (err) => {
+        try { (Sentry as any).captureException(err); } catch {}
+      });
+      process.on('unhandledRejection', (reason) => {
+        try { (Sentry as any).captureException(reason); } catch {}
+      });
+      console.log('[monitoring] Sentry initialized');
+    } catch (err) {
+      console.warn('[monitoring] Sentry init failed or not installed:', err instanceof Error ? err.message : String(err));
+    }
+  })();
+}
+
 // If a managed Postgres URL is present, relax TLS globally to avoid self-signed cert errors
 const dbUrl = process.env.DATABASE_URL || process.env.RAILWAY_DATABASE_URL;
 if (dbUrl) {
@@ -47,6 +74,19 @@ app.use("/api/users", usersRouter);
 app.use("/api/milestones", milestonesRouter);
 app.use("/api/comments", commentsRouter);
 app.use("/api/notifications", notificationsRouter);
+
+// Basic error handler with optional Sentry capture
+app.use((err: any, _req: any, res: any, _next: any) => {
+  try {
+    if (process.env.SENTRY_DSN) {
+      // dynamic import to avoid hard dependency
+      import('@sentry/node').then((Sentry) => {
+        try { (Sentry as any).captureException(err); } catch {}
+      }).catch(() => {});
+    }
+  } catch {}
+  res.status(500).json({ success: false, error: 'Internal Server Error' });
+});
 
 // Serve built UI from ui/dist when present (single-domain deployment)
 const uiDist = path.join(process.cwd(), "ui", "dist");

@@ -116,4 +116,46 @@ describe('Email verification API rate limits', () => {
     expect(status.body?.success).toBe(true);
     expect(status.body?.user?.isVerified).toBe(true);
   });
+
+  it('returns generic success for nonexistent email (enumeration-safe)', async () => {
+    const email = `no-user-${Date.now()}@example.com`;
+    const res = await request(app)
+      .post('/api/users/auth/send-code')
+      .send({ email });
+    expect(res.status).toBe(200);
+    expect(res.body?.success).toBe(true);
+    // In dev, devCode should not be present for non-existent emails
+    expect(res.body?.devCode).toBeUndefined();
+    expect(String(res.body?.message || '')).toMatch(/If an account/i);
+  });
+
+  it('supports case-insensitive email for send/verify/status', async () => {
+    const original = `MiXeD-${Date.now()}@Example.COM`;
+    await createUser(original);
+
+    // Send with lowercase
+    const lower = original.toLowerCase();
+    const send = await request(app)
+      .post('/api/users/auth/send-code')
+      .send({ email: lower });
+    expect(send.status).toBe(200);
+    const devCode = String(send.body?.devCode || '');
+    expect(devCode).toMatch(/^\d{6}$/);
+
+    // Verify with uppercase
+    const upper = original.toUpperCase();
+    const verify = await request(app)
+      .post('/api/users/auth/verify-code')
+      .send({ email: upper, code: devCode });
+    expect(verify.status).toBe(200);
+    expect(verify.body?.success).toBe(true);
+
+    // Status with mixed case
+    const status = await request(app)
+      .get(`/api/users/auth/verification-status/${encodeURIComponent('mIxEd-' + lower.split('@')[0].split('-')[1] + '@example.com')}`)
+      .send();
+    expect(status.status).toBe(200);
+    expect(status.body?.success).toBe(true);
+    expect(status.body?.user?.isVerified).toBe(true);
+  });
 });
