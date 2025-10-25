@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import { BannedEmail } from "../models/BannedEmail.js";
 import { RefreshToken } from "../models/RefreshToken.js";
 import { isUsernameDisallowed, disallowedReason, isUsernameFormatValid, sanitizeUsernameToAllowed } from "../services/usernamePolicy.js";
+import { recordUsernameRejected } from "../services/securityTelemetry.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "dev_refresh_secret";
@@ -48,9 +49,11 @@ export async function signup(req: Request, res: Response) {
   }
   // Enforce allowed characters and length before blacklist/conflicts
   if (typeof username === "string" && !isUsernameFormatValid(username)) {
+    await recordUsernameRejected({ req, email, username, source: 'signup', reason: 'format_invalid' });
     return res.status(400).json({ error: "Usernames can only include letters, numbers, and underscores — no spaces or special symbols." });
   }
   if (typeof username === "string" && isUsernameDisallowed(username)) {
+    await recordUsernameRejected({ req, email, username, source: 'signup' });
     return res.status(400).json({ error: "This username isn’t allowed" });
   }
   // Block signups for banned emails
@@ -147,9 +150,11 @@ export async function updateUser(req: Request, res: Response) {
   if (username) {
     // In signup: reject invalid format before blacklist and conflicts
     if (typeof username === "string" && !isUsernameFormatValid(username)) {
+      await recordUsernameRejected({ req, email: (user as any).email || null, username, source: 'update', reason: 'format_invalid' });
       return res.status(400).json({ error: "Usernames can only include letters, numbers, and underscores — no spaces or special symbols." });
     }
     if (typeof username === "string" && isUsernameDisallowed(username)) {
+      await recordUsernameRejected({ req, email: (user as any).email || null, username, source: 'update' });
       return res.status(400).json({ error: "This username isn’t allowed" });
     }
     const usernameLower = String(username).toLowerCase();
@@ -471,8 +476,14 @@ export async function adminSetUsername(req: Request, res: Response) {
     const newUsername = String(req.body?.newUsername || '');
     if (!email || !email.includes('@') || !newUsername) return res.status(400).json({ success: false, error: 'Invalid input' });
     // Enforce format before blacklist
-    if (!isUsernameFormatValid(String(newUsername))) return res.status(400).json({ success: false, error: 'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.' });
-    if (isUsernameDisallowed(String(newUsername))) return res.status(400).json({ success: false, error: 'This username isn’t allowed' });
+    if (!isUsernameFormatValid(String(newUsername))) {
+      await recordUsernameRejected({ req, email, username: newUsername, source: 'admin_set_username', reason: 'format_invalid' });
+      return res.status(400).json({ success: false, error: 'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.' });
+    }
+    if (isUsernameDisallowed(String(newUsername))) {
+      await recordUsernameRejected({ req, email, username: newUsername, source: 'admin_set_username' });
+      return res.status(400).json({ success: false, error: 'This username isn’t allowed' });
+    }
     const userRepo = AppDataSource.getRepository(User);
     const user = await userRepo.createQueryBuilder('user').where('LOWER(user.email) = :email', { email: email.toLowerCase() }).getOne();
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
