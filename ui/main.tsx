@@ -3,11 +3,11 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/globals.css';
 
-// Optional Sentry monitoring for UI
+// Optional Sentry monitoring for UI (runtime-only import to avoid bundler resolution)
 if (import.meta.env.VITE_SENTRY_DSN) {
   (async () => {
     try {
-      const Sentry = await import('@sentry/react');
+      const Sentry = await (new Function('return import("@sentry/react")'))();
       (Sentry as any).init({
         dsn: import.meta.env.VITE_SENTRY_DSN,
         tracesSampleRate: Number(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE || 0),

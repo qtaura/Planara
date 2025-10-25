@@ -14,16 +14,16 @@ import commentsRouter from "./routes/comments.js";
 import notificationsRouter from "./routes/notifications.js";
 import { initDB } from "./db/data-source.js";
 
-// Optional Sentry monitoring (error tracking)
+// Optional Sentry monitoring (error tracking) using runtime-only import to avoid TS/module resolution
 if (process.env.SENTRY_DSN) {
   (async () => {
     try {
-      const Sentry = await import('@sentry/node');
-      const Profiling = await import('@sentry/profiling-node');
-      Sentry.init({
+      const Sentry = await (new Function('return import("@sentry/node")'))();
+      const Profiling = await (new Function('return import("@sentry/profiling-node")'))();
+      (Sentry as any).init({
         dsn: process.env.SENTRY_DSN,
         integrations: [
-          new Profiling.ProfilingIntegration(),
+          new (Profiling as any).ProfilingIntegration(),
         ],
         tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0),
       } as any);
@@ -79,8 +79,7 @@ app.use("/api/notifications", notificationsRouter);
 app.use((err: any, _req: any, res: any, _next: any) => {
   try {
     if (process.env.SENTRY_DSN) {
-      // dynamic import to avoid hard dependency
-      import('@sentry/node').then((Sentry) => {
+      (new Function('return import("@sentry/node")'))().then((Sentry: any) => {
         try { (Sentry as any).captureException(err); } catch {}
       }).catch(() => {});
     }
