@@ -14,6 +14,8 @@ export function EmailSignupScreen({ onNext }: EmailSignupScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   function generateTempUsername(email: string) {
     const base = String(email.split('@')[0] || 'user').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 12);
@@ -21,20 +23,45 @@ export function EmailSignupScreen({ onNext }: EmailSignupScreenProps) {
     return `${base || 'user'}_${suffix}`.toLowerCase();
   }
 
+  function isValidEmail(value: string): boolean {
+    return /.+@.+\..+/.test(String(value));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFormError(null);
+    setEmailError(null);
+
+    if (!isValidEmail(email)) {
+      const msg = 'Invalid email address';
+      setEmailError(msg);
+      toast.error(msg);
+      return;
+    }
+    if (!password) {
+      const msg = 'Password is required';
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
+
     setLoading(true);
     try {
       const tempUsername = generateTempUsername(email);
-      // Create provisional account so verification can be sent
       const res = await signup({ username: tempUsername, email, password });
       if (res?.user) {
         try { setCurrentUser(res.user); } catch {}
       }
-      // Continue to verification step
       onNext({ email, password });
     } catch (err: any) {
-      const msg = err?.message || 'Could not start email signup';
+      const raw = String(err?.message || 'Could not start email signup');
+      let msg = raw;
+      const lower = raw.toLowerCase();
+      if (lower.includes('banned')) msg = 'This email is banned from signing up';
+      else if (lower.includes('already exists')) msg = 'Username or email already exists';
+      else if (lower.includes('required')) msg = 'username, email and password are required';
+      else if (lower.includes('network')) msg = 'Network error during signup. Please try again.';
+      setFormError(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -68,15 +95,21 @@ export function EmailSignupScreen({ onNext }: EmailSignupScreenProps) {
           <h1 className="text-xl font-semibold mb-2">Sign up with email</h1>
           <p className="text-slate-600 dark:text-slate-400 mb-6">We will verify your email and secure your account</p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>
               <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Email</label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="alex@example.com" required />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="alex@example.com" required aria-invalid={!!emailError} aria-describedby={emailError ? 'email-error' : undefined} />
+              {emailError && (
+                <p id="email-error" className="mt-1 text-xs text-red-600 dark:text-red-400">{emailError}</p>
+              )}
             </div>
             <div>
               <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Password</label>
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
             </div>
+            {formError && (
+              <div role="alert" aria-live="polite" className="rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200 p-3 text-xs">{formError}</div>
+            )}
             <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 w-full">
               {loading ? 'Continue…' : 'Continue'}
             </Button>

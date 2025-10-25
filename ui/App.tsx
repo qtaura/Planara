@@ -131,6 +131,9 @@ function AppContent() {
     setCurrentView('dashboard');
   };
 
+  const user = getCurrentUser();
+  const showUnverifiedBanner = !!(user && !(user.isVerified || user.verified)) && currentView !== 'verify';
+
   if (currentView === 'login') {
     return <LoginScreen onSuccess={() => setCurrentView('dashboard')} />;
   }
@@ -195,29 +198,47 @@ function AppContent() {
         onOpenCreateProject={() => setShowCreateProject(true)}
       />
 
-      {currentView === 'dashboard' && (
-        <Dashboard
-          onSelectProject={handleSelectProject}
-          onNavigate={handleNavigate}
-          onOpenCreateProject={() => setShowCreateProject(true)}
-        />
-      )}
+      <div className="flex-1 relative overflow-auto">
+        {showUnverifiedBanner && user?.email && (
+          <div className="sticky top-0 z-20 bg-amber-50 dark:bg-amber-900/40 border-b border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 px-4 py-2 flex items-center justify-between">
+            <span className="text-sm">Your email is not verified. Some features are disabled.</span>
+            <button
+              className="text-sm font-medium underline"
+              onClick={() => {
+                setVerificationEmail(user.email);
+                setPostVerifyView(currentView);
+                setCurrentView('verify' as any);
+              }}
+            >
+              Verify now
+            </button>
+          </div>
+        )}
 
-      {currentView === 'project' && selectedProject && (
-        <ProjectView projectId={selectedProject} />
-      )}
+        {currentView === 'dashboard' && (
+          <Dashboard
+            onSelectProject={handleSelectProject}
+            onNavigate={handleNavigate}
+            onOpenCreateProject={() => setShowCreateProject(true)}
+          />
+        )}
 
-      {currentView === 'settings' && <SettingsScreen />}
-      {currentView === 'notifications' && <NotificationScreen />}
-      {currentView === 'verify' && (
-        <EmailVerificationScreen
-          email={verificationEmail}
-          onVerified={() => setCurrentView(postVerifyView)}
-          onCancel={() => setCurrentView('dashboard')}
-        />
-      )}
+        {currentView === 'project' && selectedProject && (
+          <ProjectView projectId={selectedProject} />
+        )}
 
-      <AIAssistant />
+        {currentView === 'settings' && <SettingsScreen />}
+        {currentView === 'notifications' && <NotificationScreen />}
+        {currentView === 'verify' && (
+          <EmailVerificationScreen
+            email={verificationEmail}
+            onVerified={() => setCurrentView(postVerifyView)}
+            onCancel={() => setCurrentView('dashboard')}
+          />
+        )}
+
+        <AIAssistant />
+      </div>
 
       <CreateProjectModal
         isOpen={showCreateProject}

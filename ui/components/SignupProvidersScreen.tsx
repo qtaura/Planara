@@ -32,9 +32,19 @@ export function SignupProvidersScreen({ onChooseEmail, onChooseProvider, onSkip 
           setToken(data.token);
           if (data.user) setCurrentUser(data.user);
         } catch {}
+        const userEmail = data.user?.email;
+        const userVerified = !!(data.user && (data.user.isVerified || data.user.verified));
+        const isNewUser = !!data.created;
+        if (!userVerified) {
+          toast.message('Verify your email to finish signing in');
+          try {
+            window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email: userEmail, needsUsername: isNewUser } }));
+          } catch {}
+          return;
+        }
         toast.success(`Welcome, ${data.user?.username || data.user?.email || 'user'}!`);
         try {
-          if (data.created) {
+          if (isNewUser) {
             window.dispatchEvent(new CustomEvent('auth:needs_username'));
           } else {
             window.dispatchEvent(new CustomEvent('auth:logged_in'));

@@ -10,12 +10,16 @@ This project adheres to Keep a Changelog and Semantic Versioning.
 - Admin Controls: step-by-step layout with Quick Guide, helper text, and clear button labels.
 - Admin safety: confirmation dialogs for destructive actions (ban & purge, change username).
 - Admin data views: compact tables for Security Events and Rotation History.
+- Signup providers: auto-route to Email Verification when account is unverified post-OAuth.
+- Email signup: inline validation aligned with backend rules; friendly errors for invalid/banned email, existing user, required fields, and network issues.
+- App layout: persistent top banner for unverified users with “Verify now” CTA; hides on verification view.
 
 ### Changed
 - Authentication UX: Login gated until user is verified; clearer flow and messages.
 - Token handling: store refresh token; auto-refresh access token on 401; retry requests after refresh.
 - Error handling: treat 403 `auth:needs_verification` with UI guidance; route guards improved.
 - Admin Controls styling: consistent cards, separators, and dark-mode contrast for readability.
+- Verification flow: preserve return view after success; avoid duplicate prompts.
 
 ### Fixed
 - Backend: TypeORM `RefreshToken.expiresAt`/`createdAt` columns changed from `datetime` to `timestamp` for PostgreSQL compatibility (fixes DataTypeNotSupportedError).
