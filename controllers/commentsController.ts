@@ -30,10 +30,18 @@ export async function createComment(req: Request, res: Response) {
 }
 
 export async function deleteComment(req: Request, res: Response) {
+  const userId = (req as any).userId as number | undefined;
   const id = Number(req.params.id);
+  const teamId = Number((req.query as any)?.teamId || (req.body as any)?.teamId || 0) || undefined;
   const repo = AppDataSource.getRepository(Comment);
-  const comment = await repo.findOne({ where: { id } });
+  const comment = await repo.findOne({ where: { id }, relations: { task: { project: { owner: true } }, author: true } });
   if (!comment) return res.status(404).json({ error: "comment not found" });
+  // Allow delete per RBAC when team context provided; otherwise enforce author or project owner
+  if (!teamId) {
+    const isAuthor = userId && comment.author?.id === userId;
+    const isProjectOwner = userId && comment.task?.project?.owner?.id === userId;
+    if (!isAuthor && !isProjectOwner) return res.status(403).json({ error: "forbidden" });
+  }
   await repo.remove(comment);
   res.json({ ok: true });
 }

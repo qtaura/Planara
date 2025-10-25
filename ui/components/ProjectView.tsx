@@ -205,6 +205,7 @@ export function ProjectView({ projectId }: ProjectViewProps) {
         task={selectedTask}
         isOpen={!!selectedTask}
         onClose={() => setSelectedTask(null)}
+        teamId={project?.team?.id ?? null}
       />
     </div>
   );

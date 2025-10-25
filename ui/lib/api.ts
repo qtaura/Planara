@@ -244,12 +244,14 @@ export async function updateTask(taskId: string, payload: any): Promise<any> {
   return res.json();
 }
 
-export async function updateTaskStatus(taskId: string | number, status: string): Promise<any> {
-  return updateTask(String(taskId), { status });
+export async function updateTaskStatus(taskId: string | number, status: string, teamId?: number): Promise<any> {
+  const payload = teamId ? { status, teamId } : { status };
+  return updateTask(String(taskId), payload);
 }
 
-export async function deleteTask(taskId: string): Promise<boolean> {
-  const res = await apiFetch(`/tasks/${encodeURIComponent(taskId)}`, {
+export async function deleteTask(taskId: string, teamId?: number): Promise<boolean> {
+  const qs = teamId ? `?teamId=${encodeURIComponent(String(teamId))}` : '';
+  const res = await apiFetch(`/tasks/${encodeURIComponent(taskId)}${qs}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error(`Failed to delete task: ${res.status}`);

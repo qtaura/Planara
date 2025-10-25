@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,26 +24,51 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { Task } from '../types';
-import { updateTaskStatus, deleteTask } from '@lib/api';
+import { updateTaskStatus, deleteTask, listMembers, getCurrentUser } from '@lib/api';
 import { toast } from 'sonner';
 
 interface TaskModalProps {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
+  // Optional team context: when present, gate actions by role
+  teamId?: number | null;
 }
 
-export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
+export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
   const [showAiSuggestions, setShowAiSuggestions] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [userRole, setUserRole] = useState<'viewer' | 'member' | 'admin' | 'owner' | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadRole() {
+      try {
+        if (!teamId) { setUserRole(null); return; }
+        const members = await listMembers(Number(teamId));
+        const cu = getCurrentUser();
+        const my = (members || []).find((m: any) => Number(m?.user?.id) === Number(cu?.id));
+        if (!cancelled) setUserRole((my?.role || 'viewer') as any);
+      } catch {
+        if (!cancelled) setUserRole('viewer');
+      }
+    }
+    loadRole();
+    return () => { cancelled = true; };
+  }, [teamId, isOpen]);
 
   if (!task) return null;
 
+  const ROLE_ORDER: Record<string, number> = { viewer: 0, member: 1, admin: 2, owner: 3 };
+  const canUpdate = !teamId || (userRole ? (ROLE_ORDER[userRole] >= ROLE_ORDER['member']) : false);
+  const canDelete = !teamId || (userRole ? (ROLE_ORDER[userRole] >= ROLE_ORDER['admin']) : false);
+
   async function handleMarkDone() {
+    if (!canUpdate) { toast.error('Insufficient role to update tasks'); return; }
     setUpdating(true);
     try {
-      await updateTaskStatus(task.id, 'done');
+      await updateTaskStatus(task.id, 'done', teamId ?? undefined);
       toast.success('Task marked as done');
       window.dispatchEvent(new CustomEvent('tasks:changed'));
       onClose();
@@ -55,10 +80,11 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   }
 
   async function handleDelete() {
+    if (!canDelete) { toast.error('Insufficient role to delete tasks'); return; }
     if (!confirm('Delete this task?')) return;
     setDeleting(true);
     try {
-      await deleteTask(task.id);
+      await deleteTask(task.id, teamId ?? undefined);
       toast.success('Task deleted');
       window.dispatchEvent(new CustomEvent('tasks:changed'));
       onClose();
@@ -143,7 +169,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
                 variant="outline"
                 size="sm"
                 onClick={handleMarkDone}
-                disabled={updating || deleting || task.status === 'done'}
+                disabled={updating || deleting || task.status === 'done' || !canUpdate}
                 className="text-green-600 dark:text-green-400 border-green-600 dark:border-green-600"
               >
                 Mark done
@@ -152,7 +178,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
                 variant="outline"
                 size="sm"
                 onClick={handleDelete}
-                disabled={updating || deleting}
+                disabled={updating || deleting || !canDelete}
                 className="text-red-600 dark:text-red-400 border-red-600 dark:border-red-600"
               >
                 Delete

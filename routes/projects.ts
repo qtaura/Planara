@@ -1,15 +1,16 @@
 import { Router } from "express";
 import { getProjects, createProject, updateProject, deleteProject } from "../controllers/projectsController.js";
 import { authenticate, requireVerified } from "../middlewares/auth.js";
+import { requirePermission } from "../middlewares/rbac.js";
 
 const router = Router();
 
 router.use(authenticate);
 router.use(requireVerified);
 
-router.get("/", getProjects);
-router.post("/", createProject);
-router.put("/:id", updateProject);
-router.delete("/:id", deleteProject);
+router.get("/", requirePermission("project", "read"), getProjects);
+router.post("/", requirePermission("project", "create"), createProject);
+router.put("/:id", requirePermission("project", "update"), updateProject);
+router.delete("/:id", requirePermission("project", "delete"), deleteProject);
 
 export default router;

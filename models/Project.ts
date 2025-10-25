@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, Ma
 import { Task } from "./Task.js";
 import { Milestone } from "./Milestone.js";
 import { User } from "./User.js";
+import { Team } from "./Team.js";
 
 @Entity()
 export class Project {
@@ -25,6 +26,9 @@ export class Project {
 
   @ManyToOne(() => User, (user) => user.projects, { onDelete: "CASCADE" })
   owner!: any;
+
+  @ManyToOne(() => Team, { nullable: true, onDelete: "SET NULL" })
+  team?: Team | null;
 
   @OneToMany(() => Task, (task) => task.project)
   tasks?: Task[];

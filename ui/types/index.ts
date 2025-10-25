@@ -72,4 +72,6 @@ export interface Project {
   milestones: Milestone[];
   members: string[];
   velocity: number;
+  // Optional team context for RBAC gating
+  team?: { id: number; name?: string } | null;
 }

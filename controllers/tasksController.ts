@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { AppDataSource } from "../db/data-source.js";
+import { AppDataSource } from "../data-source.js";
 import { Task } from "../models/Task.js";
 import { Project } from "../models/Project.js";
 import { Milestone } from "../models/Milestone.js";
@@ -23,11 +23,24 @@ async function recalcMilestoneProgress(milestoneId: number) {
   }
 }
 
-export async function getTasks(req: Request, res: Response) {
+export const getTasks = async (req, res) => {
   const userId = (req as any).userId as number | undefined;
   const repo = AppDataSource.getRepository(Task);
   const projectRepo = AppDataSource.getRepository(Project);
   const projectId = req.query.projectId ? Number(req.query.projectId) : undefined;
+  const teamId = req.query.teamId ? Number(req.query.teamId) : undefined;
+  const projectId = req.query.projectId ? Number(req.query.projectId) : undefined;
+  const taskRepo = AppDataSource.getRepository(Task);
+  const projectRepo = AppDataSource.getRepository(Project);
+  if (projectId) {
+    const project = await projectRepo.findOne({ where: { id: projectId }, relations: { team: true } });
+    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (teamId && project.team && project.team.id !== teamId) {
+      return res.status(403).json({ error: "Cross-team access forbidden" });
+    }
+    const tasks = await taskRepo.find({ where: { project: { id: projectId } }, relations: { project: true } });
+    return res.json(tasks);
+  }
 
   let where: any = {};
   if (projectId) {
@@ -79,69 +92,36 @@ export async function createTask(req: Request, res: Response) {
 export async function updateTask(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
   const id = Number(req.params.id);
+  const teamId = Number((req.query as any)?.teamId || (req.body as any)?.teamId || 0) || undefined;
   const repo = AppDataSource.getRepository(Task);
-  const task = await repo.findOne({ where: { id }, relations: { project: true, milestone: true, assignee: true } });
+  const task = await repo.findOne({ where: { id }, relations: { project: { owner: true } } });
   if (!task) return res.status(404).json({ error: "task not found" });
-  const projectRepo = AppDataSource.getRepository(Project);
-  const project = task.project ? await projectRepo.findOne({ where: { id: task.project.id }, relations: { owner: true } }) : null;
-  if (!project) return res.status(404).json({ error: "project not found" });
-  if (userId && project.owner?.id !== userId) return res.status(403).json({ error: "forbidden" });
-
-  const prevMilestoneId = task.milestone?.id;
-
-  const { title, description, status, priority, labels, milestoneId, assigneeId } = req.body;
+  // Skip strict owner check when team-based RBAC context is provided (middleware already enforced)
+  if (!teamId && userId && task.project?.owner?.id !== userId) return res.status(403).json({ error: "forbidden" });
+  const { title, description, status, priority, dueDate, assigneeId } = req.body;
   if (title) task.title = title;
   if (typeof description !== "undefined") task.description = description;
-  if (typeof status !== "undefined") task.status = status;
-  if (typeof priority !== "undefined") task.priority = priority;
-  if (typeof labels !== "undefined") task.labels = labels;
-
-  if (typeof milestoneId !== "undefined") {
-    const milestoneRepo = AppDataSource.getRepository(Milestone);
-    if (milestoneId) {
-      const milestone = await milestoneRepo.findOne({ where: { id: Number(milestoneId) } });
-      task.milestone = milestone || null;
-    } else {
-      task.milestone = null;
-    }
-  }
-  if (typeof assigneeId !== "undefined") {
+  if (status) task.status = status;
+  if (priority) task.priority = priority;
+  if (dueDate) task.dueDate = new Date(dueDate);
+  if (assigneeId) {
     const userRepo = AppDataSource.getRepository(User);
-    if (assigneeId) {
-      const assignee = await userRepo.findOne({ where: { id: Number(assigneeId) } });
-      task.assignee = assignee || null;
-    } else {
-      task.assignee = null;
-    }
+    const assignee = await userRepo.findOne({ where: { id: assigneeId } });
+    task.assignee = assignee || null;
   }
-
   await repo.save(task);
-
-  const ids = new Set<number>();
-  if (typeof prevMilestoneId !== "undefined") ids.add(prevMilestoneId);
-  if (task.milestone?.id) ids.add(task.milestone.id);
-  for (const mid of ids) {
-    await recalcMilestoneProgress(mid);
-  }
-
   res.json(task);
 }
 
 export async function deleteTask(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
   const id = Number(req.params.id);
+  const teamId = Number((req.query as any)?.teamId || (req.body as any)?.teamId || 0) || undefined;
   const repo = AppDataSource.getRepository(Task);
-  const task = await repo.findOne({ where: { id }, relations: { project: true, milestone: true } });
+  const task = await repo.findOne({ where: { id }, relations: { project: { owner: true } } });
   if (!task) return res.status(404).json({ error: "task not found" });
-  const projectRepo = AppDataSource.getRepository(Project);
-  const project = task.project ? await projectRepo.findOne({ where: { id: task.project.id }, relations: { owner: true } }) : null;
-  if (!project) return res.status(404).json({ error: "project not found" });
-  if (userId && project.owner?.id !== userId) return res.status(403).json({ error: "forbidden" });
-
-  const milestoneId = task.milestone?.id;
+  // Allow delete per RBAC when team context provided; otherwise enforce owner-only
+  if (!teamId && userId && task.project?.owner?.id !== userId) return res.status(403).json({ error: "forbidden" });
   await repo.remove(task);
-  if (milestoneId) {
-    await recalcMilestoneProgress(milestoneId);
-  }
   res.json({ ok: true });
 }
