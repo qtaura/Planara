@@ -408,21 +408,26 @@ function AdminSection() {
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [ipFilter, setIpFilter] = useState<string>('');
-  const [from, setFrom] = useState<string>(''); // ISO or datetime-local value
+  const [from, setFrom] = useState<string>('');
   const [to, setTo] = useState<string>('');
   const [limit, setLimit] = useState<number>(50);
   const [banReason, setBanReason] = useState<string>('');
   const [newUsername, setNewUsername] = useState<string>('');
 
+  const hasPrereqs = Boolean(adminToken && targetEmail);
+  const disabledReason = !adminToken
+    ? 'Enter your Admin Token to enable actions.'
+    : !targetEmail
+    ? 'Enter a Target Email to enable actions.'
+    : null;
+
   useEffect(() => {
-    // Load persisted admin token for this session
     try {
       const t = getAdminTokenSession();
       if (t) setAdminToken(t);
     } catch {}
   }, []);
   useEffect(() => {
-    // Persist admin token while typing
     try { if (adminToken) setAdminTokenSession(adminToken); } catch {}
   }, [adminToken]);
 
@@ -482,6 +487,10 @@ function AdminSection() {
   async function doBan() {
     setLoading(true); setError(null); setMessage(null);
     try {
+      const ok = window.confirm(
+        `Ban this user and purge their account?\n\nTarget: ${targetEmail}\nReason: ${banReason || 'None provided'}\n\nThis action cannot be undone.`
+      );
+      if (!ok) { setLoading(false); return; }
       await adminBanUser(targetEmail.trim(), adminToken.trim(), banReason || undefined);
       setMessage('User banned and account purged (email remains banned)');
       setLockoutState(null);
@@ -496,6 +505,10 @@ function AdminSection() {
     setLoading(true); setError(null); setMessage(null);
     try {
       if (!newUsername.trim()) throw new Error('New username required');
+      const ok = window.confirm(
+        `Change username for ${targetEmail}?\n\nNew username: ${newUsername.trim()}\n\nProceed?`
+      );
+      if (!ok) { setLoading(false); return; }
       await adminSetUsername(targetEmail.trim(), newUsername.trim(), adminToken.trim());
       setMessage('Username updated');
     } catch (e: any) {
@@ -508,32 +521,49 @@ function AdminSection() {
       <h3 className="text-slate-900 dark:text-white mb-2">Admin Controls</h3>
       <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">Restricted to planara account (hello@planara.org). Requires admin token.</p>
 
+      <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30 p-4 mb-6">
+        <p className="text-sm font-medium mb-2">Quick Guide</p>
+        <ol className="text-sm list-decimal pl-5 space-y-1 text-slate-700 dark:text-slate-300">
+          <li>Step 1: Paste your Admin Token.</li>
+          <li>Step 2: Enter the user’s email.</li>
+          <li>Step 3: Inspect events or lockout state.</li>
+          <li>Step 4: Perform Account Actions (Unlock, Ban, Change Username).</li>
+        </ol>
+        <p className="text-xs mt-2 text-slate-600 dark:text-slate-400">Banning removes the account and blocks future signups for that email. All actions are logged to security events.</p>
+      </div>
+
+      <h4 className="text-sm text-slate-900 dark:text-white mb-2">Step 1 — Admin Token</h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label className="mb-1 block">Admin Token</Label>
-          <Input type="password" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} placeholder="Enter admin token" />
+          <Input type="password" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} placeholder="Paste admin token here" />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Ask a senior admin for the token. Keep it secret.</p>
         </div>
         <div>
           <Label className="mb-1 block">Target Email</Label>
           <Input type="email" value={targetEmail} onChange={(e) => setTargetEmail(e.target.value)} placeholder="user@example.com" />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Enter the exact email of the user you want to manage.</p>
         </div>
       </div>
 
       <Separator className="my-6" />
 
-      <h4 className="text-sm text-slate-900 dark:text-white mb-3">Filters</h4>
+      <h4 className="text-sm text-slate-900 dark:text-white mb-3">Step 2 — Filters (optional)</h4>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <Label className="mb-1 block">Event Type</Label>
           <Input value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} placeholder="login_failed, verify_failed" />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Leave empty to see all event types.</p>
         </div>
         <div>
           <Label className="mb-1 block">IP Filter</Label>
           <Input value={ipFilter} onChange={(e) => setIpFilter(e.target.value)} placeholder="203.0.113.5" />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Limit results to a specific IP address.</p>
         </div>
         <div>
           <Label className="mb-1 block">Limit</Label>
           <Input type="number" min={1} max={500} value={limit} onChange={(e) => setLimit(Number(e.target.value || 50))} />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">How many results to fetch (1–500).</p>
         </div>
         <div>
           <Label className="mb-1 block">From</Label>
@@ -546,28 +576,33 @@ function AdminSection() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Button variant="outline" disabled={loading || !adminToken || !targetEmail} onClick={fetchLockout}>View Lockout State</Button>
-        <Button variant="outline" disabled={loading || !adminToken || !targetEmail} onClick={fetchEvents}>View Recent Events</Button>
-        <Button variant="outline" disabled={loading || !adminToken || !targetEmail} onClick={fetchRotationHistory}>View Rotation History</Button>
-        <Button className="bg-red-600 hover:bg-red-700 text-white" disabled={loading || !adminToken || !targetEmail} onClick={doUnlock}>Unlock Account</Button>
+        <Button variant="outline" disabled={!hasPrereqs || loading} onClick={fetchLockout}>View Lockout State</Button>
+        <Button variant="outline" disabled={!hasPrereqs || loading} onClick={fetchEvents}>View Recent Events</Button>
+        <Button variant="outline" disabled={!hasPrereqs || loading} onClick={fetchRotationHistory}>View Rotation History</Button>
+        <Button className="bg-red-600 hover:bg-red-700 text-white" disabled={!hasPrereqs || loading} onClick={doUnlock}>Unlock Account</Button>
       </div>
+      {!hasPrereqs && (
+        <p className="text-xs mt-2 text-slate-600 dark:text-slate-400">{disabledReason}</p>
+      )}
 
       <Separator className="my-6" />
 
-      <h4 className="text-sm text-slate-900 dark:text-white mb-3">Account Actions</h4>
+      <h4 className="text-sm text-slate-900 dark:text-white mb-3">Step 3 — Account Actions</h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label className="mb-1 block">Ban Reason (optional)</Label>
-          <Input value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Reason for ban" />
+          <Input value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Why are you banning this user?" />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Adds a note to the security log; useful for audits.</p>
         </div>
         <div>
           <Label className="mb-1 block">New Username</Label>
           <Input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="new_username" />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Choose a simple, unique name. User can change later.</p>
         </div>
       </div>
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Button className="bg-red-600 hover:bg-red-700 text-white" disabled={loading || !adminToken || !targetEmail} onClick={doBan}>Ban & Purge Account</Button>
-        <Button disabled={loading || !adminToken || !targetEmail || !newUsername} onClick={doChangeUsername}>Change Username</Button>
+        <Button className="bg-red-600 hover:bg-red-700 text-white" disabled={!hasPrereqs || loading} onClick={doBan}>Ban user and purge account</Button>
+        <Button disabled={!hasPrereqs || loading || !newUsername.trim()} onClick={doChangeUsername}>Change account username</Button>
       </div>
 
       {message && (
