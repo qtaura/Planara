@@ -12,6 +12,8 @@ import usersRouter from "./routes/users.js";
 import milestonesRouter from "./routes/milestones.js";
 import commentsRouter from "./routes/comments.js";
 import notificationsRouter from "./routes/notifications.js";
+import orgsRouter from "./routes/organizations.js";
+import teamsRouter2 from "./routes/teams.js";
 import { initDB } from "./db/data-source.js";
 
 // Optional Sentry monitoring (error tracking) using runtime-only import to avoid TS/module resolution
@@ -74,6 +76,8 @@ app.use("/api/users", usersRouter);
 app.use("/api/milestones", milestonesRouter);
 app.use("/api/comments", commentsRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use("/api/orgs", orgsRouter);
+app.use("/api/teams", teamsRouter2);
 
 // Basic error handler with optional Sentry capture
 app.use((err: any, _req: any, res: any, _next: any) => {

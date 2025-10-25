@@ -524,25 +524,49 @@ export async function inviteToTeam(req: Request, res: Response) {
     if (!target) return res.status(404).json({ error: 'user not found' });
     if ((target as any).id === inviterId) return res.status(400).json({ error: 'cannot invite yourself' });
 
-    // Ensure inviter has a team id (use inviter.id as anchor if missing)
-    if (!(inviter as any).teamId) {
-      (inviter as any).teamId = (inviter as any).id;
-      await userRepo.save(inviter);
+    // Ensure there is a real Organization and Team for inviter
+    const { Organization } = await import('../models/Organization.js');
+    const { Team } = await import('../models/Team.js');
+    const { Membership } = await import('../models/Membership.js');
+    const orgRepo = AppDataSource.getRepository(Organization);
+    const teamRepo = AppDataSource.getRepository(Team);
+    const memRepo = AppDataSource.getRepository(Membership);
+
+    // Try to find an existing membership for inviter to derive org/team
+    let myMembership = (await memRepo.find({ relations: { user: true, team: true, org: true } }))
+      .find(m => (m.user as any)?.id === inviterId);
+
+    if (!myMembership) {
+      // Create a simple org/team for inviter
+      const orgName = `${(inviter as any).username || 'org'} Team`;
+      const orgSlug = String(orgName).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const org = orgRepo.create({ name: orgName, slug: orgSlug, nameLower: orgName.toLowerCase(), ownerUserId: inviterId });
+      await orgRepo.save(org);
+
+      const team = teamRepo.create({ name: 'Default Team', slug: 'default', nameLower: 'default', org });
+      await teamRepo.save(team);
+
+      myMembership = memRepo.create({ user: inviter as any, org, team, role: 'owner' });
+      await memRepo.save(myMembership);
     }
-    const teamId = (inviter as any).teamId as number;
+
+    const teamId = (myMembership.team as any).id as number;
 
     // If already in same team, short-circuit
-    if ((target as any).teamId === teamId) {
+    const existingTargetMembership = (await memRepo.find({ relations: { user: true, team: true } }))
+      .find(m => (m.team as any)?.id === teamId && (m.user as any)?.id === (target as any).id);
+    if (existingTargetMembership) {
       return res.status(409).json({ error: 'user already in your team' });
     }
 
-    const notifRepo = AppDataSource.getRepository(Notification);
+    const notifRepoModule = await import('../models/Notification.js');
+    const notifRepo = AppDataSource.getRepository(notifRepoModule.Notification);
     const notification = notifRepo.create({
       title: 'Team invite',
       message: `${(inviter as any).username || 'A user'} invited you to join their team`,
       type: 'team_invite',
       user: target as any,
-      actionUrl: `planara://team-invite?from=${inviterId}`,
+      actionUrl: `planara://team-invite?teamId=${teamId}&from=${inviterId}`,
     } as any);
     await notifRepo.save(notification);
 
@@ -557,21 +581,48 @@ export async function acceptTeamInvite(req: Request, res: Response) {
     const userId = (req as any).userId as number | undefined;
     if (!userId) return res.status(401).json({ error: 'unauthorized' });
     const inviterId = Number(String((req.query?.from ?? req.body?.from) || ''));
-    if (!inviterId) return res.status(400).json({ error: 'missing inviter' });
+    const teamIdParam = Number(String((req.query?.teamId ?? req.body?.teamId) || ''));
 
     const userRepo = AppDataSource.getRepository(User);
     const user = await userRepo.findOne({ where: { id: userId } });
-    const inviter = await userRepo.findOne({ where: { id: inviterId } });
-    if (!user || !inviter) return res.status(404).json({ error: 'not found' });
+    if (!user) return res.status(404).json({ error: 'user not found' });
 
-    // Ensure inviter has a team id
-    if (!(inviter as any).teamId) {
-      (inviter as any).teamId = (inviter as any).id;
-      await userRepo.save(inviter);
+    const { Team } = await import('../models/Team.js');
+    const { Organization } = await import('../models/Organization.js');
+    const { Membership } = await import('../models/Membership.js');
+    const teamRepo = AppDataSource.getRepository(Team);
+    const orgRepo = AppDataSource.getRepository(Organization);
+    const memRepo = AppDataSource.getRepository(Membership);
+
+    let team: any = null;
+    if (teamIdParam) {
+      team = await teamRepo.findOne({ where: { id: teamIdParam }, relations: { org: true } as any });
     }
-    const teamId = (inviter as any).teamId as number;
 
-    (user as any).teamId = teamId;
+    if (!team && inviterId) {
+      const inviter = await userRepo.findOne({ where: { id: inviterId } });
+      if (!inviter) return res.status(404).json({ error: 'inviter not found' });
+      const memberships = await memRepo.find({ relations: { user: true, team: true, org: true } });
+      const inviterMem = memberships.find(m => (m.user as any)?.id === inviterId);
+      if (inviterMem) {
+        team = inviterMem.team;
+        (team as any).org = inviterMem.org;
+      }
+    }
+
+    if (!team) return res.status(400).json({ error: 'missing team context' });
+
+    // Prevent duplicate membership
+    const existing = (await memRepo.find({ relations: { user: true, team: true } }))
+      .find(m => (m.team as any)?.id === (team as any).id && (m.user as any)?.id === userId);
+    if (existing) return res.status(409).json({ error: 'already a member' });
+
+    // Create membership and maintain legacy teamId for backward compatibility
+    const org = (team as any).org || (await orgRepo.findOne({ where: { id: (team as any)?.org?.id } }));
+    const membership = memRepo.create({ user: user as any, org: org as any, team: team as any, role: 'member' });
+    await memRepo.save(membership);
+
+    (user as any).teamId = (team as any).id;
     await userRepo.save(user);
 
     return res.status(200).json({ success: true });
