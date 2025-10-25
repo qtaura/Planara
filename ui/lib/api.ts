@@ -807,3 +807,79 @@ export async function rollbackAttachmentVersion(id: number, versionNumber: numbe
   }
   return res.json();
 }
+
+
+export type SearchTaskFilters = {
+  q?: string;
+  status?: string; // comma-separated statuses
+  labels?: string[] | string;
+  assignee?: string; // username
+  teamId?: number;
+  projectId?: number;
+  limit?: number;
+  offset?: number;
+};
+
+export async function searchTasks(filters: SearchTaskFilters): Promise<{ items: any[]; count: number; limit: number; offset: number }> {
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.status) params.set('status', filters.status);
+  if (filters.labels) {
+    const ls = Array.isArray(filters.labels) ? filters.labels.join(',') : String(filters.labels);
+    if (ls) params.set('labels', ls);
+  }
+  if (filters.assignee) params.set('assignee', filters.assignee);
+  if (filters.teamId) params.set('teamId', String(filters.teamId));
+  if (filters.projectId) params.set('projectId', String(filters.projectId));
+  if (filters.limit) params.set('limit', String(filters.limit));
+  if (filters.offset) params.set('offset', String(filters.offset));
+  const res = await apiFetch(`/search/tasks?${params.toString()}`);
+  if (!res.ok) throw new Error(`Search tasks failed: ${res.status}`);
+  return res.json();
+}
+
+export type SearchProjectFilters = {
+  q?: string;
+  teamId?: number;
+  from?: string | Date;
+  to?: string | Date;
+  limit?: number;
+  offset?: number;
+};
+
+export async function searchProjects(filters: SearchProjectFilters): Promise<{ items: any[]; count: number; limit: number; offset: number }> {
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.teamId) params.set('teamId', String(filters.teamId));
+  if (filters.from) params.set('from', typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString());
+  if (filters.to) params.set('to', typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString());
+  if (filters.limit) params.set('limit', String(filters.limit));
+  if (filters.offset) params.set('offset', String(filters.offset));
+  const res = await apiFetch(`/search/projects?${params.toString()}`);
+  if (!res.ok) throw new Error(`Search projects failed: ${res.status}`);
+  return res.json();
+}
+
+export type SearchCommentFilters = {
+  q?: string;
+  teamId?: number;
+  projectId?: number;
+  from?: string | Date;
+  to?: string | Date;
+  limit?: number;
+  offset?: number;
+};
+
+export async function searchComments(filters: SearchCommentFilters): Promise<{ items: any[]; count: number; limit: number; offset: number }> {
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.teamId) params.set('teamId', String(filters.teamId));
+  if (filters.projectId) params.set('projectId', String(filters.projectId));
+  if (filters.from) params.set('from', typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString());
+  if (filters.to) params.set('to', typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString());
+  if (filters.limit) params.set('limit', String(filters.limit));
+  if (filters.offset) params.set('offset', String(filters.offset));
+  const res = await apiFetch(`/search/comments?${params.toString()}`);
+  if (!res.ok) throw new Error(`Search comments failed: ${res.status}`);
+  return res.json();
+}

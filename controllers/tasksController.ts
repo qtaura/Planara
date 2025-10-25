@@ -72,6 +72,7 @@ export async function createTask(req: Request, res: Response) {
   if (userId && project.owner?.id !== userId) return res.status(403).json({ error: "forbidden" });
 
   const task = repo.create({ title, description, status, priority, labels, project });
+  task.titleLower = String(title).toLowerCase();
   if (milestoneId) {
     const milestone = await milestoneRepo.findOne({ where: { id: Number(milestoneId) } });
     if (milestone) task.milestone = milestone;
@@ -104,7 +105,7 @@ export async function updateTask(req: Request, res: Response) {
   // Skip strict owner check when team-based RBAC context is provided (middleware already enforced)
   if (!teamId && userId && task.project?.owner?.id !== userId) return res.status(403).json({ error: "forbidden" });
   const { title, description, status, priority, dueDate, assigneeId } = req.body;
-  if (title) task.title = title;
+  if (title) { task.title = title; task.titleLower = String(title).toLowerCase(); }
   if (typeof description !== "undefined") task.description = description;
   if (status) task.status = status;
   if (priority) task.priority = priority;

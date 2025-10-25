@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, ManyToOne } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, ManyToOne, Index } from "typeorm";
 import { Task } from "./Task.js";
 import { Milestone } from "./Milestone.js";
 import { User } from "./User.js";
@@ -17,6 +17,7 @@ export class Project {
   description?: string;
 
   @CreateDateColumn()
+  @Index()
   createdAt!: Date;
 
   @Column({ default: false })
@@ -28,6 +29,7 @@ export class Project {
   @ManyToOne(() => User, (user) => user.projects, { onDelete: "CASCADE" })
   owner!: any;
 
+  @Index()
   @ManyToOne(() => Team, { nullable: true, onDelete: "SET NULL" })
   team?: Team | null;
 

@@ -9,7 +9,8 @@ export type ViewType =
   | 'dashboard' 
   | 'project' 
   | 'settings'
-  | 'verify';
+  | 'verify'
+  | 'search';
 
 export type ProjectTab = 'roadmap' | 'kanban' | 'calendar' | 'files';
 

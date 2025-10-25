@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn, Index } from "typeorm";
 import { Project } from "./Project.js";
 import { Milestone } from "./Milestone.js";
 import { User } from "./User.js";
@@ -12,6 +12,10 @@ export class Task {
 
   @Column()
   title!: string;
+
+  @Index()
+  @Column({ nullable: true })
+  titleLower?: string;
 
   @Column({ nullable: true })
   description?: string;
@@ -43,4 +47,8 @@ export class Task {
 
   @OneToMany(() => Attachment, (att) => att.task)
   attachments?: Attachment[];
+
+  @CreateDateColumn()
+  @Index()
+  createdAt!: Date;
 }

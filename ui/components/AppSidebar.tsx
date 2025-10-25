@@ -30,7 +30,6 @@ import { Project } from '../types';
 import { useEffect, useState } from 'react';
 import { listProjects, getCurrentUser, getCurrentUserFromAPI, signOut, getUnreadNotificationCount } from '@lib/api';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
 
 interface AppSidebarProps {
   activeView: string;
@@ -53,6 +52,7 @@ export function AppSidebar({
   const [user, setUser] = useState<any | null>(getCurrentUser());
 const [notificationCount, setNotificationCount] = useState<number>(0);
 const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+const [searchText, setSearchText] = useState('');
 
   async function fetchProjects() {
     setLoading(true);
@@ -163,6 +163,9 @@ const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
     <Input
       placeholder="Search..."
       className="pl-9 h-9 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/50 text-sm"
+      value={searchText}
+      onChange={(e) => setSearchText(e.target.value)}
+      onKeyDown={(e) => { if (e.key === 'Enter') { const qs = new URLSearchParams(); if (searchText.trim()) qs.set('q', searchText.trim()); try { window.history.pushState({}, '', `/search${qs.toString() ? `?${qs.toString()}` : ''}`); } catch {}; onNavigate('search'); } }}
     />
   </div>
 </div>

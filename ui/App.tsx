@@ -19,6 +19,7 @@ import { EmailSignupScreen } from './components/EmailSignupScreen';
 import { SetUsernameScreen } from './components/SetUsernameScreen';
 import { EmailVerificationScreen } from './components/EmailVerificationScreen';
 import { getSocket, joinProjectRoom, leaveCurrentRoom } from '@lib/socket';
+import SearchView from './components/SearchView';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('landing');
@@ -101,6 +102,7 @@ function AppContent() {
       case 'settings': return '/settings';
       case 'notifications': return '/notifications';
       case 'project': return selectedProject ? `/projects/${selectedProject}` : '/project';
+      case 'search': return window.location.pathname + window.location.search;
       default: return '/';
     }
   };
@@ -116,6 +118,7 @@ function AppContent() {
     if (path.startsWith('/settings')) return 'settings';
     if (path.startsWith('/notifications')) return 'notifications';
     if (path.startsWith('/projects/')) return 'project';
+    if (path.startsWith('/search')) return 'search';
     return 'landing';
   };
 
@@ -123,8 +126,8 @@ function AppContent() {
     const view = pathToView(window.location.pathname);
     setCurrentView(view);
     if (view === 'project') {
-      const m = window.location.pathname.match(/\/projects\/(\d+)/);
-      if (m?.[1]) setSelectedProject(m[1]);
+      const m = window.location.pathname.match(/\/(projects)\/(\d+)/);
+      if (m?.[2]) setSelectedProject(m[2]);
     }
   }, []);
 
@@ -214,6 +217,7 @@ function AppContent() {
         {currentView === 'settings' && <SettingsScreen />}
         {currentView === 'notifications' && <NotificationScreen />}
         {currentView === 'project' && selectedProject && <ProjectView projectId={selectedProject} />}
+        {currentView === 'search' && <SearchView />}
         {currentView === 'verify' && (
           <EmailVerificationScreen
             email={verificationEmail}
