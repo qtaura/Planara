@@ -729,3 +729,81 @@ export async function reactToComment(commentId: number, type: 'thumbs_up' | 'hea
   try { window.dispatchEvent(new CustomEvent('comments:changed', { detail: { commentId, reactions: data?.reactions || {} } })); } catch {}
   return data;
 }
+
+
+export async function listAttachments(params: { taskId?: number; projectId?: number; teamId?: number }): Promise<any[]> {
+  const q = new URLSearchParams();
+  if (params.taskId) q.set('taskId', String(params.taskId));
+  if (params.projectId) q.set('projectId', String(params.projectId));
+  if (params.teamId) q.set('teamId', String(params.teamId));
+  const res = await apiFetch(`/attachments?${q.toString()}`);
+  if (!res.ok) throw new Error(`Failed to list attachments: ${res.status}`);
+  return res.json();
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const b = reader.result as ArrayBuffer;
+      const base64 = b ? btoa(String.fromCharCode(...new Uint8Array(b))) : '';
+      resolve(base64);
+    };
+    reader.onerror = (e) => reject(e);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+export async function uploadAttachment(opts: { file: File; taskId?: number; projectId?: number; teamId?: number; attachmentId?: number }): Promise<any> {
+  const base64 = await fileToBase64(opts.file);
+  const res = await apiFetch(`/attachments/upload${opts.teamId ? `?teamId=${encodeURIComponent(String(opts.teamId))}` : ''}` , {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fileName: opts.file.name,
+      mimeType: opts.file.type || 'application/octet-stream',
+      size: opts.file.size,
+      contentBase64: base64,
+      taskId: opts.taskId,
+      projectId: opts.projectId,
+      attachmentId: opts.attachmentId,
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to upload: ${res.status}`);
+  }
+  return res.json();
+}
+
+export function getAttachmentPreviewUrl(id: number, teamId?: number): string {
+  const base = `${API_BASE}/attachments/${encodeURIComponent(String(id))}/preview`;
+  return teamId ? `${base}?teamId=${encodeURIComponent(String(teamId))}` : base;
+}
+
+export async function deleteAttachment(id: number, teamId?: number): Promise<void> {
+  const res = await apiFetch(`/attachments/${encodeURIComponent(String(id))}${teamId ? `?teamId=${encodeURIComponent(String(teamId))}` : ''}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to delete: ${res.status}`);
+  }
+}
+
+export async function listAttachmentVersions(id: number): Promise<any[]> {
+  const res = await apiFetch(`/attachments/${encodeURIComponent(String(id))}/versions`);
+  if (!res.ok) throw new Error(`Failed to list versions: ${res.status}`);
+  return res.json();
+}
+
+export async function rollbackAttachmentVersion(id: number, versionNumber: number, teamId?: number): Promise<any> {
+  const res = await apiFetch(`/attachments/${encodeURIComponent(String(id))}/rollback${teamId ? `?teamId=${encodeURIComponent(String(teamId))}` : ''}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ versionNumber }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to rollback: ${res.status}`);
+  }
+  return res.json();
+}

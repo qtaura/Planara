@@ -9,3 +9,5 @@ export * from "./BannedEmail.js";
 export * from "./Organization.js"
 export * from "./Team.js"
 export * from "./Membership.js"
+export * from "./Attachment.js"
+export * from "./FileVersion.js"

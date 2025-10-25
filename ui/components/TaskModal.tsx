@@ -22,9 +22,12 @@ import {
   MessageSquare,
   Paperclip,
   MoreHorizontal,
+  Image as ImageIcon,
+  Trash2,
+  RotateCcw,
 } from 'lucide-react';
 import { Task } from '../types';
-import { updateTaskStatus, deleteTask, listMembers, getCurrentUser } from '@lib/api';
+import { updateTaskStatus, deleteTask, listMembers, getCurrentUser, listAttachments, uploadAttachment, deleteAttachment, getAttachmentPreviewUrl, listAttachmentVersions, rollbackAttachmentVersion } from '@lib/api';
 import { toast } from 'sonner';
 import CommentsPanel from './CommentsPanel';
 
@@ -41,6 +44,20 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [userRole, setUserRole] = useState<'viewer' | 'member' | 'admin' | 'owner' | null>(null);
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [versionsFor, setVersionsFor] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function loadAttachments() {
+      if (!task) return;
+      try {
+        const items = await listAttachments({ taskId: Number(task.id), teamId: teamId || undefined });
+        setAttachments(items || []);
+      } catch {}
+    }
+    if (isOpen) loadAttachments();
+  }, [task?.id, isOpen, teamId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,6 +142,47 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
 
   const completedSubtasks = task.subtasks.filter((s) => s.completed).length;
   const progress = (completedSubtasks / task.subtasks.length) * 100;
+
+  async function handleUpload(file: File) {
+    try {
+      setUploading(true);
+      const saved = await uploadAttachment({ file, taskId: Number(task.id), teamId: teamId || undefined });
+      setAttachments((prev) => [saved, ...prev]);
+      toast.success('File uploaded');
+    } catch (e: any) {
+      toast.error(e?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDeleteAttachment(id: number) {
+    try {
+      await deleteAttachment(id, teamId || undefined);
+      setAttachments((prev) => prev.filter((a) => Number(a.id) !== Number(id)));
+      toast.success('Attachment deleted');
+    } catch (e: any) {
+      toast.error(e?.message || 'Delete failed');
+    }
+  }
+
+  async function openVersions(id: number) {
+    try {
+      const vers = await listAttachmentVersions(id);
+      setAttachments((prev) => prev.map((a) => (Number(a.id) === Number(id) ? { ...a, _versions: vers } : a)));
+      setVersionsFor(id);
+    } catch {}
+  }
+
+  async function handleRollback(id: number, versionNumber: number) {
+    try {
+      const att = await rollbackAttachmentVersion(id, versionNumber, teamId || undefined);
+      setAttachments((prev) => prev.map((a) => (Number(a.id) === Number(id) ? att : a)));
+      toast.success('Rolled back to selected version');
+    } catch (e: any) {
+      toast.error(e?.message || 'Rollback failed');
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -413,8 +471,81 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
 
             <Button variant="outline" className="w-full justify-start">
               <Paperclip className="w-4 h-4 mr-2" />
-              Add attachments
+              Manage attachments
             </Button>
+
+            {/* Attachments Section */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm text-slate-900 dark:text-white">Attachments</h4>
+                <input
+                  type="file"
+                  multiple={false}
+                  disabled={uploading || !canUpdate}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUpload(f);
+                  }}
+                />
+              </div>
+              <div
+                className={`border-2 border-dashed rounded-md p-3 text-xs ${uploading ? 'opacity-50' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (!canUpdate) return;
+                  const f = e.dataTransfer.files?.[0];
+                  if (f) handleUpload(f);
+                }}
+              >
+                Drag & drop a file here or use the picker.
+                <div className="text-slate-500 mt-1">Allowed: PNG, JPEG, GIF, PDF, TXT. Max 10MB.</div>
+              </div>
+              <div className="mt-3 space-y-2">
+                {attachments.length === 0 && (
+                  <div className="text-xs text-slate-500">No attachments</div>
+                )}
+                {attachments.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between gap-3 p-2 bg-white/50 dark:bg-slate-900/40 rounded border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-slate-500" />
+                      <div>
+                        <div className="text-sm text-slate-900 dark:text-white">{a.filename}</div>
+                        <div className="text-xs text-slate-500">{(a.size/1024).toFixed(1)} KB • v{a.latestVersionNumber}</div>
+                        {String(a.mimeType).startsWith('image/') && (
+                          <img src={getAttachmentPreviewUrl(Number(a.id), teamId || undefined)} alt={a.filename} className="mt-2 h-24 rounded" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => openVersions(Number(a.id))}>Versions</Button>
+                      <Button variant="ghost" size="sm" disabled={!canDelete} onClick={() => handleDeleteAttachment(Number(a.id))}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {versionsFor && (
+                <div className="mt-3 p-2 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-slate-600 dark:text-slate-400">Version history</div>
+                    <Button variant="ghost" size="sm" onClick={() => setVersionsFor(null)}>Close</Button>
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {(attachments.find((x) => Number(x.id) === Number(versionsFor))?._versions || []).map((v: any) => (
+                      <div key={v.id} className="flex items-center justify-between text-xs">
+                        <div>v{v.versionNumber} • {(v.size/1024).toFixed(1)} KB • {new Date(v.createdAt).toLocaleString()}</div>
+                        <Button variant="ghost" size="sm" disabled={!canDelete} onClick={() => handleRollback(Number(versionsFor), Number(v.versionNumber))}>
+                          <RotateCcw className="w-3 h-3 mr-1" /> Roll back
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {task && (
               <div className="mt-4">
                 <CommentsPanel task={{ id: Number(task.id), projectId: task.projectId as any }} />

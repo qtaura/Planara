@@ -75,3 +75,34 @@ export async function recordCommentEvent(opts: {
     await repo.save(ev);
   } catch {}
 }
+
+export async function recordAttachmentEvent(opts: {
+  req: Request;
+  eventType: 'file_uploaded' | 'file_deleted' | 'file_previewed' | 'file_upload_failed' | 'file_version_rolled_back';
+  userId?: number | null;
+  email?: string | null;
+  attachmentId: number;
+  mimeType?: string | null;
+  size?: number | null;
+  extra?: Record<string, any> | null;
+}) {
+  try {
+    const repo = AppDataSource.getRepository(SecurityEvent);
+    const ev = repo.create({
+      email: opts.email ?? null,
+      userId: opts.userId ?? null,
+      eventType: opts.eventType,
+      ip: opts.req?.ip || null,
+      metadata: {
+        path: opts.req?.originalUrl || null,
+        ua: opts.req?.headers['user-agent'] || null,
+        attachmentId: opts.attachmentId,
+        mimeType: opts.mimeType ?? null,
+        size: opts.size ?? null,
+        ...(opts.extra || {}),
+      },
+      createdAt: new Date(),
+    });
+    await repo.save(ev);
+  } catch {}
+}

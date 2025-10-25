@@ -3,6 +3,7 @@ import { Task } from "./Task.js";
 import { Milestone } from "./Milestone.js";
 import { User } from "./User.js";
 import { Team } from "./Team.js";
+import { Attachment } from "./Attachment.js";
 
 @Entity()
 export class Project {
@@ -32,6 +33,9 @@ export class Project {
 
   @OneToMany(() => Task, (task) => task.project)
   tasks?: Task[];
+
+  @OneToMany(() => Attachment, (att) => att.project)
+  attachments?: Attachment[];
 
   @OneToMany(() => Milestone, (milestone) => milestone.project)
   milestones?: Milestone[];

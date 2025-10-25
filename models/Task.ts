@@ -3,6 +3,7 @@ import { Project } from "./Project.js";
 import { Milestone } from "./Milestone.js";
 import { User } from "./User.js";
 import { Comment } from "./Comment.js";
+import { Attachment } from "./Attachment.js";
 
 @Entity()
 export class Task {
@@ -39,4 +40,7 @@ export class Task {
 
   @OneToMany(() => Comment, (comment) => comment.task)
   comments?: Comment[];
+
+  @OneToMany(() => Attachment, (att) => att.task)
+  attachments?: Attachment[];
 }

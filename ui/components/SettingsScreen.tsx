@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -563,6 +563,21 @@ function AdminSection() {
   const [banReason, setBanReason] = useState<string>('');
   const [newUsername, setNewUsername] = useState<string>('');
 
+  const fileCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      file_uploaded: 0,
+      file_deleted: 0,
+      file_previewed: 0,
+      file_upload_failed: 0,
+      file_version_rolled_back: 0,
+    };
+    for (const ev of events || []) {
+      const t = ev?.eventType;
+      if (t && t in counts) counts[t] += 1;
+    }
+    return counts;
+  }, [events]);
+
   const hasPrereqs = Boolean(adminToken && targetEmail);
   const disabledReason = !adminToken
     ? 'Enter your Admin Token to enable actions.'
@@ -773,10 +788,37 @@ function AdminSection() {
       )}
 
       {events && events.length > 0 && (
-        <div className="mt-6 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
-          <h4 className="text-sm text-slate-900 dark:text-white mb-2">Recent Security Events</h4>
-          <div className="overflow-auto">
-            <table className="w-full text-left text-xs">
+        <>
+          <div className="mt-6 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+            <h4 className="text-sm text-slate-900 dark:text-white mb-2">File Event Counters</h4>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-3">
+                <div className="text-xs text-slate-600 dark:text-slate-400">Uploaded</div>
+                <div className="text-lg text-slate-900 dark:text-white">{fileCounts.file_uploaded}</div>
+              </Card>
+              <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-3">
+                <div className="text-xs text-slate-600 dark:text-slate-400">Deleted</div>
+                <div className="text-lg text-slate-900 dark:text-white">{fileCounts.file_deleted}</div>
+              </Card>
+              <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-3">
+                <div className="text-xs text-slate-600 dark:text-slate-400">Previewed</div>
+                <div className="text-lg text-slate-900 dark:text-white">{fileCounts.file_previewed}</div>
+              </Card>
+              <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-3">
+                <div className="text-xs text-slate-600 dark:text-slate-400">Upload Failed</div>
+                <div className="text-lg text-slate-900 dark:text-white">{fileCounts.file_upload_failed}</div>
+              </Card>
+              <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-3">
+                <div className="text-xs text-slate-600 dark:text-slate-400">Rolled Back</div>
+                <div className="text-lg text-slate-900 dark:text-white">{fileCounts.file_version_rolled_back}</div>
+              </Card>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+            <h4 className="text-sm text-slate-900 dark:text-white mb-2">Recent Security Events</h4>
+            <div className="overflow-auto">
+              <table className="w-full text-left text-xs">
               <thead className="text-slate-600 dark:text-slate-400">
                 <tr>
                   <th className="py-2">Type</th>
@@ -798,6 +840,7 @@ function AdminSection() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {rotations && rotations.length > 0 && (

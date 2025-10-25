@@ -15,6 +15,8 @@ import { Organization } from "../models/Organization.js"
 import { Team } from "../models/Team.js"
 import { Membership } from "../models/Membership.js"
 import { Thread } from "../models/Thread.js"
+import { Attachment } from "../models/Attachment.js"
+import { FileVersion } from "../models/FileVersion.js"
 
 // Prefer Postgres when DATABASE_URL/RAILWAY_DATABASE_URL is provided; otherwise fall back to SQLite
 const dbUrl = process.env.DATABASE_URL || process.env.RAILWAY_DATABASE_URL;
@@ -25,7 +27,7 @@ export const AppDataSource = new DataSource(
     ? {
         type: "postgres",
         url: dbUrl,
-        entities: [User, Project, Task, Milestone, Comment, EmailVerificationCode, Notification, SecurityEvent, BannedEmail, RefreshToken, Organization, Team, Membership, Thread],
+        entities: [User, Project, Task, Milestone, Comment, EmailVerificationCode, Notification, SecurityEvent, BannedEmail, RefreshToken, Organization, Team, Membership, Thread, Attachment, FileVersion],
         synchronize: true,
         logging: false,
         // Always ignore self-signed certs for Railway/public hosts
@@ -35,7 +37,7 @@ export const AppDataSource = new DataSource(
     : {
         type: "sqlite",
         database: path.join(process.cwd(), "db", "planara.sqlite"),
-        entities: [User, Project, Task, Milestone, Comment, EmailVerificationCode, Notification, SecurityEvent, BannedEmail, RefreshToken, Organization, Team, Membership, Thread],
+        entities: [User, Project, Task, Milestone, Comment, EmailVerificationCode, Notification, SecurityEvent, BannedEmail, RefreshToken, Organization, Team, Membership, Thread, Attachment, FileVersion],
         synchronize: true,
         logging: false,
       }

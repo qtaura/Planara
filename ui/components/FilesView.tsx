@@ -14,8 +14,75 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Input } from './ui/input';
+import { listAttachments, uploadAttachment, getAttachmentPreviewUrl, deleteAttachment, listAttachmentVersions, rollbackAttachmentVersion } from '@lib/api';
 
-export function FilesView() {
+export function FilesView({ projectId }: { projectId: string }) {
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [versionsFor, setVersionsFor] = useState<number | null>(null);
+  const [versions, setVersions] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function refreshAttachments() {
+    try {
+      const list = await listAttachments({ projectId: Number(projectId) });
+      setAttachments(Array.isArray(list) ? list : []);
+    } catch (e) {
+      // swallow for now
+    }
+  }
+
+  useEffect(() => {
+    refreshAttachments().catch(() => {});
+  }, [projectId]);
+
+  async function onUploadSelected(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      for (const f of Array.from(files)) {
+        await uploadAttachment({ file: f, projectId: Number(projectId) });
+      }
+      await refreshAttachments();
+    } catch (e) {
+      // swallow for now
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function handleDelete(attId: number) {
+    try {
+      await deleteAttachment(attId);
+      await refreshAttachments();
+    } catch (e) {
+      // swallow
+    }
+  }
+
+  async function openVersions(attId: number) {
+    setVersionsFor(attId);
+    try {
+      const v = await listAttachmentVersions(attId);
+      setVersions(v);
+    } catch (e) {
+      setVersions([]);
+    }
+  }
+
+  async function doRollback(versionNumber: number) {
+    if (!versionsFor) return;
+    try {
+      await rollbackAttachmentVersion(versionsFor, versionNumber);
+      setVersionsFor(null);
+      setVersions([]);
+      await refreshAttachments();
+    } catch (e) {
+      // noop
+    }
+  }
+
   const files = [
     {
       id: '1',
@@ -95,11 +162,69 @@ export function FilesView() {
             Centralized storage for project resources
           </p>
         </div>
-        <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500">
-          <Upload className="w-4 h-4 mr-2" />
-          Upload File
-        </Button>
+        <div className="flex items-center gap-3">
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => onUploadSelected(e.target.files)} />
+          <Button disabled={uploading} onClick={() => fileInputRef.current?.click()} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500">
+            <Upload className="w-4 h-4 mr-2" />
+            {uploading ? 'Uploading...' : 'Upload File'}
+          </Button>
+        </div>
       </div>
+
+      {/* Attachments Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-white">Project Attachments</h4>
+          <span className="text-xs text-slate-500">{attachments.length} files</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {attachments.map((att) => (
+            <Card key={att.id} className="bg-slate-900/50 border-slate-800 p-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-slate-800/50 rounded flex items-center justify-center overflow-hidden">
+                  {(att.latestVersionMimeType || att.mimeType || '').startsWith('image/') ? (
+                    <img src={getAttachmentPreviewUrl(att.id)} alt={att.fileName} className="w-16 h-16 object-cover" />
+                  ) : (
+                    <FileText className="w-6 h-6 text-slate-400" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-white truncate">{att.fileName}</h4>
+                  <div className="text-xs text-slate-500">
+                    <span>v{att.latestVersionNumber}</span>
+                    <span className="mx-1">·</span>
+                    <span>{Math.round((att.latestVersionSize || 0) / 1024)} KB</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openVersions(att.id)}>Versions</Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(att.id)}>Delete</Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {versionsFor && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-white">Version History</h4>
+            <Button variant="ghost" size="sm" onClick={() => { setVersionsFor(null); setVersions([]); }}>Close</Button>
+          </div>
+          <div className="space-y-2">
+            {versions.map((v) => (
+              <Card key={v.id} className="bg-slate-900/50 border-slate-800 p-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-white">v{v.versionNumber}</div>
+                  <div className="text-xs text-slate-500">{Math.round((v.size || 0)/1024)} KB</div>
+                  <Button variant="outline" size="sm" onClick={() => doRollback(v.versionNumber)}>Rollback here</Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">

@@ -15,6 +15,7 @@ import notificationsRouter from "./routes/notifications.js";
 import orgsRouter from "./routes/organizations.js";
 import teamsRouter2 from "./routes/teams.js";
 import { initDB } from "./db/data-source.js";
+import attachmentsRouter from "./routes/attachments.js";
 
 // Optional Sentry monitoring (error tracking) using runtime-only import to avoid TS/module resolution
 if (process.env.SENTRY_DSN) {
@@ -78,6 +79,7 @@ app.use("/api/comments", commentsRouter);
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/orgs", orgsRouter);
 app.use("/api/teams", teamsRouter2);
+app.use("/api/attachments", attachmentsRouter);
 
 // Basic error handler with optional Sentry capture
 app.use((err: any, _req: any, res: any, _next: any) => {
