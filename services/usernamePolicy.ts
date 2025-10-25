@@ -45,3 +45,25 @@ export function disallowedReason(raw: string): string | null {
   if (includesAny(n, RESERVED)) return "impersonates staff or official service";
   return null;
 }
+
+export const USERNAME_ALLOWED_REGEX = /^[A-Za-z0-9_]{3,20}$/;
+
+export function isUsernameFormatValid(raw: string): boolean {
+  if (!raw) return false;
+  return USERNAME_ALLOWED_REGEX.test(raw);
+}
+
+export function sanitizeUsernameToAllowed(raw: string): string {
+  if (!raw) return "";
+  // Replace any disallowed character with underscore
+  let s = raw.replace(/[^A-Za-z0-9_]/g, "_");
+  // Collapse multiple underscores
+  s = s.replace(/_+/g, "_");
+  // Trim underscores at edges
+  s = s.replace(/^_+/, "").replace(/_+$/, "");
+  // Enforce max length 20
+  if (s.length > 20) s = s.slice(0, 20);
+  // Ensure minimum length 3 by padding underscores if needed
+  while (s.length < 3) s = s + "_";
+  return s;
+}

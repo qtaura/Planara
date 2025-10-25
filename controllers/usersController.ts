@@ -8,7 +8,7 @@ import { EmailService } from "../services/emailService.js";
 import crypto from 'crypto';
 import { BannedEmail } from "../models/BannedEmail.js";
 import { RefreshToken } from "../models/RefreshToken.js";
-import { isUsernameDisallowed } from "../services/usernamePolicy.js";
+import { isUsernameDisallowed, disallowedReason, isUsernameFormatValid, sanitizeUsernameToAllowed } from "../services/usernamePolicy.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "dev_refresh_secret";
@@ -45,6 +45,13 @@ export async function signup(req: Request, res: Response) {
   const { username, email, password } = req.body;
   if (!username || !email || !password) {
     return res.status(400).json({ error: "username, email and password are required" });
+  }
+  // Enforce allowed characters and length before blacklist/conflicts
+  if (typeof username === "string" && !isUsernameFormatValid(username)) {
+    return res.status(400).json({ error: "Usernames can only include letters, numbers, and underscores — no spaces or special symbols." });
+  }
+  if (typeof username === "string" && isUsernameDisallowed(username)) {
+    return res.status(400).json({ error: "This username isn’t allowed" });
   }
   // Block signups for banned emails
   const bannedRepo = AppDataSource.getRepository(BannedEmail);
@@ -138,8 +145,11 @@ export async function updateUser(req: Request, res: Response) {
   if (!user) return res.status(404).json({ error: "not found" });
 
   if (username) {
-    // Username blacklist policy
-    if (isUsernameDisallowed(String(username))) {
+    // In signup: reject invalid format before blacklist and conflicts
+    if (typeof username === "string" && !isUsernameFormatValid(username)) {
+      return res.status(400).json({ error: "Usernames can only include letters, numbers, and underscores — no spaces or special symbols." });
+    }
+    if (typeof username === "string" && isUsernameDisallowed(username)) {
       return res.status(400).json({ error: "This username isn’t allowed" });
     }
     const usernameLower = String(username).toLowerCase();
@@ -239,12 +249,19 @@ export async function oauthCallback(req: Request, res: Response) {
         .getOne();
       let created = false;
       if (!user) {
-        let username = ghUser?.name || ghUser?.login || `github_${ghUser?.id}`;
+        let base = sanitizeUsernameToAllowed(ghUser?.name || ghUser?.login || `github_${ghUser?.id}`);
+        let username = base;
         let suffix = 0;
         while (
+          !isUsernameFormatValid(String(username)) ||
           isUsernameDisallowed(String(username)) ||
           (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } }))
-        ) { suffix += 1; username = `${ghUser?.login}${suffix}`; }
+        ) {
+          suffix += 1;
+          const suffixPart = `_${suffix}`;
+          const maxBase = 20 - suffixPart.length;
+          username = `${base.slice(0, Math.max(1, maxBase))}${suffixPart}`;
+        }
         const hashedPassword = await bcrypt.hash(`oauth:github:${ghUser?.id}:${Date.now()}`, 10);
         user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
         await repo.save(user);
@@ -303,13 +320,19 @@ export async function oauthCallback(req: Request, res: Response) {
         .getOne();
       let created = false;
       if (!user) {
-        let base = gUser?.name || (primaryEmail?.split('@')[0]) || `google_${gUser?.sub}`;
+        let base = sanitizeUsernameToAllowed(gUser?.name || (primaryEmail?.split('@')[0]) || `google_${gUser?.sub}`);
         let username = base;
         let suffix = 0;
         while (
+          !isUsernameFormatValid(String(username)) ||
           isUsernameDisallowed(String(username)) ||
           (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } }))
-        ) { suffix += 1; username = `${base}${suffix}`; }
+        ) {
+          suffix += 1;
+          const suffixPart = `_${suffix}`;
+          const maxBase = 20 - suffixPart.length;
+          username = `${base.slice(0, Math.max(1, maxBase))}${suffixPart}`;
+        }
         const hashedPassword = await bcrypt.hash(`oauth:google:${gUser?.sub}:${Date.now()}`, 10);
         user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
         await repo.save(user);
@@ -369,13 +392,19 @@ export async function oauthCallback(req: Request, res: Response) {
         .getOne();
       let created = false;
       if (!user) {
-        let base = sUser?.name || (primaryEmail?.split('@')[0]) || `slack_${sUser?.id}`;
+        let base = sanitizeUsernameToAllowed(sUser?.name || (primaryEmail?.split('@')[0]) || `slack_${sUser?.id}`);
         let username = base;
         let suffix = 0;
         while (
+          !isUsernameFormatValid(String(username)) ||
           isUsernameDisallowed(String(username)) ||
           (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } }))
-        ) { suffix += 1; username = `${base}${suffix}`; }
+        ) {
+          suffix += 1;
+          const suffixPart = `_${suffix}`;
+          const maxBase = 20 - suffixPart.length;
+          username = `${base.slice(0, Math.max(1, maxBase))}${suffixPart}`;
+        }
         const hashedPassword = await bcrypt.hash(`oauth:slack:${sUser?.id}:${Date.now()}`, 10);
         user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
         await repo.save(user);
@@ -441,7 +470,8 @@ export async function adminSetUsername(req: Request, res: Response) {
     const email = String(req.body?.email || '');
     const newUsername = String(req.body?.newUsername || '');
     if (!email || !email.includes('@') || !newUsername) return res.status(400).json({ success: false, error: 'Invalid input' });
-    // Username blacklist policy
+    // Enforce format before blacklist
+    if (!isUsernameFormatValid(String(newUsername))) return res.status(400).json({ success: false, error: 'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.' });
     if (isUsernameDisallowed(String(newUsername))) return res.status(400).json({ success: false, error: 'This username isn’t allowed' });
     const userRepo = AppDataSource.getRepository(User);
     const user = await userRepo.createQueryBuilder('user').where('LOWER(user.email) = :email', { email: email.toLowerCase() }).getOne();
