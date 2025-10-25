@@ -1,6 +1,6 @@
 {
   // Cloudflare Workers deployment config for static assets
-  "name": "planara-ui",
+  "name": "planara",
   "compatibility_date": "2025-10-25",
   "assets": {
     // Build the UI first: cd ui && npm run build
