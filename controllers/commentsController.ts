@@ -3,12 +3,36 @@ import { AppDataSource } from "../db/data-source.js";
 import { Comment } from "../models/Comment.js";
 import { Task } from "../models/Task.js";
 import { User } from "../models/User.js";
+import { Thread } from "../models/Thread.js";
+import { Notification } from "../models/Notification.js";
+
+function extractMentions(content: string): string[] {
+  const matches = content.match(/@([a-z0-9_]+)/gi) || [];
+  return matches.map(m => m.replace(/^@/, "").toLowerCase());
+}
+
+async function notifyMentions(usernamesLower: string[], task: Task, author?: User | null) {
+  if (!usernamesLower.length) return;
+  const userRepo = AppDataSource.getRepository(User);
+  const notifRepo = AppDataSource.getRepository(Notification);
+  const users = await userRepo.find({ where: usernamesLower.map(u => ({ usernameLower: u })) });
+  for (const u of users) {
+    const n = notifRepo.create({
+      title: "Mentioned in a comment",
+      message: `${author?.username || "Someone"} mentioned you in a comment on task #${task.id}`,
+      type: "comment_added",
+      user: u,
+      task,
+    });
+    await notifRepo.save(n);
+  }
+}
 
 export async function getComments(req: Request, res: Response) {
   const taskId = req.query.taskId ? Number(req.query.taskId) : undefined;
   const repo = AppDataSource.getRepository(Comment);
   const where = taskId ? { task: { id: taskId } } : {};
-  const comments = await repo.find({ where, relations: { task: true, author: true } });
+  const comments = await repo.find({ where, relations: { task: true, author: true, parentComment: true, thread: true } });
   res.json(comments);
 }
 
@@ -18,6 +42,7 @@ export async function createComment(req: Request, res: Response) {
   const commentRepo = AppDataSource.getRepository(Comment);
   const taskRepo = AppDataSource.getRepository(Task);
   const userRepo = AppDataSource.getRepository(User);
+  const threadRepo = AppDataSource.getRepository(Thread);
   const task = await taskRepo.findOne({ where: { id: Number(taskId) } });
   if (!task) return res.status(404).json({ error: "task not found" });
   const comment = commentRepo.create({ content, task });
@@ -25,7 +50,18 @@ export async function createComment(req: Request, res: Response) {
     const author = await userRepo.findOne({ where: { id: Number(authorId) } });
     if (author) comment.author = author;
   }
+  // Mentions
+  const mentions = extractMentions(content);
+  comment.mentions = mentions;
+  // Create a thread for root comments and associate
+  const thread = threadRepo.create({ task });
+  await threadRepo.save(thread);
+  comment.thread = thread;
   await commentRepo.save(comment);
+  // Backlink rootComment
+  thread.rootComment = comment;
+  await threadRepo.save(thread);
+  try { await notifyMentions(mentions, task, comment.author); } catch {}
   try {
     const { getIO } = await import('./realtime.js');
     const io = getIO();

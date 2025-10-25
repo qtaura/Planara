@@ -26,6 +26,7 @@ import {
 import { Task } from '../types';
 import { updateTaskStatus, deleteTask, listMembers, getCurrentUser } from '@lib/api';
 import { toast } from 'sonner';
+import CommentsPanel from './CommentsPanel';
 
 interface TaskModalProps {
   task: Task | null;
@@ -414,6 +415,11 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
               <Paperclip className="w-4 h-4 mr-2" />
               Add attachments
             </Button>
+            {task && (
+              <div className="mt-4">
+                <CommentsPanel task={{ id: Number(task.id), projectId: task.projectId as any }} />
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>

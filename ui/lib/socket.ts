@@ -36,6 +36,8 @@ export function getSocket(): Socket | null {
   // Comment events → forward and allow components to lift updates if desired
   socket.on('comment:created', (payload) => forward('comments:changed', payload));
   socket.on('comment:deleted', (payload) => forward('comments:changed', payload));
+  socket.on('comment:reply_created', (payload) => forward('comments:changed', payload));
+  socket.on('comment:reaction', (payload) => forward('comments:changed', payload));
 
   // Presence
   socket.on('presence:update', (payload) => forward('presence:update', payload));

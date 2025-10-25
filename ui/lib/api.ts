@@ -676,3 +676,56 @@ export async function leaveTeam(teamId: number): Promise<any> {
   }
   return res.json();
 }
+
+export async function listComments(taskId: number): Promise<any[]> {
+  const res = await apiFetch(`/comments?taskId=${encodeURIComponent(String(taskId))}`);
+  if (!res.ok) throw new Error(`Failed to fetch comments: ${res.status}`);
+  return res.json();
+}
+export async function createComment(payload: { taskId: number; content: string; authorId?: number }): Promise<any> {
+  const res = await apiFetch('/comments', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to create comment: ${res.status}`);
+  }
+  const data = await res.json();
+  try { window.dispatchEvent(new CustomEvent('comments:changed', { detail: { taskId: payload.taskId, comment: data } })); } catch {}
+  return data;
+}
+export async function createReply(parentCommentId: number, content: string, authorId?: number): Promise<any> {
+  const res = await apiFetch(`/comments/${encodeURIComponent(String(parentCommentId))}/replies`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ parentCommentId, content, authorId }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to create reply: ${res.status}`);
+  }
+  const data = await res.json();
+  try { window.dispatchEvent(new CustomEvent('comments:changed', { detail: { parentCommentId, comment: data } })); } catch {}
+  return data;
+}
+export async function getThreadComments(threadId: number): Promise<any[]> {
+  const res = await apiFetch(`/comments/threads/${encodeURIComponent(String(threadId))}`);
+  if (!res.ok) throw new Error(`Failed to fetch thread: ${res.status}`);
+  return res.json();
+}
+export async function reactToComment(commentId: number, type: 'thumbs_up' | 'heart' | 'laugh' | 'hooray' | 'rocket' | 'eyes', op: 'add' | 'remove' = 'add'): Promise<{ ok: boolean; reactions: Record<string, number> }> {
+  const res = await apiFetch(`/comments/${encodeURIComponent(String(commentId))}/reactions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, op }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to react to comment: ${res.status}`);
+  }
+  const data = await res.json();
+  try { window.dispatchEvent(new CustomEvent('comments:changed', { detail: { commentId, reactions: data?.reactions || {} } })); } catch {}
+  return data;
+}
