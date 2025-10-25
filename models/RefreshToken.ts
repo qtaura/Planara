@@ -14,7 +14,7 @@ export class RefreshToken {
   jti!: string;
 
   // Cross-database compatible datetime for sqlite/postgres
-  @Column({ type: "datetime" })
+  @Column()
   expiresAt!: Date;
 
   @Column({ default: false })
