@@ -38,7 +38,7 @@ describe('API email normalization', () => {
 
   it('normalizes email in getVerificationStatus path', async () => {
     const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: any) => {
-      expect(String(url)).toMatch(/verification-status\/user@example.com$/);
+      expect(String(url)).toMatch(/verification-status\/user%40example\.com$/);
       return okJson({ success: true });
     });
     await getVerificationStatus('USER@Example.com');
@@ -57,7 +57,7 @@ describe('API email normalization', () => {
 
   it('normalizes email in getLockoutState path', async () => {
     const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: any) => {
-      expect(String(url)).toMatch(/lockout\/user@example.com$/);
+      expect(String(url)).toMatch(/lockout-state\/user%40example\.com$/);
       return okJson({ success: true });
     });
     await getLockoutState('USER@Example.com');

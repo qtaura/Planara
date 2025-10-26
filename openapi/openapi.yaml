@@ -1,0 +1,130 @@
+openapi: 3.0.3
+info:
+  title: Planara API
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/users/signup:
+    post:
+      summary: Signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+              required: [username, email, password]
+      responses:
+        '200':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: number }
+                  username: { type: string }
+                  email: { type: string }
+        '409': { description: Conflict }
+  /api/users/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                usernameOrEmail: { type: string }
+                password: { type: string }
+              required: [usernameOrEmail, password]
+      responses:
+        '200':
+          description: Tokens issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  refreshToken: { type: string }
+        '401': { description: Unauthorized }
+  /api/users/auth/send-code:
+    post:
+      summary: Send verification code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+              required: [email]
+      responses:
+        '200': { description: Code sent }
+  /api/users/auth/verify-code:
+    post:
+      summary: Verify code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+                code: { type: string }
+              required: [email, code]
+      responses:
+        '200': { description: Verified }
+        '400': { description: Invalid }
+  /api/users/auth/team/invite:
+    post:
+      summary: Invite user to team
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                identifier: { type: string, description: "Username or email" }
+              required: [identifier]
+      responses:
+        '200': { description: Invite created }
+  /api/users/auth/team/accept:
+    post:
+      summary: Accept team invite
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                from: { type: number, description: "Inviter user id", nullable: true }
+                teamId: { type: number, description: "Team id", nullable: true }
+      responses:
+        '200': { description: Joined team }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -137,9 +137,9 @@ describe('Organizations, Teams, Invites and RBAC API', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send();
     expect(ok.status).toBe(200);
-    const members = Array.isArray(ok.body) ? ok.body : [];
-    expect(members.length).toBeGreaterThanOrEqual(1);
-    const me = members.find((m: any) => m?.user?.id === owner.id);
+    const items = Array.isArray(ok.body?.items) ? ok.body.items : [];
+    expect(items.length).toBeGreaterThanOrEqual(1);
+    const me = items.find((m: any) => m?.user?.id === owner.id);
     expect(me?.role).toBe('owner');
 
     const denied = await request(app)
@@ -170,7 +170,7 @@ describe('Organizations, Teams, Invites and RBAC API', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send();
     expect(members.status).toBe(200);
-    const list = Array.isArray(members.body) ? members.body : [];
+    const list = Array.isArray(members.body?.items) ? members.body.items : [];
     const hasMember = list.some((m: any) => m?.user?.id === member.id);
     expect(hasMember).toBe(true);
   });
@@ -204,7 +204,7 @@ describe('Organizations, Teams, Invites and RBAC API', () => {
       .set('Authorization', `Bearer ${memberToken}`)
       .send();
     expect(members.status).toBe(200);
-    const list = Array.isArray(members.body) ? members.body : [];
+    const list = Array.isArray(members.body?.items) ? members.body.items : [];
     const nowOwner = list.find((m: any) => m?.user?.id === member.id);
     const prevOwner = list.find((m: any) => m?.user?.id === owner.id);
     expect(nowOwner?.role).toBe('owner');

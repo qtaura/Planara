@@ -18,12 +18,14 @@ describe('apiFetch offline retry behavior', () => {
     global.fetch = fetchSpy;
 
     // Mock sonner to avoid real UI interaction
-    vi.spyOn(Sonner, 'toast', 'get').mockReturnValue({
-      error: vi.fn(),
-      success: vi.fn(),
-      loading: vi.fn().mockReturnValue('id' as any),
-      dismiss: vi.fn(),
-    } as any);
+    vi.mock('sonner', () => ({
+      toast: {
+        error: vi.fn(),
+        success: vi.fn(),
+        loading: vi.fn().mockReturnValue('id' as any),
+        dismiss: vi.fn(),
+      },
+    }));
 
     const promise = apiFetch('/health');
 

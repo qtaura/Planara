@@ -14,14 +14,20 @@ describe('API offline detection', () => {
     vi.restoreAllMocks();
   });
 
-  it('throws Network offline when navigator is offline', async () => {
+  it('retries when offline and succeeds after online event', async () => {
     // Mock offline
     Object.defineProperty(globalThis.navigator, 'onLine', { value: false, configurable: true });
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => { throw networkError(); });
+    const mockRes = new Response('{}', { status: 200 });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockRes);
 
-    await expect(sendVerificationCode('user@example.com')).rejects.toThrow(/Network offline/i);
+    const promise = sendVerificationCode('user@example.com');
+    // Simulate network connectivity restoration
+    window.dispatchEvent(new Event('online'));
+
+    await expect(promise).resolves.toBeTruthy();
+    expect(fetchSpy).toHaveBeenCalled();
 
     // Restore online
-    Object.defineProperty(globalThis.navigator, 'onLine', { value: true, configurable: true });
+    Object.defineProperty(globalThis, 'navigator', { value: { onLine: true }, configurable: true });
   });
 });

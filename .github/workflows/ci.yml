@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install backend deps
+        run: npm ci
+
+      - name: Lint and format check
+        run: |
+          npm run lint
+          npm run format:check
+
+      - name: Typecheck and build server
+        run: npm run build:server
+
+      - name: Run backend unit tests (no server)
+        run: |
+          npx vitest run tests/auth.api.test.ts tests/comments.api.test.ts tests/rbac.unit.test.ts tests/search.api.test.ts
+
+      - name: Run backend server-dependent tests (metrics, backup)
+        run: |
+          PORT=3001 node dist/index.js &
+          sleep 3
+          API_BASE=http://localhost:3001 npx vitest run tests/metrics.api.test.ts tests/backup.api.test.ts
+
+      - name: Install UI deps
+        run: npm --prefix ui ci --include=dev
+
+      - name: Build UI
+        run: npm --prefix ui run build
+
+      - name: Run UI tests
+        run: npm --prefix ui run test:run
+
+      - name: Generate OpenAPI client types
+        run: npm run gen:openapi
+
+      - name: Upload UI build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-dist
+          path: ui/dist
