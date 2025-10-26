@@ -5,6 +5,8 @@ import { AppDataSource } from '../db/data-source.js';
 import { ExternalLink } from '../models/ExternalLink.js';
 import { Task } from '../models/Task.js';
 import { Project } from '../models/Project.js';
+import { IntegrationSettings } from '../models/IntegrationSettings.js';
+import { User } from '../models/User.js';
 
 // Environment-driven secrets for inbound verification
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'dev_webhook_secret';
@@ -241,18 +243,25 @@ export async function importCalendar(req: Request, res: Response) {
   try {
     const projectRepo = AppDataSource.getRepository(Project);
     const taskRepo = AppDataSource.getRepository(Task);
+    const userRepo = AppDataSource.getRepository(User);
 
     const project = await projectRepo.findOne({ where: { id: projectId } });
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    const rq = req as Request & { rawBody?: Buffer } & { text?: string };
+    const rq = req as Request & { rawBody?: Buffer } & { text?: string } & { userId?: number };
     const raw =
       rq.text || (rq.rawBody ? rq.rawBody.toString('utf8') : (req.body?.ics as string) || '');
     if (!raw) {
       return res.status(400).json({ error: 'ICS content required in request body' });
     }
+
+    // Pre-resolve assignee from auth context if not provided
+    const candidateAssigneeId = assigneeId || rq.userId;
+    const resolvedAssignee = candidateAssigneeId
+      ? await userRepo.findOne({ where: { id: Number(candidateAssigneeId) } })
+      : null;
 
     // Minimal ICS parser for VEVENT blocks
     const lines = raw.replace(/\r\n/g, '\n').split('\n');
@@ -301,6 +310,7 @@ export async function importCalendar(req: Request, res: Response) {
         priority: 'medium',
         dueDate,
         project,
+        assignee: resolvedAssignee || undefined,
       });
 
       await taskRepo.save(task);
@@ -311,5 +321,85 @@ export async function importCalendar(req: Request, res: Response) {
   } catch (error) {
     console.error('Error importing calendar:', error);
     res.status(500).json({ error: 'Failed to import calendar' });
+  }
+}
+
+export async function listIntegrationSettings(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number;
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    const repo = AppDataSource.getRepository(IntegrationSettings);
+    const items = await repo.find({ where: { userId }, order: { updatedAt: 'DESC' } });
+    res.json({ ok: true, items });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to list integration settings' });
+  }
+}
+
+export async function getIntegrationSetting(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number;
+    const provider = String(req.params.provider || '').toLowerCase();
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    if (!provider) return res.status(400).json({ error: 'provider required' });
+    const repo = AppDataSource.getRepository(IntegrationSettings);
+    const item = await repo.findOne({ where: { userId, provider } });
+    if (!item) return res.status(404).json({ error: 'not found' });
+    res.json({ ok: true, item });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to get integration setting' });
+  }
+}
+
+export async function upsertIntegrationSetting(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number;
+    let provider = String(
+      (req.body?.provider as string) || req.params.provider || ''
+    ).toLowerCase();
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    if (!provider) return res.status(400).json({ error: 'provider required' });
+
+    const { config, credentials, enabled, preferences } = req.body || {};
+    const repo = AppDataSource.getRepository(IntegrationSettings);
+
+    const existing = await repo.findOne({ where: { userId, provider } });
+    if (existing) {
+      if (config !== undefined) existing.config = config;
+      if (credentials !== undefined) existing.credentials = credentials;
+      if (enabled !== undefined) existing.enabled = !!enabled;
+      if (preferences !== undefined) existing.preferences = preferences;
+      existing.updatedAt = new Date();
+      await repo.save(existing);
+      return res.json({ ok: true, item: existing, action: 'updated' });
+    }
+
+    const created = repo.create({
+      userId,
+      provider,
+      config: config ?? {},
+      credentials: credentials ?? {},
+      enabled: enabled !== undefined ? !!enabled : true,
+      preferences: preferences ?? {},
+    } as any);
+    await repo.save(created);
+    res.status(201).json({ ok: true, item: created, action: 'created' });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to upsert integration setting' });
+  }
+}
+
+export async function deleteIntegrationSetting(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number;
+    const provider = String(req.params.provider || '').toLowerCase();
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    if (!provider) return res.status(400).json({ error: 'provider required' });
+    const repo = AppDataSource.getRepository(IntegrationSettings);
+    const result = await repo.delete({ userId, provider } as any);
+    if (!result.affected) return res.status(404).json({ error: 'not found' });
+    res.json({ ok: true, message: 'deleted' });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to delete integration setting' });
   }
 }
