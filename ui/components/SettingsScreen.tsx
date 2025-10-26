@@ -20,7 +20,7 @@ import {
 import { useTheme } from '../lib/theme-context';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from './ui/alert-dialog';
-import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents, getRotationHistory, adminBanUser, adminSetUsername, setAdminTokenSession, getAdminTokenSession, inviteToTeam, getOrganizations, createOrganization, updateOrganization, deleteOrganization, transferOrgOwnership, listTeams, createTeam, listMembers, changeRole, transferTeamOwnership, leaveTeam } from '../lib/api';
+import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents, getRotationHistory, adminBanUser, adminSetUsername, setAdminTokenSession, getAdminTokenSession, inviteToTeam, getOrganizations, createOrganization, updateOrganization, deleteOrganization, transferOrgOwnership, listTeams, createTeam, listMembers, changeRole, transferTeamOwnership, leaveTeam, getSessions, revokeSession, renameSession, revokeOtherSessions } from '../lib/api';
 
 export function SettingsScreen() {
   const [activeSection, setActiveSection] = useState('profile');
@@ -57,6 +57,7 @@ export function SettingsScreen() {
     { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
     { id: 'organizations', label: 'Organizations', icon: <Users className="w-4 h-4" /> },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4" /> },
+    { id: 'security', label: 'Security', icon: <Shield className="w-4 h-4" /> },
     { id: 'account', label: 'Account', icon: <Shield className="w-4 h-4" /> },
   ];
 
@@ -94,6 +95,7 @@ export function SettingsScreen() {
             {activeSection === 'notifications' && <NotificationsSection />}
             {activeSection === 'organizations' && <OrganizationSection />}
             {activeSection === 'team' && <TeamSection />}
+            {activeSection === 'security' && <SecuritySection />}
             {activeSection === 'account' && <AccountSection />}
             {/* Admin controls available only to planara account */}
             {user?.email === 'hello@planara.org' && (
@@ -869,5 +871,107 @@ function AdminSection() {
         </div>
       )}
     </Card>
+  );
+}
+
+function SecuritySection() {
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadSessions() {
+    setLoading(true); setError(null);
+    try {
+      const list = await getSessions();
+      setSessions(Array.isArray(list) ? list : []);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load sessions');
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { loadSessions(); }, []);
+
+  async function handleRename(id: number, currentName: string) {
+    const deviceName = window.prompt('Rename device', currentName || '');
+    if (deviceName === null) return;
+    try {
+      await renameSession(id, deviceName.trim());
+      toast.success('Session renamed');
+      loadSessions();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to rename session');
+    }
+  }
+
+  async function handleRevoke(id: number) {
+    if (!window.confirm('Revoke this session? The device will be signed out.')) return;
+    try {
+      await revokeSession(id);
+      toast.success('Session revoked');
+      loadSessions();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to revoke session');
+    }
+  }
+
+  async function handleRevokeOthers(id: number) {
+    if (!window.confirm('Revoke all other sessions except this one?')) return;
+    try {
+      const res = await revokeOtherSessions(id);
+      toast.success(`Revoked ${res?.revokedCount ?? 0} other sessions`);
+      loadSessions();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to revoke other sessions');
+    }
+  }
+
+  function formatTime(t?: string) {
+    if (!t) return '—';
+    try {
+      const d = new Date(t);
+      return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
+    } catch { return String(t); }
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-slate-900 dark:text-white">Sessions</h3>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={loadSessions} disabled={loading}>Refresh</Button>
+          </div>
+        </div>
+        {error && (
+          <div role="alert" className="mb-4 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200 p-3 text-sm">{error}</div>
+        )}
+        {loading ? (
+          <p className="text-sm text-slate-600 dark:text-slate-400">Loading sessions...</p>
+        ) : sessions.length === 0 ? (
+          <p className="text-sm text-slate-600 dark:text-slate-400">No active sessions.</p>
+        ) : (
+          <div className="space-y-2">
+            {sessions.map((s: any) => (
+              <div key={s?.id} className="flex items-start justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-900 dark:text-white font-medium">{s?.deviceName || 'Unnamed device'}</span>
+                    {s?.revokedAt && (<Badge variant="secondary">Revoked</Badge>)}
+                    {s?.isCurrent && (<Badge className="bg-indigo-600 text-white">Current</Badge>)}
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">IP: {s?.ip || 'unknown'} | UA: {String(s?.userAgent || '').slice(0, 80)}{String(s?.userAgent || '').length > 80 ? '…' : ''}</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">Created: {formatTime(s?.createdAt)} | Last used: {formatTime(s?.lastUsedAt)}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleRename(Number(s?.id), String(s?.deviceName || ''))}>Rename</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleRevoke(Number(s?.id))} disabled={Boolean(s?.revokedAt)}>Revoke</Button>
+                  <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => handleRevokeOthers(Number(s?.id))}>Revoke others</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }

@@ -928,3 +928,42 @@ export async function deleteNotificationPreference(id: number): Promise<boolean>
   const data = await res.json();
   return !!data?.success;
 }
+
+export async function getSessions(): Promise<any[]> {
+  const res = await apiFetch('/users/sessions');
+  if (!res.ok) throw new Error(`Failed to fetch sessions: ${res.status}`);
+  const data = await res.json();
+  const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
+  return sessions;
+}
+
+export async function revokeSession(id: number): Promise<{ success: boolean }> {
+  const res = await apiFetch('/users/sessions/revoke', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  if (!res.ok) throw new Error(`Failed to revoke session: ${res.status}`);
+  return res.json();
+}
+
+export async function renameSession(id: number, deviceName: string): Promise<{ success: boolean }> {
+  const res = await apiFetch('/users/sessions/rename', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, deviceName }),
+  });
+  if (!res.ok) throw new Error(`Failed to rename session: ${res.status}`);
+  return res.json();
+}
+
+export async function revokeOtherSessions(keepId: number): Promise<{ success: boolean; revokedCount: number }>
+{
+  const res = await apiFetch('/users/sessions/revoke-others', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keepId }),
+  });
+  if (!res.ok) throw new Error(`Failed to revoke other sessions: ${res.status}`);
+  return res.json();
+}
