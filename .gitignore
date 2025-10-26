@@ -37,3 +37,6 @@ coverage/
 # Vite
 .vite
 **/.vite
+
+# Test artifacts
+uploads/
