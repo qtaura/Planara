@@ -1,0 +1,23 @@
+groups:
+  - name: planara-slo
+    interval: 30s
+    rules:
+      - alert: HighSloViolationRate
+        expr: rate(slo_violations_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: planara-api
+        annotations:
+          summary: "Elevated SLO violations detected"
+          description: "slo_violations_total rate > 0.1 over 5m. Investigate latency and errors."
+
+      - alert: SevereSloViolationRate
+        expr: rate(slo_violations_total[5m]) > 1
+        for: 1m
+        labels:
+          severity: critical
+          service: planara-api
+        annotations:
+          summary: "Severe SLO violation rate"
+          description: "slo_violations_total rate > 1 over 5m. Immediate action required."

@@ -1,4 +1,6 @@
 import type { Project, Task, Milestone, SubTask } from '../types';
+import { toast } from 'sonner';
+import { isOffline, retryWhenOnline } from './network';
 
 const TOKEN_KEY = 'planara_token';
 const CURRENT_USER_KEY = 'planara_current_user';
@@ -9,53 +11,102 @@ const API_BASE_ORIGIN = (import.meta as any).env?.VITE_API_BASE || '';
 const API_BASE_PATH = '/api';
 export const API_BASE = `${API_BASE_ORIGIN}${API_BASE_PATH}`;
 
-import { isOffline } from './network';
-
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  const token = getToken();
-  const headers = new Headers(init?.headers || {});
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}${path}`, { ...init, headers });
-  } catch (err: any) {
-    if (isOffline()) {
-      throw new Error('Network offline');
+  const makeRequest = async (): Promise<Response> => {
+    const token = getToken();
+    const headers = new Headers(init?.headers || {});
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+    } catch (err: any) {
+      if (isOffline()) {
+        throw new Error('Network offline');
+      }
+      throw err;
     }
+    
+    if (res.status === 401) {
+      const refreshed = await refreshAccessToken().catch(() => null);
+      if (refreshed) {
+        const headers2 = new Headers(init?.headers || {});
+        const newToken = getToken();
+        if (newToken) headers2.set('Authorization', `Bearer ${newToken}`);
+        try {
+          res = await fetch(`${API_BASE}${path}`, { ...init, headers: headers2 });
+        } catch (err: any) {
+          if (isOffline()) {
+            throw new Error('Network offline');
+          }
+          throw err;
+        }
+      } else {
+        signOut();
+      }
+      return res;
+    }
+    
+    if (res.status === 403) {
+      try {
+        const cloned = res.clone();
+        const text = await cloned.text();
+        const data = JSON.parse(text);
+        const errMsg = String(data?.error || '');
+        if (errMsg.toLowerCase().includes('verification')) {
+          const cu = getCurrentUser();
+          try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email: cu?.email } })); } catch {}
+        }
+      } catch {}
+    }
+    
+    return res;
+  };
+
+  // Check if offline and handle with retry toast
+  if (isOffline()) {
+    const toastId = toast.loading('You appear to be offline. Waiting for connection...', {
+      duration: Infinity,
+    });
+    
+    try {
+      const result = await retryWhenOnline(makeRequest, { delayMs: 30000 });
+      toast.dismiss(toastId);
+      toast.success('Connection restored! Request completed.');
+      return result;
+    } catch (error) {
+      toast.dismiss(toastId);
+      toast.error('Request failed even after connection was restored.');
+      throw error;
+    }
+  }
+
+  // Normal online request with network error handling
+  try {
+    return await makeRequest();
+  } catch (err: any) {
+    // Handle transient network errors with retry
+    if (err.message?.includes('fetch') || err.message?.includes('network') || err.name === 'TypeError') {
+      const toastId = toast.loading('Network error detected. Retrying...', {
+        duration: 3000,
+      });
+      
+      try {
+        // Wait a bit and retry once
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const result = await makeRequest();
+        toast.dismiss(toastId);
+        toast.success('Request completed after retry.');
+        return result;
+      } catch (retryError) {
+        toast.dismiss(toastId);
+        toast.error('Request failed after retry. Please check your connection.');
+        throw retryError;
+      }
+    }
+    
     throw err;
   }
-  if (res.status === 401) {
-    const refreshed = await refreshAccessToken().catch(() => null);
-    if (refreshed) {
-      const headers2 = new Headers(init?.headers || {});
-      const newToken = getToken();
-      if (newToken) headers2.set('Authorization', `Bearer ${newToken}`);
-      try {
-        res = await fetch(`${API_BASE}${path}`, { ...init, headers: headers2 });
-      } catch (err: any) {
-        if (isOffline()) {
-          throw new Error('Network offline');
-        }
-        throw err;
-      }
-    } else {
-      signOut();
-    }
-    return res;
-  }
-  if (res.status === 403) {
-    try {
-      const cloned = res.clone();
-      const text = await cloned.text();
-      const data = JSON.parse(text);
-      const errMsg = String(data?.error || '');
-      if (errMsg.toLowerCase().includes('verification')) {
-        const cu = getCurrentUser();
-        try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email: cu?.email } })); } catch {}
-      }
-    } catch {}
-  }
-  return res;
 }
 
 export function setToken(token: string) {
