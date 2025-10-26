@@ -83,7 +83,7 @@ export async function createNotification(req: Request, res: Response) {
     user,
     actionUrl,
     channel: channel || 'in_app',
-  } as any);
+  } as any) as unknown as Notification;
 
   // Add project and task relations if provided
   if (projectId) notification.project = { id: projectId } as any;
