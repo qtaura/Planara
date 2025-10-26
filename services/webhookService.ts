@@ -9,7 +9,7 @@ export function signPayload(payload: string, secret: string): string {
   return crypto.createHmac('sha256', secret).update(payload).digest('hex');
 }
 
-export function verifySignature(req: Request, secret: string): boolean {
+export function verifySignature(req: Request & { rawBody?: Buffer }, secret: string): boolean {
   try {
     const headerSig =
       (req.headers['x-signature'] as string | undefined) ||
@@ -18,7 +18,8 @@ export function verifySignature(req: Request, secret: string): boolean {
       '';
     if (!headerSig) return false;
 
-    const bodyStr = JSON.stringify(req.body ?? {});
+    // Use raw body bytes if available (strict verification), otherwise fall back to JSON.stringify
+    const bodyStr = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(req.body ?? {});
     const expected = signPayload(bodyStr, secret);
 
     // Some providers prefix with "sha256="; normalize for comparison

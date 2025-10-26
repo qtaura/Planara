@@ -18,6 +18,8 @@ import { Membership } from '../models/Membership.js';
 import { Thread } from '../models/Thread.js';
 import { Attachment } from '../models/Attachment.js';
 import { FileVersion } from '../models/FileVersion.js';
+import { ExternalLink } from '../models/ExternalLink.js';
+import { IntegrationSettings } from '../models/IntegrationSettings.js';
 
 // Prefer Postgres when DATABASE_URL/RAILWAY_DATABASE_URL is provided; otherwise fall back to SQLite
 const dbUrl = process.env.DATABASE_URL || process.env.RAILWAY_DATABASE_URL;
@@ -52,6 +54,8 @@ export const AppDataSource = new DataSource(
           Thread,
           Attachment,
           FileVersion,
+          ExternalLink,
+          IntegrationSettings,
         ],
         synchronize: true,
         logging: false,
@@ -81,6 +85,8 @@ export const AppDataSource = new DataSource(
           Thread,
           Attachment,
           FileVersion,
+          ExternalLink,
+          IntegrationSettings,
         ],
         synchronize: true,
         logging: false,
