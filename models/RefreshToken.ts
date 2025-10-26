@@ -14,7 +14,7 @@ export class RefreshToken {
   jti!: string;
 
   // Cross-database compatible datetime for sqlite/postgres
-  @Column({ type: 'timestamp' })
+  @Column()
   expiresAt!: Date;
 
   @Column({ default: false })
@@ -23,8 +23,8 @@ export class RefreshToken {
   @CreateDateColumn()
   createdAt!: Date;
 
-  @Column({ nullable: true })
-  rotatedFromId?: number;
+  @Column({ type: 'int', nullable: true })
+  rotatedFromId?: number | null;
 
   // Session metadata
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -36,12 +36,12 @@ export class RefreshToken {
   @Column({ type: 'varchar', length: 64, nullable: true })
   ip?: string | null;
 
-  @Column({ type: 'timestamp', nullable: true })
-  lastUsedAt?: Date | null;
-
-  @Column({ type: 'timestamp', nullable: true })
-  revokedAt?: Date | null;
+  @Column({ nullable: true })
+  lastUsedAt?: Date;
 
   @Column({ nullable: true })
+  revokedAt?: Date;
+
+  @Column({ type: 'int', nullable: true })
   replacedById?: number | null;
 }

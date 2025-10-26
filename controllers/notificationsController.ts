@@ -130,7 +130,7 @@ export async function markAsUnread(req: Request, res: Response) {
   }
 
   notification.read = false;
-  notification.readAt = null;
+  notification.readAt = undefined;
   await repo.save(notification);
   res.json(notification);
 }

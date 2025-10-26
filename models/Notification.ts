@@ -25,8 +25,8 @@ export class Notification {
   @Column({ default: false })
   read!: boolean;
 
-  @Column({ type: "timestamp", nullable: true })
-  readAt?: Date | null;
+  @Column({ nullable: true })
+  readAt?: Date;
 
   @Column({ type: "varchar", enum: ["in_app", "email", "push"], default: "in_app" })
   channel!: "in_app" | "email" | "push";
