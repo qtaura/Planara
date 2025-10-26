@@ -11,6 +11,7 @@ import { RefreshToken } from "../models/RefreshToken.js";
 import { isUsernameDisallowed, disallowedReason, isUsernameFormatValid, sanitizeUsernameToAllowed } from "../services/usernamePolicy.js";
 import { recordUsernameRejected, recordSessionEvent, recordTokenAnomaly } from "../services/securityTelemetry.js";
 import { Notification } from "../models/Notification.js";
+import { SecurityEvent } from "../models/SecurityEvent.js";
 import { authenticate } from "../middlewares/auth.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
