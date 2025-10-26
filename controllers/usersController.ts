@@ -65,7 +65,9 @@ async function issueRefreshTokenWithMeta(
 
   // Enforce concurrent session limit, with bypass for Planara account (hello@planara.org)
   const userRepo = AppDataSource.getRepository(User);
-  const userEmailRaw = String((await userRepo.findOne({ where: { id: userId } }))?.email || '').toLowerCase();
+  const userEmailRaw = String(
+    (await userRepo.findOne({ where: { id: userId } }))?.email || ''
+  ).toLowerCase();
   const bypassSessionsLimit = userEmailRaw === 'hello@planara.org';
 
   const active = await repo
