@@ -17,6 +17,7 @@ import notificationsRouter from './routes/notifications.js';
 import notificationPreferencesRouter from './routes/notificationPreferences.js';
 import orgsRouter from './routes/organizations.js';
 import teamsRouter2 from './routes/teams.js';
+import integrationsRouter from './routes/integrations.js';
 import { initDB } from './db/data-source.js';
 import attachmentsRouter from './routes/attachments.js';
 import searchRouter from './routes/search.js';
@@ -334,6 +335,7 @@ app.use(
 app.use('/api/orgs', cacheMiddleware({ ttl: 10 * 60 * 1000 }), orgsRouter); // 10 minutes
 app.use('/api/teams', cacheMiddleware({ ttl: 5 * 60 * 1000 }), teamsRouter2); // 5 minutes
 app.use('/api/attachments', cacheMiddleware({ ttl: 30 * 60 * 1000 }), attachmentsRouter); // 30 minutes
+app.use('/api/integrations', cacheMiddleware({ skipCache: true }), integrationsRouter); // No cache — webhooks and commands
 // Conditionally enable search based on feature flags
 if (flags.searchEnabled) {
   app.use('/api/search', cacheMiddleware({ ttl: 2 * 60 * 1000 }), searchRouter);
