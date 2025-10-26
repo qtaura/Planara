@@ -8,6 +8,8 @@ export async function getMilestones(req: Request, res: Response) {
   const repo = AppDataSource.getRepository(Milestone);
   const projectRepo = AppDataSource.getRepository(Project);
   const projectId = req.query.projectId ? Number(req.query.projectId) : undefined;
+  const limit = Math.min(Math.max(Number(req.query.limit || 25), 1), 100);
+  const offset = Math.max(Number(req.query.offset || 0), 0);
 
   let where: any = {};
   if (projectId) {
@@ -20,8 +22,21 @@ export async function getMilestones(req: Request, res: Response) {
     where = { project: { owner: { id: userId } } };
   }
 
-  const milestones = await repo.find({ where, relations: { project: true } });
-  res.json(milestones);
+  const [milestones, total] = await repo.findAndCount({ 
+    where, 
+    relations: { project: true },
+    take: limit,
+    skip: offset,
+    order: { id: 'DESC' }
+  });
+  
+  res.json({
+    items: milestones,
+    total,
+    limit,
+    offset,
+    hasMore: offset + limit < total
+  });
 }
 
 export async function createMilestone(req: Request, res: Response) {

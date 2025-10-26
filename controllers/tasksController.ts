@@ -29,6 +29,9 @@ export const getTasks = async (req: Request, res: Response) => {
   const projectRepo = AppDataSource.getRepository(Project);
   const projectId = req.query.projectId ? Number(req.query.projectId) : undefined;
   const teamId = req.query.teamId ? Number(req.query.teamId) : undefined;
+  const limit = Math.min(Math.max(Number(req.query.limit || 25), 1), 100);
+  const offset = Math.max(Number(req.query.offset || 0), 0);
+  
   const taskRepo = AppDataSource.getRepository(Task);
   if (projectId) {
     const project = await projectRepo.findOne({ where: { id: projectId }, relations: { team: true } });
@@ -36,8 +39,20 @@ export const getTasks = async (req: Request, res: Response) => {
     if (teamId && project.team && project.team.id !== teamId) {
       return res.status(403).json({ error: "Cross-team access forbidden" });
     }
-    const tasks = await taskRepo.find({ where: { project: { id: projectId } }, relations: { project: true } });
-    return res.json(tasks);
+    const [tasks, total] = await taskRepo.findAndCount({ 
+      where: { project: { id: projectId } }, 
+      relations: { project: true },
+      take: limit,
+      skip: offset,
+      order: { createdAt: 'DESC' }
+    });
+    return res.json({
+      items: tasks,
+      total,
+      limit,
+      offset,
+      hasMore: offset + limit < total
+    });
   }
 
   let where: any = {};
@@ -51,11 +66,21 @@ export const getTasks = async (req: Request, res: Response) => {
     where = { project: { owner: { id: userId } } };
   }
 
-  const tasks = await repo.find({
+  const [tasks, total] = await repo.findAndCount({
     where,
     relations: { project: true, milestone: true, assignee: true, comments: true },
+    take: limit,
+    skip: offset,
+    order: { createdAt: 'DESC' }
   });
-  res.json(tasks);
+  
+  res.json({
+    items: tasks,
+    total,
+    limit,
+    offset,
+    hasMore: offset + limit < total
+  });
 }
 
 export async function createTask(req: Request, res: Response) {

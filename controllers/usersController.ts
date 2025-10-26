@@ -70,10 +70,24 @@ async function issueRefreshTokenWithMeta(req: Request, userId: number, opts?: { 
   return { refreshToken: token, jti, expiresAt, record };
 }
 
-export async function getUsers(_req: Request, res: Response) {
+export async function getUsers(req: Request, res: Response) {
   const repo = AppDataSource.getRepository(User);
-  const users = await repo.find();
-  res.json(users.map(sanitize));
+  const limit = Math.min(Math.max(Number(req.query.limit || 25), 1), 100);
+  const offset = Math.max(Number(req.query.offset || 0), 0);
+  
+  const [users, total] = await repo.findAndCount({
+    take: limit,
+    skip: offset,
+    order: { id: 'DESC' }
+  });
+  
+  res.json({
+    items: users.map(sanitize),
+    total,
+    limit,
+    offset,
+    hasMore: offset + limit < total
+  });
 }
 
 export async function signup(req: Request, res: Response) {

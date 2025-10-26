@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Index } from "typeorm";
 import { Task } from "./Task.js";
 import { Comment } from "./Comment.js";
 import { Project } from "./Project.js";
@@ -10,15 +10,18 @@ export class User {
   id!: number;
 
   @Column({ unique: true })
+  @Index()
   username!: string;
 
   @Column({ unique: true })
+  @Index()
   email!: string;
 
   @Column()
   hashedPassword!: string;
 
   @Column({ nullable: true })
+  @Index()
   teamId?: number;
 
   @Column({ nullable: true })
@@ -26,12 +29,14 @@ export class User {
 
   // Add case-insensitive username support and change limit tracking
   @Column({ unique: true, nullable: true })
+  @Index()
   usernameLower?: string;
 
   @Column({ default: 0 })
   usernameChangeCount!: number;
 
   @Column({ default: false })
+  @Index()
   isVerified!: boolean;
 
   // Security & abuse-prevention tracking

@@ -21,12 +21,15 @@ export class Project {
   createdAt!: Date;
 
   @Column({ default: false })
+  @Index()
   archived!: boolean;
 
   @Column({ default: false })
+  @Index()
   favorite!: boolean;
 
   @ManyToOne(() => User, (user) => user.projects, { onDelete: "CASCADE" })
+  @Index()
   owner!: any;
 
   @Index()

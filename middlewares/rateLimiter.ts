@@ -1,5 +1,6 @@
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import type { Request } from 'express';
+import { recordRateLimitHit } from '../services/securityTelemetry.js';
 
 /**
  * Rate limiter for email verification code sending
@@ -21,6 +22,10 @@ export const emailVerificationLimiter = rateLimit({
     // In test environment, disable IP-based rate limiting to avoid flakiness
     return process.env.NODE_ENV === 'test';
   },
+  handler: async (req, res, _next, options) => {
+    try { await recordRateLimitHit({ req, limiter: 'emailVerificationLimiter' }); } catch {}
+    res.status(options.statusCode).json({ success: false, error: 'Too many verification code requests. Please try again in 15 minutes.' });
+  },
 });
 
 /**
@@ -37,36 +42,48 @@ export const emailVerificationAttemptLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful verifications
+  handler: async (req, res, _next, options) => {
+    try { await recordRateLimitHit({ req, limiter: 'emailVerificationAttemptLimiter' }); } catch {}
+    res.status(options.statusCode).json({ success: false, error: 'Too many verification attempts. Please try again in 15 minutes.' });
+  },
 });
 
 /**
  * General rate limiter for authentication endpoints
- * Allows 20 requests per 15 minutes per IP address
+ * Allows ~25 requests per 10 minutes per IP address
  */
 export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Limit each IP to 20 requests per windowMs
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 25, // Limit each IP to 25 requests per windowMs
   message: {
     success: false,
     error: 'Too many authentication requests. Please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
+  handler: async (req, res, _next, options) => {
+    try { await recordRateLimitHit({ req, limiter: 'authLimiter' }); } catch {}
+    res.status(options.statusCode).json({ success: false, error: 'Too many authentication requests. Please try again later.' });
+  },
 });
 
 /**
  * Strict rate limiter for sensitive operations
- * Allows 5 requests per hour per IP address
+ * Allows 3 requests per hour per IP address
  */
 export const strictLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // Limit each IP to 5 requests per hour
+  max: 3, // Limit each IP to 3 requests per hour
   message: {
     success: false,
     error: 'Rate limit exceeded. Please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
+  handler: async (req, res, _next, options) => {
+    try { await recordRateLimitHit({ req, limiter: 'strictLimiter' }); } catch {}
+    res.status(options.statusCode).json({ success: false, error: 'Rate limit exceeded. Please try again later.' });
+  },
 });
 
 export const perEmailSendLimiter = rateLimit({
@@ -83,6 +100,10 @@ export const perEmailSendLimiter = rateLimit({
   message: {
     success: false,
     error: 'Please wait before requesting another code.',
+  },
+  handler: async (req, res, _next, options) => {
+    try { await recordRateLimitHit({ req, limiter: 'perEmailSendLimiter' }); } catch {}
+    res.status(options.statusCode).json({ success: false, error: 'Please wait before requesting another code.' });
   },
 });
 
@@ -101,5 +122,9 @@ export const perEmailVerifyLimiter = rateLimit({
   message: {
     success: false,
     error: 'Too many verification attempts. Please try again later.',
+  },
+  handler: async (req, res, _next, options) => {
+    try { await recordRateLimitHit({ req, limiter: 'perEmailVerifyLimiter' }); } catch {}
+    res.status(options.statusCode).json({ success: false, error: 'Too many verification attempts. Please try again later.' });
   },
 });

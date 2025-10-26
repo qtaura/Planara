@@ -21,9 +21,11 @@ export class Task {
   description?: string;
 
   @Column({ default: "todo" })
+  @Index()
   status!: string;
 
   @Column({ default: "medium" })
+  @Index()
   priority!: string;
 
   @Column("simple-array", { nullable: true })
@@ -31,15 +33,19 @@ export class Task {
 
   // Let TypeORM infer the proper date/time column type per driver
   @Column({ nullable: true })
+  @Index()
   dueDate?: Date;
 
   @ManyToOne(() => Milestone, { nullable: true, onDelete: "SET NULL" })
+  @Index()
   milestone?: Milestone | null;
 
   @ManyToOne(() => Project, (project) => project.tasks, { onDelete: "CASCADE" })
+  @Index()
   project!: Project | null;
 
   @ManyToOne(() => User, (user) => user.tasks, { nullable: true, onDelete: "SET NULL" })
+  @Index()
   assignee?: User | null;
 
   @OneToMany(() => Comment, (comment) => comment.task)

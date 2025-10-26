@@ -20,6 +20,7 @@ import teamsRouter2 from "./routes/teams.js";
 import { initDB } from "./db/data-source.js";
 import attachmentsRouter from "./routes/attachments.js";
 import searchRouter from "./routes/search.js";
+import { cacheMiddleware, getCacheStats } from "./middlewares/cache.js";
 
 // ===== OBSERVABILITY SETUP =====
 
@@ -242,6 +243,13 @@ app.get("/health", (_req, res) => {
 // Metrics endpoint for Prometheus scraping
 app.get("/metrics", async (_req, res) => {
   try {
+    const cacheStats = getCacheStats();
+    
+    // Add cache metrics to response headers for monitoring
+    res.set('X-Cache-Total', cacheStats.total.toString());
+    res.set('X-Cache-Active', cacheStats.active.toString());
+    res.set('X-Cache-Expired', cacheStats.expired.toString());
+    
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());
   } catch (error) {
@@ -303,17 +311,18 @@ app.post("/admin/backup/test", async (req: any, res: any) => {
   }
 });
 
-app.use("/api/projects", projectsRouter);
-app.use("/api/tasks", tasksRouter);
-app.use("/api/users", usersRouter);
-app.use("/api/milestones", milestonesRouter);
-app.use("/api/comments", commentsRouter);
-app.use("/api/notifications", notificationsRouter);
-app.use("/api/notifications/preferences", notificationPreferencesRouter);
-app.use("/api/orgs", orgsRouter);
-app.use("/api/teams", teamsRouter2);
-app.use("/api/attachments", attachmentsRouter);
-app.use("/api/search", searchRouter);
+// Apply caching middleware with different TTLs based on data volatility
+app.use("/api/projects", cacheMiddleware({ ttl: 2 * 60 * 1000 }), projectsRouter); // 2 minutes
+app.use("/api/tasks", cacheMiddleware({ ttl: 1 * 60 * 1000 }), tasksRouter); // 1 minute
+app.use("/api/users", cacheMiddleware({ ttl: 5 * 60 * 1000 }), usersRouter); // 5 minutes
+app.use("/api/milestones", cacheMiddleware({ ttl: 3 * 60 * 1000 }), milestonesRouter); // 3 minutes
+app.use("/api/comments", cacheMiddleware({ ttl: 30 * 1000 }), commentsRouter); // 30 seconds
+app.use("/api/notifications", cacheMiddleware({ skipCache: true }), notificationsRouter); // No cache - real-time
+app.use("/api/notifications/preferences", cacheMiddleware({ ttl: 10 * 60 * 1000 }), notificationPreferencesRouter); // 10 minutes
+app.use("/api/orgs", cacheMiddleware({ ttl: 10 * 60 * 1000 }), orgsRouter); // 10 minutes
+app.use("/api/teams", cacheMiddleware({ ttl: 5 * 60 * 1000 }), teamsRouter2); // 5 minutes
+app.use("/api/attachments", cacheMiddleware({ ttl: 30 * 60 * 1000 }), attachmentsRouter); // 30 minutes
+app.use("/api/search", cacheMiddleware({ ttl: 2 * 60 * 1000 }), searchRouter); // 2 minutes
 
 // Enhanced error handler with correlation ID and Sentry integration
 app.use((err: any, req: any, res: any, _next: any) => {

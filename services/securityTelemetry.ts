@@ -167,3 +167,29 @@ export async function recordTokenAnomaly(opts: {
     await repo.save(ev);
   } catch {}
 }
+
+export async function recordRateLimitHit(opts: {
+  req: Request;
+  userId?: number | null;
+  limiter?: string | null;
+  endpoint?: string | null;
+  extra?: Record<string, any> | null;
+}) {
+  try {
+    const repo = AppDataSource.getRepository(SecurityEvent);
+    const ev = repo.create({
+      email: null,
+      userId: opts.userId ?? null,
+      eventType: 'rate_limit_hit',
+      ip: opts.req?.ip || null,
+      metadata: {
+        limiter: opts.limiter ?? null,
+        path: opts.endpoint ?? (opts.req?.originalUrl || null),
+        ua: opts.req?.headers['user-agent'] || null,
+        ...(opts.extra || {}),
+      },
+      createdAt: new Date(),
+    });
+    await repo.save(ev);
+  } catch {}
+}

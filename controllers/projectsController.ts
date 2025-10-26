@@ -9,21 +9,40 @@ export const getProjects = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     const teamId = req.query.teamId ? Number(req.query.teamId) : undefined;
+    const limit = Math.min(Math.max(Number(req.query.limit || 25), 1), 100);
+    const offset = Math.max(Number(req.query.offset || 0), 0);
 
     const projectRepo = AppDataSource.getRepository(Project);
 
     let projects: Project[];
+    let total: number;
+    
     if (teamId) {
-      projects = await projectRepo.find({
+      [projects, total] = await projectRepo.findAndCount({
         where: { team: { id: teamId } },
         relations: { team: true, owner: true },
+        take: limit,
+        skip: offset,
+        order: { createdAt: 'DESC' }
       });
     } else {
       // Include team relation as well so the UI can gate actions by role
-      projects = await projectRepo.find({ where: { owner: { id: userId } }, relations: { owner: true, team: true } });
+      [projects, total] = await projectRepo.findAndCount({ 
+        where: { owner: { id: userId } }, 
+        relations: { owner: true, team: true },
+        take: limit,
+        skip: offset,
+        order: { createdAt: 'DESC' }
+      });
     }
 
-    res.json(projects);
+    res.json({
+      items: projects,
+      total,
+      limit,
+      offset,
+      hasMore: offset + limit < total
+    });
   } catch (err) {
     res.status(500).json({ error: "Failed to retrieve projects" });
   }

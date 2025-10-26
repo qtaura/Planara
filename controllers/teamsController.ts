@@ -69,10 +69,26 @@ export async function listMembers(req: Request, res: Response) {
   try {
     const teamId = Number(req.params.teamId || req.query?.teamId);
     if (!teamId) return res.status(400).json({ error: "teamId required" });
+    const limit = Math.min(Math.max(Number(req.query.limit || 25), 1), 100);
+    const offset = Math.max(Number(req.query.offset || 0), 0);
+    
     const memRepo = AppDataSource.getRepository(Membership);
-    const memberships = await memRepo.find({ relations: { user: true, team: true, org: true } });
-    const filtered = memberships.filter(m => (m.team as any)?.id === teamId);
-    return res.json(filtered.map(m => ({ id: m.id, role: m.role, user: m.user })));
+    const [memberships, total] = await memRepo.findAndCount({ 
+      where: { team: { id: teamId } },
+      relations: { user: true, team: true, org: true },
+      take: limit,
+      skip: offset,
+      order: { createdAt: 'DESC' }
+    });
+    
+    const items = memberships.map(m => ({ id: m.id, role: m.role, user: m.user }));
+    return res.json({
+      items,
+      total,
+      limit,
+      offset,
+      hasMore: offset + limit < total
+    });
   } catch (e) {
     return res.status(500).json({ error: "failed to list members" });
   }
