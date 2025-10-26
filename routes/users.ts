@@ -3,7 +3,7 @@ import { authenticate } from "../middlewares/auth.js";
 import { adminOnly } from "../middlewares/admin.js";
 import { authLimiter, perEmailSendLimiter, emailVerificationLimiter, perEmailVerifyLimiter, emailVerificationAttemptLimiter } from "../middlewares/rateLimiter.js";
 import { EmailVerificationController } from "../controllers/emailVerificationController.js";
-import { getUsers, signup, login, refresh, startOAuth, oauthCallback, updateProfile, adminBanUser, adminSetUsername, inviteToTeam, acceptTeamInvite } from "../controllers/usersController.js";
+import { getUsers, signup, login, refresh, startOAuth, oauthCallback, updateProfile, adminBanUser, adminSetUsername, inviteToTeam, acceptTeamInvite, listSessions, revokeSession, renameSession, revokeOtherSessions } from "../controllers/usersController.js";
 
 const router = express.Router();
 
@@ -14,6 +14,12 @@ router.post("/refresh", refresh);
 router.get("/oauth/:provider/start", startOAuth);
 router.get("/oauth/:provider/callback", oauthCallback);
 router.put("/:id", authenticate, updateProfile);
+
+// Sessions management
+router.get("/sessions", authenticate, listSessions);
+router.post("/sessions/revoke", authenticate, revokeSession);
+router.post("/sessions/rename", authenticate, renameSession);
+router.post("/sessions/revoke-others", authenticate, revokeOtherSessions);
 
 // Email verification routes with rate limiting
 router.post("/auth/send-code", perEmailSendLimiter, emailVerificationLimiter, EmailVerificationController.sendCode);

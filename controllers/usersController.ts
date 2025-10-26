@@ -9,13 +9,14 @@ import crypto from 'crypto';
 import { BannedEmail } from "../models/BannedEmail.js";
 import { RefreshToken } from "../models/RefreshToken.js";
 import { isUsernameDisallowed, disallowedReason, isUsernameFormatValid, sanitizeUsernameToAllowed } from "../services/usernamePolicy.js";
-import { recordUsernameRejected } from "../services/securityTelemetry.js";
+import { recordUsernameRejected, recordSessionEvent, recordTokenAnomaly } from "../services/securityTelemetry.js";
 import { Notification } from "../models/Notification.js";
 import { authenticate } from "../middlewares/auth.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "dev_refresh_secret";
 const REFRESH_TTL_DAYS = Number(process.env.REFRESH_TOKEN_TTL_DAYS || 30);
+const MAX_CONCURRENT_SESSIONS = Number(process.env.MAX_CONCURRENT_SESSIONS || 5);
 
 function sanitize(user: User) {
   const { hashedPassword, ...rest } = user as any;
@@ -28,14 +29,44 @@ function daysFromNow(days: number) {
   return d;
 }
 
-async function issueRefreshToken(userId: number) {
+async function issueRefreshTokenWithMeta(req: Request, userId: number, opts?: { rotatedFromId?: number; deviceName?: string | null; }) {
   const repo = AppDataSource.getRepository(RefreshToken);
   const jti = crypto.randomUUID();
   const expiresAt = daysFromNow(REFRESH_TTL_DAYS);
-  const record = repo.create({ userId, jti, expiresAt, isRevoked: false });
+  const ua = (req?.headers['user-agent'] || null);
+  const ip = (req?.ip || null);
+  const deviceName = (opts?.deviceName ?? null);
+  const record = repo.create({
+    userId,
+    jti,
+    expiresAt,
+    isRevoked: false,
+    rotatedFromId: opts?.rotatedFromId ?? null,
+    userAgent: typeof ua === 'string' ? ua : null,
+    ip: typeof ip === 'string' ? ip : null,
+    deviceName,
+    lastUsedAt: new Date(),
+  } as any);
   await repo.save(record);
+
+  // Enforce concurrent session limit
+  const active = await repo
+    .createQueryBuilder('rt')
+    .where('rt.userId = :userId', { userId })
+    .andWhere('rt.isRevoked = false')
+    .orderBy('rt.createdAt', 'ASC')
+    .getMany();
+  if (active.length > MAX_CONCURRENT_SESSIONS) {
+    const toRevoke = active.slice(0, active.length - MAX_CONCURRENT_SESSIONS);
+    for (const old of toRevoke) {
+      await repo.update({ id: old.id }, { isRevoked: true, revokedAt: new Date() } as any);
+      await recordSessionEvent({ req, userId, eventType: 'session_limit_enforced', refreshTokenId: old.id, jti: old.jti, deviceName: old.deviceName ?? null });
+    }
+  }
+
   const token = jwt.sign({ userId, jti, type: 'refresh' }, REFRESH_SECRET, { expiresIn: `${REFRESH_TTL_DAYS}d` });
-  return { refreshToken: token, jti, expiresAt };
+  await recordSessionEvent({ req, userId, eventType: 'session_created', refreshTokenId: (record as any).id, jti, deviceName });
+  return { refreshToken: token, jti, expiresAt, record };
 }
 
 export async function getUsers(_req: Request, res: Response) {
@@ -109,12 +140,12 @@ export async function login(req: Request, res: Response) {
   if (!user) {
     return res.status(401).json({ error: "invalid credentials" });
   }
-  const ok = await bcrypt.compare(password, user.hashedPassword);
+  const ok = await bcrypt.compare(password, (user as any).hashedPassword);
   if (!ok) {
     return res.status(401).json({ error: "invalid credentials" });
   }
   const token = jwt.sign({ userId: (user as any).id }, JWT_SECRET, { expiresIn: "15m" });
-  const { refreshToken } = await issueRefreshToken((user as any).id);
+  const { refreshToken } = await issueRefreshTokenWithMeta(req, (user as any).id);
   res.json({ token, refreshToken, user: sanitize(user) });
 }
 
@@ -128,12 +159,25 @@ export async function refresh(req: Request, res: Response) {
     }
     const repo = AppDataSource.getRepository(RefreshToken);
     const rec = await repo.findOne({ where: { jti: String(payload.jti), userId: Number(payload.userId) } });
-    if (!rec || rec.isRevoked || rec.expiresAt < new Date()) {
+    if (!rec) {
+      await recordTokenAnomaly({ req, userId: Number(payload.userId), jti: String(payload.jti), reason: 'unknown_jti' });
+      return res.status(401).json({ error: 'invalid refresh token' });
+    }
+    if (rec.isRevoked) {
+      await recordTokenAnomaly({ req, userId: Number(payload.userId), refreshTokenId: rec.id, jti: rec.jti, reason: 'revoked_reuse' });
       return res.status(401).json({ error: 'refresh token expired or revoked' });
     }
+    if (rec.expiresAt < new Date()) {
+      await recordTokenAnomaly({ req, userId: Number(payload.userId), refreshTokenId: rec.id, jti: rec.jti, reason: 'expired_use' });
+      return res.status(401).json({ error: 'refresh token expired or revoked' });
+    }
+    // Update last used
+    await repo.update({ id: rec.id }, { lastUsedAt: new Date() } as any);
     // Rotate refresh token
-    await repo.update({ id: rec.id }, { isRevoked: true });
-    const { refreshToken: newRefreshToken } = await issueRefreshToken(Number(payload.userId));
+    await repo.update({ id: rec.id }, { isRevoked: true, revokedAt: new Date() } as any);
+    const { refreshToken: newRefreshToken, record: newRec } = await issueRefreshTokenWithMeta(req, Number(payload.userId), { rotatedFromId: rec.id, deviceName: rec.deviceName ?? null });
+    // Link replacement
+    await repo.update({ id: rec.id }, { replacedById: (newRec as any).id } as any);
     // Issue new access token reflecting current verification
     const token = jwt.sign({ userId: Number(payload.userId) }, JWT_SECRET, { expiresIn: "15m" });
     return res.json({ token, refreshToken: newRefreshToken });
@@ -142,308 +186,72 @@ export async function refresh(req: Request, res: Response) {
   }
 }
 
-export async function updateUser(req: Request, res: Response) {
-  const id = Number(req.params.id);
-  const { username, email, password, teamId, avatar } = req.body;
-  const repo = AppDataSource.getRepository(User);
-  const user = await repo.findOne({ where: { id } });
-  if (!user) return res.status(404).json({ error: "not found" });
-
-  if (username) {
-    // In signup: reject invalid format before blacklist and conflicts
-    if (typeof username === "string" && !isUsernameFormatValid(username)) {
-      await recordUsernameRejected({ req, email: (user as any).email || null, username, source: 'update', reason: 'format_invalid' });
-      return res.status(400).json({ error: "Usernames can only include letters, numbers, and underscores — no spaces or special symbols." });
-    }
-    if (typeof username === "string" && isUsernameDisallowed(username)) {
-      await recordUsernameRejected({ req, email: (user as any).email || null, username, source: 'update' });
-      return res.status(400).json({ error: "This username isn’t allowed" });
-    }
-    const usernameLower = String(username).toLowerCase();
-    const conflict = await repo.findOne({ where: { usernameLower } });
-    if (conflict && conflict.id !== user.id) {
-      return res.status(409).json({ error: "username already exists" });
-    }
-    user.username = username;
-    user.usernameLower = usernameLower;
-  }
-
-  if (email) {
-    const conflict = await repo.createQueryBuilder('user').where('LOWER(user.email) = :email', { email: String(email).toLowerCase() }).getOne();
-    if (conflict && conflict.id !== user.id) {
-      return res.status(409).json({ error: "email already exists" });
-    }
-    user.email = email;
-  }
-
-  if (typeof teamId !== "undefined") user.teamId = teamId;
-  if (typeof avatar !== "undefined") user.avatar = avatar;
-  if (password) user.hashedPassword = await bcrypt.hash(password, 10);
-
-  await repo.save(user);
-  res.json(sanitize(user));
-}
-// Provide backward compatibility for routes importing updateProfile
-export const updateProfile = updateUser;
-
-export async function startOAuth(req: Request, res: Response) {
-  const provider = String(req.params.provider || '');
-  const origin = String((req.query.origin as string) || 'http://localhost:5173');
-
-  if (provider === 'github') {
-    const clientId = process.env.GITHUB_CLIENT_ID;
-    if (!clientId) return res.status(500).send('GitHub OAuth not configured');
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/users/oauth/github/callback`;
-    const state = Buffer.from(JSON.stringify({ origin })).toString('base64');
-    const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('read:user user:email repo')}&state=${encodeURIComponent(state)}`;
-    return res.redirect(authorizeUrl);
-  }
-
-  if (provider === 'google') {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    if (!clientId) return res.status(500).send('Google OAuth not configured');
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/users/oauth/google/callback`;
-    const state = Buffer.from(JSON.stringify({ origin })).toString('base64');
-    const authorizeUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent('openid email profile')}&state=${encodeURIComponent(state)}`;
-    return res.redirect(authorizeUrl);
-  }
-
-  if (provider === 'slack') {
-    const clientId = process.env.SLACK_CLIENT_ID;
-    if (!clientId) return res.status(500).send('Slack OAuth not configured');
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/users/oauth/slack/callback`;
-    const state = Buffer.from(JSON.stringify({ origin })).toString('base64');
-    const authorizeUrl = `https://slack.com/oauth/v2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent('identity.basic identity.email')}&state=${encodeURIComponent(state)}`;
-    return res.redirect(authorizeUrl);
-  }
-
-  return res.status(400).send('unsupported provider');
-}
-
-export async function oauthCallback(req: Request, res: Response) {
+export async function listSessions(req: Request, res: Response) {
   try {
-    const provider = String(req.params.provider || '');
-    const origin = (() => { try { const b = Buffer.from(String(req.query.state || ''), 'base64').toString('utf8'); return JSON.parse(b || '{}')?.origin || 'http://localhost:5173'; } catch { return 'http://localhost:5173'; } })();
-    const code = String(req.query.code || '');
-
-    if (provider === 'github') {
-      const clientId = process.env.GITHUB_CLIENT_ID;
-      const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-      if (!clientId || !clientSecret) return res.status(500).send('GitHub OAuth not configured');
-      const redirectUri = `${req.protocol}://${req.get('host')}/api/users/oauth/github/callback`;
-
-      const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code, redirect_uri: redirectUri })
-      });
-      const tokenJson = await tokenRes.json() as any;
-      const accessToken = tokenJson?.access_token;
-      if (!accessToken) return res.status(400).send('oauth failed');
-
-      const userRes = await fetch('https://api.github.com/user', { headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'Planara' } });
-      const ghUser = await userRes.json() as any;
-      const emailsRes = await fetch('https://api.github.com/user/emails', { headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'Planara' } });
-      const emails = await emailsRes.json() as any[];
-      const primaryEmail = (Array.isArray(emails) && emails.find((e: any) => e.primary && e.verified)?.email)
-        || (Array.isArray(emails) && emails[0]?.email)
-        || `${ghUser.id}@users.noreply.github.com`;
-
-      const repo = AppDataSource.getRepository(User);
-      const loginLower = String(ghUser?.login || '').toLowerCase();
-      let user = await repo
-        .createQueryBuilder('user')
-        .where('LOWER(user.email) = :email', { email: String(primaryEmail).toLowerCase() })
-        .orWhere('user.usernameLower = :unameLower', { unameLower: loginLower })
-        .getOne();
-      let created = false;
-      if (!user) {
-        let base = sanitizeUsernameToAllowed(ghUser?.name || ghUser?.login || `github_${ghUser?.id}`);
-        let username = base;
-        let suffix = 0;
-        while (
-          !isUsernameFormatValid(String(username)) ||
-          isUsernameDisallowed(String(username)) ||
-          (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } }))
-        ) {
-          suffix += 1;
-          const suffixPart = `_${suffix}`;
-          const maxBase = 20 - suffixPart.length;
-          username = `${base.slice(0, Math.max(1, maxBase))}${suffixPart}`;
-        }
-        const hashedPassword = await bcrypt.hash(`oauth:github:${ghUser?.id}:${Date.now()}`, 10);
-        user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
-        await repo.save(user);
-        created = true;
-      }
-
-      // Gate by email verification
-      if (!(user as any).isVerified) {
-        const codeRepo = AppDataSource.getRepository(EmailVerificationCode);
-        // Invalidate existing codes
-        await codeRepo.update({ userId: (user as any).id, isUsed: false }, { isUsed: true });
-        const vcode = crypto.randomInt(100000, 999999).toString();
-        const expiresAt = new Date();
-        expiresAt.setMinutes(expiresAt.getMinutes() + 10);
-        const rec = codeRepo.create({ userId: (user as any).id, code: vcode, expiresAt });
-        await codeRepo.save(rec);
-        await EmailService.sendVerificationCode({ email: (user as any).email, username: (user as any).username, code: vcode });
-        const payload = { verificationRequired: true, email: (user as any).email, user: sanitize(user as any), created, provider: 'github' };
-        const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',verificationRequired:true,email:data.email,user:data.user,created:data.created,provider:data.provider},origin);}catch(e){}window.close();</script></body></html>`;
-        res.setHeader('Content-Type', 'text/html');
-        return res.send(html);
-      }
-
-      const token = jwt.sign({ userId: (user as any).id }, JWT_SECRET, { expiresIn: '7d' });
-      const payload = { token, user: sanitize(user as any), created, provider: 'github', accessToken };
-      const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',token:data.token,user:data.user,created:data.created,provider:data.provider,accessToken:data.accessToken},origin);}catch(e){}window.close();</script></body></html>`;
-      res.setHeader('Content-Type', 'text/html');
-      return res.send(html);
-    }
-
-    if (provider === 'google') {
-      const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-      if (!clientId || !clientSecret) return res.status(500).send('Google OAuth not configured');
-      const redirectUri = `${req.protocol}://${req.get('host')}/api/users/oauth/google/callback`;
-
-      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, code, redirect_uri: redirectUri, grant_type: 'authorization_code' }).toString(),
-      });
-      const tokenJson = await tokenRes.json() as any;
-      const accessToken = tokenJson.access_token as string | undefined;
-      if (!accessToken) return res.status(400).send('oauth failed');
-
-      const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } });
-      const gUser = await userRes.json() as any;
-      const primaryEmail = gUser?.email || `${gUser?.sub}@users.noreply.google.com`;
-
-      const repo = AppDataSource.getRepository(User);
-      const nameLower = String(gUser?.name || '').toLowerCase();
-      let user = await repo
-        .createQueryBuilder('user')
-        .where('LOWER(user.email) = :email', { email: String(primaryEmail).toLowerCase() })
-        .orWhere('user.usernameLower = :unameLower', { unameLower: nameLower })
-        .getOne();
-      let created = false;
-      if (!user) {
-        let base = sanitizeUsernameToAllowed(gUser?.name || (primaryEmail?.split('@')[0]) || `google_${gUser?.sub}`);
-        let username = base;
-        let suffix = 0;
-        while (
-          !isUsernameFormatValid(String(username)) ||
-          isUsernameDisallowed(String(username)) ||
-          (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } }))
-        ) {
-          suffix += 1;
-          const suffixPart = `_${suffix}`;
-          const maxBase = 20 - suffixPart.length;
-          username = `${base.slice(0, Math.max(1, maxBase))}${suffixPart}`;
-        }
-        const hashedPassword = await bcrypt.hash(`oauth:google:${gUser?.sub}:${Date.now()}`, 10);
-        user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
-        await repo.save(user);
-        created = true;
-      }
-
-      // Gate by email verification
-      if (!(user as any).isVerified) {
-        const codeRepo = AppDataSource.getRepository(EmailVerificationCode);
-        await codeRepo.update({ userId: (user as any).id, isUsed: false }, { isUsed: true });
-        const vcode = crypto.randomInt(100000, 999999).toString();
-        const expiresAt = new Date();
-        expiresAt.setMinutes(expiresAt.getMinutes() + 10);
-        const rec = codeRepo.create({ userId: (user as any).id, code: vcode, expiresAt });
-        await codeRepo.save(rec);
-        await EmailService.sendVerificationCode({ email: (user as any).email, username: (user as any).username, code: vcode });
-        const payload = { verificationRequired: true, email: (user as any).email, user: sanitize(user as any), created, provider: 'google' };
-        const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',verificationRequired:true,email:data.email,user:data.user,created:data.created,provider:data.provider},origin);}catch(e){}window.close();</script></body></html>`;
-        res.setHeader('Content-Type', 'text/html');
-        return res.send(html);
-      }
-
-      const token = jwt.sign({ userId: (user as any).id }, JWT_SECRET, { expiresIn: '7d' });
-      const payload = { token, user: sanitize(user as any), created };
-      const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',token:data.token,user:data.user,created:data.created},origin);}catch(e){}window.close();</script></body></html>`;
-      res.setHeader('Content-Type', 'text/html');
-      return res.send(html);
-    }
-
-    if (provider === 'slack') {
-      const clientId = process.env.SLACK_CLIENT_ID;
-      const clientSecret = process.env.SLACK_CLIENT_SECRET;
-      if (!clientId || !clientSecret) return res.status(500).send('Slack OAuth not configured');
-      const redirectUri = `${req.protocol}://${req.get('host')}/api/users/oauth/slack/callback`;
-
-      const tokenRes = await fetch('https://slack.com/api/oauth.v2.access', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, code, redirect_uri: redirectUri }).toString(),
-      });
-      const tokenJson = await tokenRes.json() as any;
-      const accessToken = tokenJson?.authed_user?.access_token || tokenJson?.access_token;
-      if (!accessToken) return res.status(400).send('oauth failed');
-
-      const userRes = await fetch('https://slack.com/api/users.identity', { headers: { Authorization: `Bearer ${accessToken}` } });
-      const sUserJson = await userRes.json() as any;
-      if (!sUserJson?.ok) return res.status(400).send('oauth failed');
-      const sUser = sUserJson.user || {};
-      const primaryEmail = sUser?.email || `${sUser?.id}@users.noreply.slack.com`;
-
-      const repo = AppDataSource.getRepository(User);
-      const nameLower = String(sUser?.name || '').toLowerCase();
-      let user = await repo
-        .createQueryBuilder('user')
-        .where('LOWER(user.email) = :email', { email: String(primaryEmail).toLowerCase() })
-        .orWhere('user.usernameLower = :unameLower', { unameLower: nameLower })
-        .getOne();
-      let created = false;
-      if (!user) {
-        let base = sanitizeUsernameToAllowed(sUser?.name || (primaryEmail?.split('@')[0]) || `slack_${sUser?.id}`);
-        let username = base;
-        let suffix = 0;
-        while (
-          !isUsernameFormatValid(String(username)) ||
-          isUsernameDisallowed(String(username)) ||
-          (await repo.findOne({ where: { usernameLower: String(username).toLowerCase() } }))
-        ) {
-          suffix += 1;
-          const suffixPart = `_${suffix}`;
-          const maxBase = 20 - suffixPart.length;
-          username = `${base.slice(0, Math.max(1, maxBase))}${suffixPart}`;
-        }
-        const hashedPassword = await bcrypt.hash(`oauth:slack:${sUser?.id}:${Date.now()}`, 10);
-        user = repo.create({ username, usernameLower: String(username).toLowerCase(), email: primaryEmail, hashedPassword });
-        await repo.save(user);
-        created = true;
-      }
-
-      // Gate by email verification
-      if (!(user as any).isVerified) {
-        const codeRepo = AppDataSource.getRepository(EmailVerificationCode);
-        await codeRepo.update({ userId: (user as any).id, isUsed: false }, { isUsed: true });
-        const vcode = crypto.randomInt(100000, 999999).toString();
-        const expiresAt = new Date();
-        expiresAt.setMinutes(expiresAt.getMinutes() + 10);
-        const rec = codeRepo.create({ userId: (user as any).id, code: vcode, expiresAt });
-        await codeRepo.save(rec);
-        await EmailService.sendVerificationCode({ email: (user as any).email, username: (user as any).username, code: vcode });
-        const payload = { verificationRequired: true, email: (user as any).email, user: sanitize(user as any), created, provider: 'slack' };
-        const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',verificationRequired:true,email:data.email,user:data.user,created:data.created,provider:data.provider},origin);}catch(e){}window.close();</script></body></html>`;
-        res.setHeader('Content-Type', 'text/html');
-        return res.send(html);
-      }
-
-      const token = jwt.sign({ userId: (user as any).id }, JWT_SECRET, { expiresIn: '7d' });
-      const payload = { token, user: sanitize(user as any), created };
-      const html = `<!doctype html><html><body><script>const data=${JSON.stringify(payload)};const origin=${JSON.stringify(origin)};try{window.opener&&window.opener.postMessage({type:'oauth',token:data.token,user:data.user,created:data.created},origin);}catch(e){}window.close();</script></body></html>`;
-      res.setHeader('Content-Type', 'text/html');
-      return res.send(html);
-    }
-
-    return res.status(400).send('unsupported provider');
+    const userId = (req as any).userId as number | undefined;
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    const repo = AppDataSource.getRepository(RefreshToken);
+    const sessions = await repo
+      .createQueryBuilder('rt')
+      .where('rt.userId = :userId', { userId })
+      .orderBy('rt.createdAt', 'DESC')
+      .getMany();
+    return res.status(200).json({ success: true, sessions });
   } catch (e) {
-    return res.status(400).send('oauth error');
+    return res.status(500).json({ success: false, error: 'failed to list sessions' });
+  }
+}
+
+export async function revokeSession(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number | undefined;
+    const id = Number(req.body?.id || 0);
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    if (!id) return res.status(400).json({ error: 'missing id' });
+    const repo = AppDataSource.getRepository(RefreshToken);
+    const rec = await repo.findOne({ where: { id } });
+    if (!rec || rec.userId !== userId) return res.status(404).json({ error: 'not found' });
+    await repo.update({ id }, { isRevoked: true, revokedAt: new Date() } as any);
+    await recordSessionEvent({ req, userId, eventType: 'session_revoked', refreshTokenId: rec.id, jti: rec.jti, deviceName: rec.deviceName ?? null });
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: 'failed to revoke session' });
+  }
+}
+
+export async function renameSession(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number | undefined;
+    const id = Number(req.body?.id || 0);
+    const deviceName = String(req.body?.deviceName || '').slice(0, 255);
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    if (!id || !deviceName) return res.status(400).json({ error: 'missing id or deviceName' });
+    const repo = AppDataSource.getRepository(RefreshToken);
+    const rec = await repo.findOne({ where: { id } });
+    if (!rec || rec.userId !== userId) return res.status(404).json({ error: 'not found' });
+    await repo.update({ id }, { deviceName } as any);
+    await recordSessionEvent({ req, userId, eventType: 'session_renamed', refreshTokenId: rec.id, jti: rec.jti, deviceName });
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: 'failed to rename session' });
+  }
+}
+
+export async function revokeOtherSessions(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number | undefined;
+    const keepId = Number(req.body?.keepId || 0);
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    const repo = AppDataSource.getRepository(RefreshToken);
+    const all = await repo.createQueryBuilder('rt').where('rt.userId = :userId', { userId }).andWhere('rt.isRevoked = false').getMany();
+    const toRevoke = all.filter((rt) => rt.id !== keepId);
+    for (const rec of toRevoke) {
+      await repo.update({ id: rec.id }, { isRevoked: true, revokedAt: new Date() } as any);
+      await recordSessionEvent({ req, userId, eventType: 'session_revoked', refreshTokenId: rec.id, jti: rec.jti, deviceName: rec.deviceName ?? null });
+    }
+    return res.status(200).json({ success: true, revokedCount: toRevoke.length });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: 'failed to revoke sessions' });
   }
 }
 
@@ -628,5 +436,121 @@ export async function acceptTeamInvite(req: Request, res: Response) {
     return res.status(200).json({ success: true });
   } catch (e) {
     return res.status(500).json({ error: 'failed to accept invite' });
+  }
+}
+
+export async function updateProfile(req: Request, res: Response) {
+  try {
+    const authUserId = (req as any).userId as number | undefined;
+    const targetId = Number(req.params.id);
+    if (!authUserId) return res.status(401).json({ error: 'unauthorized' });
+    if (!targetId || targetId !== authUserId) return res.status(403).json({ error: 'forbidden' });
+
+    const { username, email, password, teamId, avatar } = req.body as any;
+    const repo = AppDataSource.getRepository(User);
+    const user = await repo.findOne({ where: { id: targetId } });
+    if (!user) return res.status(404).json({ error: 'user not found' });
+
+    const updates: any = {};
+
+    if (typeof username === 'string' && username.trim()) {
+      const uname = username.trim();
+      if (!isUsernameFormatValid(uname)) {
+        return res.status(400).json({ error: 'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.' });
+      }
+      if (isUsernameDisallowed(uname)) {
+        return res.status(400).json({ error: 'This username isn’t allowed' });
+      }
+      const unameLower = uname.toLowerCase();
+      const conflict = await repo.findOne({ where: { usernameLower: unameLower } });
+      if (conflict && conflict.id !== (user as any).id) {
+        return res.status(409).json({ error: 'username already exists' });
+      }
+      updates.username = uname;
+      updates.usernameLower = unameLower;
+      updates.usernameChangeCount = ((user as any).usernameChangeCount || 0) + 1;
+    }
+
+    if (typeof email === 'string' && email.trim()) {
+      const eml = email.trim();
+      if (!eml.includes('@')) {
+        return res.status(400).json({ error: 'invalid email' });
+      }
+      const conflict = await repo
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = :email', { email: eml.toLowerCase() })
+        .getOne();
+      if (conflict && conflict.id !== (user as any).id) {
+        return res.status(409).json({ error: 'email already exists' });
+      }
+      updates.email = eml;
+    }
+
+    if (typeof avatar === 'string') {
+      updates.avatar = avatar;
+    }
+
+    if (typeof teamId === 'number') {
+      updates.teamId = Number(teamId);
+    }
+
+    if (typeof password === 'string' && password.trim()) {
+      const hashed = await bcrypt.hash(password.trim(), 10);
+      updates.hashedPassword = hashed;
+    }
+
+    await repo.update({ id: (user as any).id }, updates);
+    const updated = await repo.findOne({ where: { id: (user as any).id } });
+    if (!updated) return res.status(500).json({ error: 'failed to update user' });
+    return res.json(sanitize(updated));
+  } catch (e) {
+    return res.status(500).json({ error: 'failed to update profile' });
+  }
+}
+
+// Minimal OAuth stubs to satisfy routes; real provider integration can be added later
+export async function startOAuth(req: Request, res: Response) {
+  try {
+    const provider = String(req.params?.provider || '').toLowerCase();
+    const origin = String(req.query?.origin || '');
+    // Redirect immediately to callback with placeholder data in dev
+    const url = new URL(`${req.protocol}://${req.get('host')}/api/users/oauth/${encodeURIComponent(provider)}/callback`);
+    if (origin) url.searchParams.set('origin', origin);
+    url.searchParams.set('provider', provider);
+    res.redirect(url.toString());
+  } catch (e) {
+    res.status(500).send('OAuth start failed');
+  }
+}
+
+export async function oauthCallback(req: Request, res: Response) {
+  try {
+    const provider = String((req.query?.provider || req.params?.provider || '')).toLowerCase();
+    const origin = String(req.query?.origin || '');
+
+    // In dev, simply return a small page that posts a message back
+    const payload = {
+      type: 'oauth',
+      provider,
+      token: null,
+      user: null,
+      created: false,
+      verificationRequired: true,
+    };
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>OAuth Complete</title></head><body><script>
+      try {
+        var data = ${JSON.stringify(payload)};
+        var origin = ${JSON.stringify(origin || '*')};
+        if (window.opener && window.opener.postMessage) {
+          window.opener.postMessage(data, origin || '*');
+        }
+        window.close();
+      } catch (e) { console.error(e); }
+    </script><p>You may close this window.</p></body></html>`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (e) {
+    res.status(500).send('OAuth callback failed');
   }
 }

@@ -106,3 +106,64 @@ export async function recordAttachmentEvent(opts: {
     await repo.save(ev);
   } catch {}
 }
+
+export async function recordSessionEvent(opts: {
+  req: Request;
+  userId: number;
+  eventType: 'session_created' | 'session_revoked' | 'session_renamed' | 'session_limit_enforced';
+  refreshTokenId?: number | null;
+  jti?: string | null;
+  deviceName?: string | null;
+  ip?: string | null;
+  ua?: string | null;
+  extra?: Record<string, any> | null;
+}) {
+  try {
+    const repo = AppDataSource.getRepository(SecurityEvent);
+    const ev = repo.create({
+      email: null,
+      userId: opts.userId,
+      eventType: opts.eventType,
+      ip: opts.ip ?? (opts.req?.ip || null),
+      metadata: {
+        refreshTokenId: opts.refreshTokenId ?? null,
+        jti: opts.jti ?? null,
+        deviceName: opts.deviceName ?? null,
+        path: opts.req?.originalUrl || null,
+        ua: opts.ua ?? (opts.req?.headers['user-agent'] || null),
+        ...(opts.extra || {}),
+      },
+      createdAt: new Date(),
+    });
+    await repo.save(ev);
+  } catch {}
+}
+
+export async function recordTokenAnomaly(opts: {
+  req: Request;
+  userId: number;
+  refreshTokenId?: number | null;
+  jti?: string | null;
+  reason: 'revoked_reuse' | 'expired_use' | 'unknown_jti' | 'rotation_mismatch' | 'concurrent_limit_exceeded';
+  extra?: Record<string, any> | null;
+}) {
+  try {
+    const repo = AppDataSource.getRepository(SecurityEvent);
+    const ev = repo.create({
+      email: null,
+      userId: opts.userId,
+      eventType: 'token_anomaly',
+      ip: opts.req?.ip || null,
+      metadata: {
+        refreshTokenId: opts.refreshTokenId ?? null,
+        jti: opts.jti ?? null,
+        reason: opts.reason,
+        path: opts.req?.originalUrl || null,
+        ua: opts.req?.headers['user-agent'] || null,
+        ...(opts.extra || {}),
+      },
+      createdAt: new Date(),
+    });
+    await repo.save(ev);
+  } catch {}
+}
