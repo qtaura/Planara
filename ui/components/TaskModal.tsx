@@ -98,6 +98,7 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
   const ROLE_ORDER: Record<string, number> = { viewer: 0, member: 1, admin: 2, owner: 3 };
   const canUpdate = !teamId || (userRole ? ROLE_ORDER[userRole] >= ROLE_ORDER['member'] : false);
   const canDelete = !teamId || (userRole ? ROLE_ORDER[userRole] >= ROLE_ORDER['admin'] : false);
+  const updating = optimisticTask.isOptimistic; // ensure defined during optimistic updates
 
   async function handleMarkDone() {
     if (!canUpdate) {
