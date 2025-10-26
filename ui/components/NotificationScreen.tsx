@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Check, CheckCheck, Trash2, AlertCircle, Info, CheckCircle, Clock } from 'lucide-react';
-import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, acceptTeamInvite } from '@lib/api';
+import { Bell, Check, CheckCheck, Trash2, AlertCircle, Info, CheckCircle, Clock, EyeOff, Filter } from 'lucide-react';
+import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, acceptTeamInvite, markNotificationAsUnread } from '@lib/api';
 import { toast } from 'sonner';
 
 interface Notification {
@@ -17,15 +17,18 @@ export default function NotificationScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
+  const [filterType, setFilterType] = useState<string>('');
+  const [filterChannel, setFilterChannel] = useState<string>('');
 
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [showUnreadOnly, filterType, filterChannel]);
 
   async function fetchNotifications() {
     try {
       setLoading(true);
-      const data = await getNotifications();
+      const data = await getNotifications({ read: showUnreadOnly ? false : undefined, type: filterType || undefined, channel: filterChannel || undefined, limit: 200 });
       setNotifications(data);
       setError(null);
     } catch (err) {
@@ -184,16 +187,52 @@ export default function NotificationScreen() {
             </span>
           )}
         </div>
-        
-        {unreadCount > 0 && (
-          <button
-            onClick={handleMarkAllAsRead}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            <CheckCheck className="w-4 h-4" />
-            Mark All Read
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Filter className="w-4 h-4 text-gray-500" />
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="border rounded px-2 py-1 text-sm"
+              title="Filter by type"
+            >
+              <option value="">All types</option>
+              <option value="info">Info</option>
+              <option value="success">Success</option>
+              <option value="warning">Warning</option>
+              <option value="error">Error</option>
+              <option value="team_invite">Team Invites</option>
+            </select>
+            <select
+              value={filterChannel}
+              onChange={(e) => setFilterChannel(e.target.value)}
+              className="border rounded px-2 py-1 text-sm"
+              title="Filter by channel"
+            >
+              <option value="">All channels</option>
+              <option value="in_app">In-app</option>
+              <option value="email">Email</option>
+              <option value="push">Push</option>
+            </select>
+            <button
+              onClick={() => setShowUnreadOnly((v) => !v)}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-sm ${showUnreadOnly ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-gray-100 text-gray-700'}`}
+              title="Show unread only"
+            >
+              <EyeOff className="w-4 h-4" />
+              Unread only
+            </button>
+          </div>
+          {unreadCount > 0 && (
+            <button
+              onClick={handleMarkAllAsRead}
+              className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              <CheckCheck className="w-4 h-4" />
+              Mark All Read
+            </button>
+          )}
+        </div>
       </div>
 
       {notifications.length === 0 ? (
@@ -205,19 +244,11 @@ export default function NotificationScreen() {
       ) : (
         <div className="space-y-4">
           {notifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={`p-4 rounded-lg border transition-colors ${
-                notification.read 
-                  ? 'bg-gray-50 border-gray-200' 
-                  : 'bg-white border-blue-200 shadow-sm'
-              }`}
-            >
+            <div key={notification.id} className={`p-4 rounded-lg border transition-colors ${notification.read ? 'bg-gray-50 border-gray-200' : 'bg-white border-blue-200 shadow-sm'}`}>
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-1">
                   {getNotificationIcon(notification.type)}
                 </div>
-                
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
@@ -232,27 +263,22 @@ export default function NotificationScreen() {
                         {formatDate(notification.createdAt)}
                       </div>
                     </div>
-                    
                     <div className="flex items-center gap-1">
                       {!notification.read && (
-                        <button
-                          onClick={() => handleMarkAsRead(notification.id)}
-                          className="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded"
-                          title="Mark as read"
-                        >
+                        <button onClick={() => handleMarkAsRead(notification.id)} className="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded" title="Mark as read">
                           <Check className="w-4 h-4" />
                         </button>
                       )}
-                      <button
-                        onClick={() => handleDelete(notification.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
-                        title="Delete notification"
-                      >
+                      {notification.read && (
+                        <button onClick={() => handleMarkAsUnread(notification.id)} className="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded" title="Mark as unread">
+                          <EyeOff className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button onClick={() => handleDelete(notification.id)} className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded" title="Delete notification">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
-                  
                   {notification.actionUrl && notification.type === 'team_invite' && (
                     <div className="mt-3">
                       <button

@@ -8,6 +8,7 @@ import { Milestone } from "../models/Milestone.js";
 import { Comment } from "../models/Comment.js";
 import { EmailVerificationCode } from "../models/EmailVerificationCode.js";
 import { Notification } from "../models/Notification.js";
+import { NotificationPreference } from "../models/NotificationPreference.js";
 import { SecurityEvent } from "../models/SecurityEvent.js";
 import { BannedEmail } from "../models/BannedEmail.js";
 import { RefreshToken } from "../models/RefreshToken.js";
@@ -27,7 +28,7 @@ export const AppDataSource = new DataSource(
     ? {
         type: "postgres",
         url: dbUrl,
-        entities: [User, Project, Task, Milestone, Comment, EmailVerificationCode, Notification, SecurityEvent, BannedEmail, RefreshToken, Organization, Team, Membership, Thread, Attachment, FileVersion],
+        entities: [User, Project, Task, Milestone, Comment, EmailVerificationCode, Notification, NotificationPreference, SecurityEvent, BannedEmail, RefreshToken, Organization, Team, Membership, Thread, Attachment, FileVersion],
         synchronize: true,
         logging: false,
         // Always ignore self-signed certs for Railway/public hosts
@@ -37,7 +38,7 @@ export const AppDataSource = new DataSource(
     : {
         type: "sqlite",
         database: path.join(process.cwd(), "db", "planara.sqlite"),
-        entities: [User, Project, Task, Milestone, Comment, EmailVerificationCode, Notification, SecurityEvent, BannedEmail, RefreshToken, Organization, Team, Membership, Thread, Attachment, FileVersion],
+        entities: [User, Project, Task, Milestone, Comment, EmailVerificationCode, Notification, NotificationPreference, SecurityEvent, BannedEmail, RefreshToken, Organization, Team, Membership, Thread, Attachment, FileVersion],
         synchronize: true,
         logging: false,
       }

@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } f
 import { User } from "./User.js";
 import { Project } from "./Project.js";
 import { Task } from "./Task.js";
+import { NotificationPreference } from "./NotificationPreference.js";
 
 @Entity()
 export class Notification {
@@ -24,6 +25,12 @@ export class Notification {
   @Column({ default: false })
   read!: boolean;
 
+  @Column({ type: "datetime", nullable: true })
+  readAt?: Date | null;
+
+  @Column({ type: "varchar", enum: ["in_app", "email", "push"], default: "in_app" })
+  channel!: "in_app" | "email" | "push";
+
   @CreateDateColumn()
   createdAt!: Date;
 
@@ -39,4 +46,7 @@ export class Notification {
 
   @Column({ nullable: true })
   actionUrl?: string;
+
+  @ManyToOne(() => NotificationPreference, { nullable: true })
+  preference?: NotificationPreference | null;
 }

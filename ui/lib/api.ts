@@ -351,8 +351,16 @@ export async function adminSetUsername(email: string, newUsername: string, admin
 }
 
 // Notification API functions
-export async function getNotifications(): Promise<any[]> {
-  const res = await apiFetch('/notifications');
+export async function getNotifications(filters?: { type?: string; channel?: string; read?: boolean; from?: string | Date; to?: string | Date; limit?: number }): Promise<any[]> {
+  const params = new URLSearchParams();
+  if (filters?.type) params.set('type', filters.type);
+  if (filters?.channel) params.set('channel', filters.channel);
+  if (typeof filters?.read === 'boolean') params.set('read', String(filters.read));
+  if (filters?.from) params.set('from', typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString());
+  if (filters?.to) params.set('to', typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString());
+  if (filters?.limit) params.set('limit', String(filters.limit));
+  const query = params.toString();
+  const res = await apiFetch(`/notifications${query ? `?${query}` : ''}`);
   if (!res.ok) throw new Error(`Failed to fetch notifications: ${res.status}`);
   return res.json();
 }
@@ -386,6 +394,14 @@ export async function markNotificationAsRead(notificationId: number): Promise<an
     method: 'PUT',
   });
   if (!res.ok) throw new Error(`Failed to mark notification as read: ${res.status}`);
+  return res.json();
+}
+
+export async function markNotificationAsUnread(notificationId: number): Promise<any> {
+  const res = await apiFetch(`/notifications/${notificationId}/unread`, {
+    method: 'PUT',
+  });
+  if (!res.ok) throw new Error(`Failed to mark notification as unread: ${res.status}`);
   return res.json();
 }
 
@@ -882,4 +898,33 @@ export async function searchComments(filters: SearchCommentFilters): Promise<{ i
   const res = await apiFetch(`/search/comments?${params.toString()}`);
   if (!res.ok) throw new Error(`Search comments failed: ${res.status}`);
   return res.json();
+}
+export async function getNotificationPreferences(): Promise<any[]> {
+  const res = await apiFetch('/notifications/preferences');
+  if (!res.ok) throw new Error(`Failed to fetch preferences: ${res.status}`);
+  return res.json();
+}
+export async function upsertNotificationPreference(payload: { type: string; channel: 'in_app' | 'email' | 'push'; enabled?: boolean; frequency?: 'instant' | 'daily' | 'weekly' }): Promise<any> {
+  const res = await apiFetch('/notifications/preferences', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed to upsert preference: ${res.status}`);
+  return res.json();
+}
+export async function updateNotificationPreference(id: number, payload: { enabled?: boolean; frequency?: 'instant' | 'daily' | 'weekly' }): Promise<any> {
+  const res = await apiFetch(`/notifications/preferences/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed to update preference: ${res.status}`);
+  return res.json();
+}
+export async function deleteNotificationPreference(id: number): Promise<boolean> {
+  const res = await apiFetch(`/notifications/preferences/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Failed to delete preference: ${res.status}`);
+  const data = await res.json();
+  return !!data?.success;
 }

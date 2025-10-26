@@ -4,6 +4,7 @@ import {
   getUnreadCount, 
   createNotification, 
   markAsRead, 
+  markAsUnread,
   markAllAsRead, 
   deleteNotification 
 } from "../controllers/notificationsController.js";
@@ -26,6 +27,9 @@ router.post("/", createNotification);
 
 // PUT /api/notifications/:id/read - Mark a notification as read
 router.put("/:id/read", markAsRead);
+
+// PUT /api/notifications/:id/unread - Mark a notification as unread
+router.put("/:id/unread", markAsUnread);
 
 // PUT /api/notifications/mark-all-read - Mark all notifications as read
 router.put("/mark-all-read", markAllAsRead);
