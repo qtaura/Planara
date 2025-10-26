@@ -63,14 +63,18 @@ async function issueRefreshTokenWithMeta(
   } as any);
   await repo.save(record);
 
-  // Enforce concurrent session limit
+  // Enforce concurrent session limit, with bypass for Planara account (hello@planara.org)
+  const userRepo = AppDataSource.getRepository(User);
+  const userEmailRaw = String((await userRepo.findOne({ where: { id: userId } }))?.email || '').toLowerCase();
+  const bypassSessionsLimit = userEmailRaw === 'hello@planara.org';
+
   const active = await repo
     .createQueryBuilder('rt')
     .where('rt.userId = :userId', { userId })
     .andWhere('rt.isRevoked = false')
     .orderBy('rt.createdAt', 'ASC')
     .getMany();
-  if (active.length > MAX_CONCURRENT_SESSIONS) {
+  if (!bypassSessionsLimit && active.length > MAX_CONCURRENT_SESSIONS) {
     const toRevoke = active.slice(0, active.length - MAX_CONCURRENT_SESSIONS);
     for (const old of toRevoke) {
       await repo.update({ id: old.id }, { isRevoked: true, revokedAt: new Date() } as any);
