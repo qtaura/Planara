@@ -7,8 +7,9 @@ import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Separator } from './ui/separator';
-import { User, Bell, Palette, Users, Shield, Github, Mail, Trash2 } from 'lucide-react';
+import { User, Bell, Palette, Users, Shield, Github, Mail, Trash2, Globe } from 'lucide-react';
 import { useTheme } from '../lib/theme-context';
+import { useLocale } from '../lib/i18n';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -90,6 +91,7 @@ export function SettingsScreen() {
   const sections = [
     { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
     { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" /> },
+    { id: 'language', label: 'Language & Region', icon: <Globe className="w-4 h-4" /> },
     { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
     { id: 'organizations', label: 'Organizations', icon: <Users className="w-4 h-4" /> },
     { id: 'team', label: 'Team', icon: <Users className="w-4 h-4" /> },
@@ -130,6 +132,7 @@ export function SettingsScreen() {
               <ProfileSection user={user} onUserUpdated={(u) => setUser(u)} />
             )}
             {activeSection === 'appearance' && <AppearanceSection />}
+            {activeSection === 'language' && <LanguageSection />}
             {activeSection === 'notifications' && <NotificationsSection />}
             {activeSection === 'organizations' && <OrganizationSection />}
             {activeSection === 'team' && <TeamSection />}
@@ -305,7 +308,107 @@ function AppearanceSection() {
   );
 }
 
+function LanguageSection() {
+  const { locale, setLocale, formatDate, formatNumber, formatCurrency } = useLocale();
+  const [selected, setSelected] = useState<string>(locale);
+
+  useEffect(() => {
+    setSelected(locale);
+  }, [locale]);
+
+  const locales = [
+    { value: 'en-US', label: 'English (United States)' },
+    { value: 'en-GB', label: 'English (United Kingdom)' },
+    { value: 'fr-FR', label: 'Français (France)' },
+    { value: 'de-DE', label: 'Deutsch (Deutschland)' },
+    { value: 'es-ES', label: 'Español (España)' },
+    { value: 'ar', label: 'العربية' },
+    { value: 'he', label: 'עברית' },
+    { value: 'fa', label: 'فارسی' },
+    { value: 'ja-JP', label: '日本語 (日本)' },
+  ];
+
+  function applyLocale(l: string) {
+    setSelected(l);
+    try { setLocale(l); } catch {}
+  }
+
+  function useDeviceLocale() {
+    const l = navigator.language || 'en-US';
+    applyLocale(l);
+  }
+
+  const today = new Date();
+
+  return (
+    <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
+      <h3 className="text-slate-900 dark:text-white mb-6">Language & Region</h3>
+
+      <div className="space-y-6">
+        <div>
+          <Label className="text-sm text-slate-900 dark:text-white">App language</Label>
+          <select
+            className="mt-2 w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm"
+            value={selected}
+            onChange={(e) => applyLocale(e.target.value)}
+          >
+            {locales.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <div className="mt-2">
+            <Button variant="outline" onClick={useDeviceLocale}>
+              Use device locale ({navigator.language || 'en-US'})
+            </Button>
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+            <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Date</div>
+            <div className="text-sm text-slate-900 dark:text-white">{formatDate(today)}</div>
+          </div>
+          <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+            <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Number</div>
+            <div className="text-sm text-slate-900 dark:text-white">{formatNumber(1234567.89)}</div>
+          </div>
+          <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+            <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Currency</div>
+            <div className="text-sm text-slate-900 dark:text-white">{formatCurrency(1234.56)}</div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function NotificationsSection() {
+  const [emailAssignment, setEmailAssignment] = useState<boolean>(loadBool('pref_email_assignment', true));
+  const [emailComments, setEmailComments] = useState<boolean>(loadBool('pref_email_comments', true));
+  const [emailProjectUpdates, setEmailProjectUpdates] = useState<boolean>(loadBool('pref_email_project_updates', false));
+  const [pushDesktop, setPushDesktop] = useState<boolean>(loadBool('pref_push_desktop', true));
+  const [pushSound, setPushSound] = useState<boolean>(loadBool('pref_push_sound', false));
+
+  function loadBool(key: string, fallback: boolean) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw === null) return fallback;
+      return raw === 'true' || raw === '1';
+    } catch {
+      return fallback;
+    }
+  }
+
+  function persist(key: string, value: boolean) {
+    try {
+      localStorage.setItem(key, String(value));
+    } catch {}
+  }
+
   return (
     <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
       <h3 className="text-slate-900 dark:text-white mb-6">Notifications</h3>
@@ -314,20 +417,27 @@ function NotificationsSection() {
         <div>
           <h4 className="text-sm text-slate-900 dark:text-white mb-4">Email notifications</h4>
           <div className="space-y-4">
-            <SettingToggle
-              label="Task assignments"
-              description="Get notified when you're assigned to a task"
-              defaultChecked
-            />
-            <SettingToggle
-              label="Comments & mentions"
-              description="Receive updates on comments and @mentions"
-              defaultChecked
-            />
-            <SettingToggle
-              label="Project updates"
-              description="Stay informed about project changes"
-            />
+            <div className="flex items-start justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm text-slate-900 dark:text-white">Task assignments</Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Get notified when you're assigned to a task</p>
+              </div>
+              <Switch checked={emailAssignment} onCheckedChange={(v: boolean) => { setEmailAssignment(v); persist('pref_email_assignment', v); }} />
+            </div>
+            <div className="flex items-start justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm text-slate-900 dark:text-white">Comments & mentions</Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Receive updates on comments and @mentions</p>
+              </div>
+              <Switch checked={emailComments} onCheckedChange={(v: boolean) => { setEmailComments(v); persist('pref_email_comments', v); }} />
+            </div>
+            <div className="flex items-start justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm text-slate-900 dark:text-white">Project updates</Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Stay informed about project changes</p>
+              </div>
+              <Switch checked={emailProjectUpdates} onCheckedChange={(v: boolean) => { setEmailProjectUpdates(v); persist('pref_email_project_updates', v); }} />
+            </div>
           </div>
         </div>
 
@@ -336,12 +446,20 @@ function NotificationsSection() {
         <div>
           <h4 className="text-sm text-slate-900 dark:text-white mb-4">Push notifications</h4>
           <div className="space-y-4">
-            <SettingToggle
-              label="Desktop notifications"
-              description="Show notifications on your desktop"
-              defaultChecked
-            />
-            <SettingToggle label="Sound" description="Play a sound for new notifications" />
+            <div className="flex items-start justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm text-slate-900 dark:text-white">Desktop notifications</Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Show notifications on your desktop</p>
+              </div>
+              <Switch checked={pushDesktop} onCheckedChange={(v: boolean) => { setPushDesktop(v); persist('pref_push_desktop', v); }} />
+            </div>
+            <div className="flex items-start justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm text-slate-900 dark:text-white">Sound</Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Play a sound for new notifications</p>
+              </div>
+              <Switch checked={pushSound} onCheckedChange={(v: boolean) => { setPushSound(v); persist('pref_push_sound', v); }} />
+            </div>
           </div>
         </div>
       </div>

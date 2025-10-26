@@ -36,6 +36,7 @@ import {
 } from '@lib/api';
 import { toast } from 'sonner';
 import CommentsPanel from './CommentsPanel';
+import { useOptimisticTask, OptimisticIndicator } from '../lib/optimistic-ui';
 
 interface TaskModalProps {
   task: Task | null;
@@ -47,12 +48,14 @@ interface TaskModalProps {
 
 export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
   const [showAiSuggestions, setShowAiSuggestions] = useState(true);
-  const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [userRole, setUserRole] = useState<'viewer' | 'member' | 'admin' | 'owner' | null>(null);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [versionsFor, setVersionsFor] = useState<number | null>(null);
+
+  // Use optimistic UI for task updates
+  const optimisticTask = useOptimisticTask(task || {} as Task);
 
   useEffect(() => {
     async function loadAttachments() {
@@ -101,17 +104,15 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
       toast.error('Insufficient role to update tasks');
       return;
     }
-    setUpdating(true);
-    try {
-      await updateTaskStatus(task.id, 'done', teamId ?? undefined);
-      toast.success('Task marked as done');
-      window.dispatchEvent(new CustomEvent('tasks:changed'));
-      onClose();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to update task');
-    } finally {
-      setUpdating(false);
-    }
+
+    await optimisticTask.actions.markAsDone(async () => {
+      const updated = await updateTaskStatus(task.id, 'done', teamId ?? undefined);
+      return updated;
+    });
+
+    toast.success('Task marked as done');
+    window.dispatchEvent(new CustomEvent('tasks:changed'));
+    onClose();
   }
 
   async function handleDelete() {
@@ -234,7 +235,7 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
                   {task.priority}
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  {task.status}
+                  {optimisticTask.data?.status || task.status}
                 </Badge>
                 {task.aiSuggested && (
                   <Badge className="bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 border-0 text-xs">
@@ -254,11 +255,12 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
                 variant="outline"
                 size="sm"
                 onClick={handleMarkDone}
-                disabled={updating || deleting || task.status === 'done' || !canUpdate}
+                disabled={optimisticTask.isOptimistic || deleting || (optimisticTask.data?.status || task.status) === 'done' || !canUpdate}
                 className="text-green-600 dark:text-green-400 border-green-600 dark:border-green-600"
               >
                 Mark done
               </Button>
+              <OptimisticIndicator isOptimistic={optimisticTask.isOptimistic} className="ml-2" />
               <Button
                 variant="outline"
                 size="sm"

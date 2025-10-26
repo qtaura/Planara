@@ -20,6 +20,7 @@ import { SetUsernameScreen } from './components/SetUsernameScreen';
 import { EmailVerificationScreen } from './components/EmailVerificationScreen';
 import { getSocket, joinProjectRoom, leaveCurrentRoom } from '@lib/socket';
 import SearchView from './components/SearchView';
+import { LocaleProvider } from './lib/i18n';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('landing');
@@ -318,8 +319,13 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+-    <ThemeProvider>
+-      <AppContent />
+-    </ThemeProvider>
++    <LocaleProvider>
++      <ThemeProvider>
++        <AppContent />
++      </ThemeProvider>
++    </LocaleProvider>
   );
 }
