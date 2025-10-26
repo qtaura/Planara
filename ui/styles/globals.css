@@ -249,6 +249,7 @@ body {
 }
 
 /* Screen reader only content */
+/* Ensure assistive announcer nodes are hidden visually but readable by screen readers */
 .sr-only {
   position: absolute;
   width: 1px;

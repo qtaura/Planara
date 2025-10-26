@@ -1,30 +1,19 @@
 import { useEffect, useCallback, useRef } from 'react';
 
 export interface KeyboardNavigationOptions {
-  /** Enable arrow key navigation */
   arrows?: boolean;
-  /** Enable tab navigation */
   tab?: boolean;
-  /** Enable enter/space activation */
   activation?: boolean;
-  /** Enable escape to close/cancel */
   escape?: boolean;
-  /** Custom key handlers */
   customKeys?: Record<string, (event: KeyboardEvent) => void>;
-  /** Selector for focusable elements */
   focusableSelector?: string;
-  /** Loop navigation (wrap around) */
   loop?: boolean;
-  /** Skip disabled elements */
   skipDisabled?: boolean;
 }
 
-const DEFAULT_FOCUSABLE_SELECTOR = 
+const DEFAULT_FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled]), [role="button"]:not([disabled]), [role="menuitem"]:not([disabled])';
 
-/**
- * Hook for implementing comprehensive keyboard navigation
- */
 export function useKeyboardNavigation(
   containerRef: React.RefObject<HTMLElement>,
   options: KeyboardNavigationOptions = {}
@@ -206,18 +195,20 @@ export function useFocusTrap(
  */
 export function useScreenReaderAnnouncement() {
   const announce = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
-    const announcement = document.createElement('div');
-    announcement.setAttribute('aria-live', priority);
-    announcement.setAttribute('aria-atomic', 'true');
-    announcement.className = 'sr-only';
-    announcement.textContent = message;
-    
-    document.body.appendChild(announcement);
-    
-    // Remove after announcement
-    setTimeout(() => {
-      document.body.removeChild(announcement);
-    }, 1000);
+    try {
+      const safe = typeof message === 'string' ? message : String(message);
+      const trimmed = (safe || '').trim();
+      if (!trimmed || trimmed === 'NaN[object Object]') return;
+      const announcement = document.createElement('div');
+      announcement.setAttribute('aria-live', priority);
+      announcement.setAttribute('aria-atomic', 'true');
+      announcement.className = 'sr-only';
+      announcement.textContent = trimmed;
+      document.body.appendChild(announcement);
+      setTimeout(() => {
+        try { document.body.removeChild(announcement); } catch {}
+      }, 1000);
+    } catch {}
   }, []);
 
   return { announce };

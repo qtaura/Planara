@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from '@lib/motion-shim';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';

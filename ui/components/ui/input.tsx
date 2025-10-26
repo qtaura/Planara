@@ -13,7 +13,9 @@ interface InputProps extends React.ComponentProps<'input'> {
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, error, helperText, required, id, ...props }, ref) => {
-    const inputId = id || React.useId();
+    // Generate a stable id when none is provided (unconditional hook use)
+    const autoId = React.useId();
+    const inputId = id ?? autoId;
     const errorId = error ? `${inputId}-error` : undefined;
     const helperId = helperText ? `${inputId}-helper` : undefined;
     

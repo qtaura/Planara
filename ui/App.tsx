@@ -26,7 +26,6 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('landing');
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
-
   // signup flow state
   const [signupEmail, setSignupEmail] = useState<string>('');
   const [signupPassword, setSignupPassword] = useState<string>('');
@@ -317,15 +316,13 @@ function AppContent() {
   );
 }
 
+
 export default function App() {
   return (
--    <ThemeProvider>
--      <AppContent />
--    </ThemeProvider>
-+    <LocaleProvider>
-+      <ThemeProvider>
-+        <AppContent />
-+      </ThemeProvider>
-+    </LocaleProvider>
+    <LocaleProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </LocaleProvider>
   );
 }

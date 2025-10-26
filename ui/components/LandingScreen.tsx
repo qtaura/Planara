@@ -1,4 +1,4 @@
-import { motion } from 'motion/react';
+import { motion } from '@lib/motion-shim';
 import { Button } from './ui/button';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';

@@ -6,18 +6,22 @@ import * as React from 'react';
 
 // ARIA live region announcer
 export function announceToScreenReader(message: string, priority: 'polite' | 'assertive' = 'polite') {
-  const announcer = document.createElement('div');
-  announcer.setAttribute('aria-live', priority);
-  announcer.setAttribute('aria-atomic', 'true');
-  announcer.className = 'sr-only';
-  announcer.textContent = message;
-  
-  document.body.appendChild(announcer);
-  
-  // Clean up after announcement
-  setTimeout(() => {
-    document.body.removeChild(announcer);
-  }, 1000);
+  try {
+    const safe = typeof message === 'string' ? message : String(message);
+    const trimmed = (safe || '').trim();
+    // Drop malformed or noisy messages
+    if (!trimmed || trimmed === 'NaN[object Object]') return;
+
+    const announcer = document.createElement('div');
+    announcer.setAttribute('aria-live', priority);
+    announcer.setAttribute('aria-atomic', 'true');
+    announcer.className = 'sr-only';
+    announcer.textContent = trimmed;
+    document.body.appendChild(announcer);
+    setTimeout(() => {
+      try { document.body.removeChild(announcer); } catch {}
+    }, 1000);
+  } catch {}
 }
 
 // Focus management utilities
@@ -119,11 +123,12 @@ export const keyboardUtils = {
    * Check if a key event matches expected keys
    */
   isKey(event: KeyboardEvent, ...keys: string[]): boolean {
-    return keys.includes(event.key);
+    const key = event.key.toLowerCase();
+    return keys.map(k => k.toLowerCase()).includes(key);
   },
 
   /**
-   * Handle arrow key navigation in a list
+   * Handle arrow key navigation within a list or grid
    */
   handleArrowNavigation(
     event: KeyboardEvent,
@@ -135,82 +140,63 @@ export const keyboardUtils = {
     } = {}
   ): number | null {
     const { loop = true, horizontal = false } = options;
-    
-    let newIndex: number | null = null;
-    
+    let nextIndex = currentIndex;
+
     if (horizontal) {
-      if (event.key === 'ArrowLeft') {
-        newIndex = currentIndex > 0 ? currentIndex - 1 : (loop ? itemCount - 1 : currentIndex);
-      } else if (event.key === 'ArrowRight') {
-        newIndex = currentIndex < itemCount - 1 ? currentIndex + 1 : (loop ? 0 : currentIndex);
-      }
+      if (event.key === 'ArrowRight') nextIndex = Math.min(itemCount - 1, currentIndex + 1);
+      if (event.key === 'ArrowLeft') nextIndex = Math.max(0, currentIndex - 1);
     } else {
-      if (event.key === 'ArrowUp') {
-        newIndex = currentIndex > 0 ? currentIndex - 1 : (loop ? itemCount - 1 : currentIndex);
-      } else if (event.key === 'ArrowDown') {
-        newIndex = currentIndex < itemCount - 1 ? currentIndex + 1 : (loop ? 0 : currentIndex);
-      }
+      if (event.key === 'ArrowDown') nextIndex = Math.min(itemCount - 1, currentIndex + 1);
+      if (event.key === 'ArrowUp') nextIndex = Math.max(0, currentIndex - 1);
     }
-    
-    if (newIndex !== null && newIndex !== currentIndex) {
-      event.preventDefault();
-      return newIndex;
+
+    if (loop) {
+      if (event.key === 'Home') nextIndex = 0;
+      if (event.key === 'End') nextIndex = itemCount - 1;
     }
-    
-    return null;
+
+    return nextIndex === currentIndex ? null : nextIndex;
   },
 };
 
-// React hooks for accessibility
 export function useAriaAnnouncer() {
   const announce = React.useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
-    announceToScreenReader(message, priority);
+    try {
+      const safe = typeof message === 'string' ? message : String(message);
+      const trimmed = (safe || '').trim();
+      if (!trimmed || trimmed === 'NaN[object Object]') return;
+      announceToScreenReader(trimmed, priority);
+    } catch {}
   }, []);
-  
-  return announce;
+
+  return { announce };
 }
 
 export function useReducedMotion() {
   const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
-  
   React.useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setPrefersReducedMotion(mediaQuery.matches);
-    
-    const handleChange = (event: MediaQueryListEvent) => {
-      setPrefersReducedMotion(event.matches);
-    };
-    
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    const handler = (event: MediaQueryListEvent) => setPrefersReducedMotion(event.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
   }, []);
-  
   return prefersReducedMotion;
 }
 
 export function useHighContrast() {
-  const [prefersHighContrast, setPrefersHighContrast] = React.useState(false);
-  
+  const [highContrast, setHighContrast] = React.useState(false);
   React.useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-contrast: high)');
-    setPrefersHighContrast(mediaQuery.matches);
-    
-    const handleChange = (event: MediaQueryListEvent) => {
-      setPrefersHighContrast(event.matches);
-    };
-    
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    const mediaQuery = window.matchMedia('(prefers-contrast: more)');
+    setHighContrast(mediaQuery.matches);
+    const handler = (event: MediaQueryListEvent) => setHighContrast(event.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
   }, []);
-  
-  return prefersHighContrast;
+  return highContrast;
 }
 
-// ARIA attributes helpers
 export const ariaUtils = {
-  /**
-   * Generate ARIA attributes for form fields
-   */
   getFormFieldAria(
     id: string,
     options: {
@@ -220,20 +206,15 @@ export const ariaUtils = {
       label?: string;
     } = {}
   ) {
-    const { required, invalid, describedBy = [], label } = options;
-    
-    return {
-      id,
-      'aria-required': required ? 'true' : undefined,
-      'aria-invalid': invalid ? 'true' : undefined,
-      'aria-describedby': describedBy.length > 0 ? describedBy.join(' ') : undefined,
-      'aria-label': label,
-    };
+    const { required, invalid, describedBy, label } = options;
+    const ariaProps: Record<string, string | boolean> = {};
+    if (required) ariaProps['aria-required'] = 'true';
+    if (invalid) ariaProps['aria-invalid'] = 'true';
+    if (describedBy && describedBy.length > 0) ariaProps['aria-describedby'] = describedBy.join(' ');
+    if (label) ariaProps['aria-label'] = label;
+    return ariaProps;
   },
 
-  /**
-   * Generate ARIA attributes for interactive lists
-   */
   getListAria(
     options: {
       multiselectable?: boolean;
@@ -242,20 +223,17 @@ export const ariaUtils = {
       labelledBy?: string;
     } = {}
   ) {
-    const { multiselectable, orientation = 'vertical', label, labelledBy } = options;
-    
-    return {
-      role: 'listbox',
-      'aria-multiselectable': multiselectable ? 'true' : undefined,
+    const { multiselectable = false, orientation = 'vertical', label, labelledBy } = options;
+    const ariaProps: Record<string, string | boolean> = {
+      role: 'list',
+      'aria-multiselectable': multiselectable ? 'true' : 'false',
       'aria-orientation': orientation,
-      'aria-label': label,
-      'aria-labelledby': labelledBy,
     };
+    if (label) ariaProps['aria-label'] = label;
+    if (labelledBy) ariaProps['aria-labelledby'] = labelledBy;
+    return ariaProps;
   },
 
-  /**
-   * Generate ARIA attributes for list items
-   */
   getListItemAria(
     options: {
       selected?: boolean;
@@ -264,15 +242,15 @@ export const ariaUtils = {
       setSize?: number;
     } = {}
   ) {
-    const { selected, disabled, index, setSize } = options;
-    
-    return {
-      role: 'option',
+    const { selected = false, disabled = false, index, setSize } = options;
+    const ariaProps: Record<string, string | boolean> = {
+      role: 'listitem',
       'aria-selected': selected ? 'true' : 'false',
-      'aria-disabled': disabled ? 'true' : undefined,
-      'aria-posinset': index !== undefined ? index + 1 : undefined,
-      'aria-setsize': setSize,
+      'aria-disabled': disabled ? 'true' : 'false',
     };
+    if (typeof index === 'number') ariaProps['aria-posinset'] = String(index + 1);
+    if (typeof setSize === 'number') ariaProps['aria-setsize'] = String(setSize);
+    return ariaProps;
   },
 };
 
