@@ -4,6 +4,7 @@ import { strictLimiter } from '../middlewares/rateLimiter.js';
 import { AppDataSource } from '../db/data-source.js';
 import { ExternalLink } from '../models/ExternalLink.js';
 import { Task } from '../models/Task.js';
+import { Project } from '../models/Project.js';
 
 // Environment-driven secrets for inbound verification
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'dev_webhook_secret';
@@ -228,11 +229,87 @@ export async function exportCalendar(req: Request, res: Response) {
 }
 
 export async function importCalendar(req: Request, res: Response) {
-  // Stub: ICS import would parse uploaded .ics file and create tasks
-  // This is a complex operation requiring ICS parsing library
-  res.json({
-    ok: true,
-    message: 'Calendar import is stubbed - would parse ICS and create tasks',
-    note: 'Implement with node-ical or similar library',
-  });
+  const projectId = parseInt(
+    (req.query.projectId as string) || (req.body?.projectId as string) || ''
+  );
+  const assigneeId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+
+  if (!Number.isFinite(projectId)) {
+    return res.status(400).json({ error: 'projectId required to import tasks' });
+  }
+
+  try {
+    const projectRepo = AppDataSource.getRepository(Project);
+    const taskRepo = AppDataSource.getRepository(Task);
+
+    const project = await projectRepo.findOne({ where: { id: projectId } });
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const rq = req as Request & { rawBody?: Buffer } & { text?: string };
+    const raw =
+      rq.text || (rq.rawBody ? rq.rawBody.toString('utf8') : (req.body?.ics as string) || '');
+    if (!raw) {
+      return res.status(400).json({ error: 'ICS content required in request body' });
+    }
+
+    // Minimal ICS parser for VEVENT blocks
+    const lines = raw.replace(/\r\n/g, '\n').split('\n');
+    const events: Array<Record<string, string>> = [];
+    let current: Record<string, string> | null = null;
+
+    for (const line of lines) {
+      const l = line.trim();
+      if (l === 'BEGIN:VEVENT') {
+        current = {};
+      } else if (l === 'END:VEVENT') {
+        if (current) events.push(current);
+        current = null;
+      } else if (current && l) {
+        // Handle folded lines (starts with space) - simplistic: ignore for now
+        const [keyPart, ...rest] = l.split(':');
+        const value = rest.join(':');
+        const key = keyPart.split(';')[0].toUpperCase();
+        current[key] = value;
+      }
+    }
+
+    const parseIcsDate = (val?: string): Date | undefined => {
+      if (!val) return undefined;
+      // Expect format YYYYMMDDTHHMMSSZ or YYYYMMDD
+      const m = val.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})Z)?$/);
+      if (!m) return undefined;
+      const [_, y, mo, d, hh, mm, ss] = m;
+      if (hh && mm && ss) {
+        return new Date(Date.UTC(+y, +mo - 1, +d, +hh, +mm, +ss));
+      }
+      return new Date(Date.UTC(+y, +mo - 1, +d));
+    };
+
+    let created = 0;
+    for (const ev of events) {
+      const title = ev['SUMMARY'] || 'Imported Event';
+      const description = ev['DESCRIPTION'] || '';
+      const dueDate = parseIcsDate(ev['DTSTART']) || parseIcsDate(ev['DTEND']);
+
+      const task = taskRepo.create({
+        title,
+        titleLower: title.toLowerCase(),
+        description,
+        status: 'todo',
+        priority: 'medium',
+        dueDate,
+        project,
+      });
+
+      await taskRepo.save(task);
+      created += 1;
+    }
+
+    res.json({ ok: true, projectId, created, message: 'ICS imported into tasks' });
+  } catch (error) {
+    console.error('Error importing calendar:', error);
+    res.status(500).json({ error: 'Failed to import calendar' });
+  }
 }
