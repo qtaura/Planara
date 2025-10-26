@@ -24,11 +24,7 @@ function SkeletonText({ lines = 1, className, ...props }: { lines?: number } & S
       {Array.from({ length: lines }).map((_, i) => (
         <Skeleton
           key={i}
-          className={cn(
-            'h-4',
-            i === lines - 1 && lines > 1 ? 'w-3/4' : 'w-full',
-            className
-          )}
+          className={cn('h-4', i === lines - 1 && lines > 1 ? 'w-3/4' : 'w-full', className)}
           loadingText={`Loading text line ${i + 1}`}
         />
       ))}
@@ -51,22 +47,31 @@ function SkeletonCard({ className, ...props }: SkeletonProps) {
   );
 }
 
-function SkeletonTable({ rows = 5, columns = 4, className, ...props }: { rows?: number; columns?: number } & SkeletonProps) {
+function SkeletonTable({
+  rows = 5,
+  columns = 4,
+  className,
+  ...props
+}: { rows?: number; columns?: number } & SkeletonProps) {
   return (
     <div className={cn('space-y-3', className)} {...props}>
       {/* Header */}
       <div className="flex space-x-4">
         {Array.from({ length: columns }).map((_, i) => (
-          <Skeleton key={`header-${i}`} className="h-4 flex-1" loadingText={`Loading column ${i + 1} header`} />
+          <Skeleton
+            key={`header-${i}`}
+            className="h-4 flex-1"
+            loadingText={`Loading column ${i + 1} header`}
+          />
         ))}
       </div>
       {/* Rows */}
       {Array.from({ length: rows }).map((_, rowIndex) => (
         <div key={`row-${rowIndex}`} className="flex space-x-4">
           {Array.from({ length: columns }).map((_, colIndex) => (
-            <Skeleton 
-              key={`cell-${rowIndex}-${colIndex}`} 
-              className="h-4 flex-1" 
+            <Skeleton
+              key={`cell-${rowIndex}-${colIndex}`}
+              className="h-4 flex-1"
               loadingText={`Loading row ${rowIndex + 1}, column ${colIndex + 1}`}
             />
           ))}

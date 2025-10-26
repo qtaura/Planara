@@ -59,26 +59,17 @@ function EmptyState({
     >
       {icon && (
         <div
-          className={cn(
-            'mb-4 text-muted-foreground/60',
-            iconSizeClasses[size]
-          )}
+          className={cn('mb-4 text-muted-foreground/60', iconSizeClasses[size])}
           aria-hidden="true"
         >
           {icon}
         </div>
       )}
-      
-      <h3 className="text-lg font-semibold text-foreground mb-2">
-        {title}
-      </h3>
-      
-      {description && (
-        <p className="text-muted-foreground mb-6 max-w-md">
-          {description}
-        </p>
-      )}
-      
+
+      <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
+
+      {description && <p className="text-muted-foreground mb-6 max-w-md">{description}</p>}
+
       {(action || secondaryAction) && (
         <div className="flex flex-col sm:flex-row gap-3">
           {action && (

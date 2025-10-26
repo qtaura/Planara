@@ -5,7 +5,10 @@ import * as React from 'react';
  */
 
 // ARIA live region announcer
-export function announceToScreenReader(message: string, priority: 'polite' | 'assertive' = 'polite') {
+export function announceToScreenReader(
+  message: string,
+  priority: 'polite' | 'assertive' = 'polite'
+) {
   try {
     const safe = typeof message === 'string' ? message : String(message);
     const trimmed = (safe || '').trim();
@@ -19,7 +22,9 @@ export function announceToScreenReader(message: string, priority: 'polite' | 'as
     announcer.textContent = trimmed;
     document.body.appendChild(announcer);
     setTimeout(() => {
-      try { document.body.removeChild(announcer); } catch {}
+      try {
+        document.body.removeChild(announcer);
+      } catch {}
     }, 1000);
   } catch {}
 }
@@ -39,7 +44,7 @@ export const focusUtils = {
       '[tabindex]:not([tabindex="-1"])',
       '[contenteditable="true"]',
     ].join(', ');
-    
+
     return Array.from(container.querySelectorAll(focusableSelectors));
   },
 
@@ -88,7 +93,7 @@ export const colorUtils = {
    * Calculate relative luminance of a color
    */
   getLuminance(r: number, g: number, b: number): number {
-    const [rs, gs, bs] = [r, g, b].map(c => {
+    const [rs, gs, bs] = [r, g, b].map((c) => {
       c = c / 255;
       return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
     });
@@ -109,7 +114,11 @@ export const colorUtils = {
   /**
    * Check if contrast ratio meets WCAG standards
    */
-  meetsWCAG(ratio: number, level: 'AA' | 'AAA' = 'AA', size: 'normal' | 'large' = 'normal'): boolean {
+  meetsWCAG(
+    ratio: number,
+    level: 'AA' | 'AAA' = 'AA',
+    size: 'normal' | 'large' = 'normal'
+  ): boolean {
     if (level === 'AAA') {
       return size === 'large' ? ratio >= 4.5 : ratio >= 7;
     }
@@ -124,7 +133,7 @@ export const keyboardUtils = {
    */
   isKey(event: KeyboardEvent, ...keys: string[]): boolean {
     const key = event.key.toLowerCase();
-    return keys.map(k => k.toLowerCase()).includes(key);
+    return keys.map((k) => k.toLowerCase()).includes(key);
   },
 
   /**
@@ -160,14 +169,17 @@ export const keyboardUtils = {
 };
 
 export function useAriaAnnouncer() {
-  const announce = React.useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
-    try {
-      const safe = typeof message === 'string' ? message : String(message);
-      const trimmed = (safe || '').trim();
-      if (!trimmed || trimmed === 'NaN[object Object]') return;
-      announceToScreenReader(trimmed, priority);
-    } catch {}
-  }, []);
+  const announce = React.useCallback(
+    (message: string, priority: 'polite' | 'assertive' = 'polite') => {
+      try {
+        const safe = typeof message === 'string' ? message : String(message);
+        const trimmed = (safe || '').trim();
+        if (!trimmed || trimmed === 'NaN[object Object]') return;
+        announceToScreenReader(trimmed, priority);
+      } catch {}
+    },
+    []
+  );
 
   return { announce };
 }
@@ -210,7 +222,8 @@ export const ariaUtils = {
     const ariaProps: Record<string, string | boolean> = {};
     if (required) ariaProps['aria-required'] = 'true';
     if (invalid) ariaProps['aria-invalid'] = 'true';
-    if (describedBy && describedBy.length > 0) ariaProps['aria-describedby'] = describedBy.join(' ');
+    if (describedBy && describedBy.length > 0)
+      ariaProps['aria-describedby'] = describedBy.join(' ');
     if (label) ariaProps['aria-label'] = label;
     return ariaProps;
   },

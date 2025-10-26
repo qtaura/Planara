@@ -8,11 +8,7 @@ type LocaleContextValue = {
   formatDate: (date: Date | number | string, options?: Intl.DateTimeFormatOptions) => string;
   formatTime: (date: Date | number | string, options?: Intl.DateTimeFormatOptions) => string;
   formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
-  formatCurrency: (
-    value: number,
-    currency?: string,
-    options?: Intl.NumberFormatOptions
-  ) => string;
+  formatCurrency: (value: number, currency?: string, options?: Intl.NumberFormatOptions) => string;
 };
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);

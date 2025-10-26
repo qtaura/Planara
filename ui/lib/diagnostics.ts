@@ -18,7 +18,8 @@ function ensureOverlay() {
   overlayEl.style.right = '12px';
   overlayEl.style.zIndex = '2147483647';
   overlayEl.style.maxWidth = '420px';
-  overlayEl.style.fontFamily = 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+  overlayEl.style.fontFamily =
+    'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
   overlayEl.style.fontSize = '12px';
   overlayEl.style.lineHeight = '1.4';
   overlayEl.style.color = '#0f172a';
@@ -138,15 +139,21 @@ export function startDiagnostics() {
     const origWarn = console.warn;
     const origError = console.error;
     console.log = (...args) => {
-      try { addItem('info', args.map(String).join(' ')); } catch {}
+      try {
+        addItem('info', args.map(String).join(' '));
+      } catch {}
       origLog.apply(console, args as any);
     };
     console.warn = (...args) => {
-      try { addItem('warn', args.map(String).join(' ')); } catch {}
+      try {
+        addItem('warn', args.map(String).join(' '));
+      } catch {}
       origWarn.apply(console, args as any);
     };
     console.error = (...args) => {
-      try { addItem('error', args.map(String).join(' ')); } catch {}
+      try {
+        addItem('error', args.map(String).join(' '));
+      } catch {}
       origError.apply(console, args as any);
     };
 
@@ -160,7 +167,10 @@ export function startDiagnostics() {
       // After 1500ms, verify something is mounted
       setTimeout(() => {
         const hasChildren = !!root && root.childNodes.length > 0;
-        addItem(hasChildren ? 'info' : 'warn', hasChildren ? 'React children present' : 'React children missing');
+        addItem(
+          hasChildren ? 'info' : 'warn',
+          hasChildren ? 'React children present' : 'React children missing'
+        );
       }, 1500);
     });
   } catch (err) {

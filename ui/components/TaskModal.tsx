@@ -55,7 +55,7 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
   const [versionsFor, setVersionsFor] = useState<number | null>(null);
 
   // Use optimistic UI for task updates
-  const optimisticTask = useOptimisticTask(task || {} as Task);
+  const optimisticTask = useOptimisticTask(task || ({} as Task));
 
   useEffect(() => {
     async function loadAttachments() {
@@ -255,7 +255,12 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
                 variant="outline"
                 size="sm"
                 onClick={handleMarkDone}
-                disabled={optimisticTask.isOptimistic || deleting || (optimisticTask.data?.status || task.status) === 'done' || !canUpdate}
+                disabled={
+                  optimisticTask.isOptimistic ||
+                  deleting ||
+                  (optimisticTask.data?.status || task.status) === 'done' ||
+                  !canUpdate
+                }
                 className="text-green-600 dark:text-green-400 border-green-600 dark:border-green-600"
               >
                 Mark done

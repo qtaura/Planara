@@ -55,11 +55,12 @@ function Button({
   ...props
 }: ButtonProps) {
   const Comp = asChild ? Slot : 'button';
-  
+
   // Ensure icon-only buttons have accessible labels
-  const accessibleLabel = iconOnly && !ariaLabel 
-    ? 'Button' // Fallback, should be provided by developer
-    : ariaLabel;
+  const accessibleLabel =
+    iconOnly && !ariaLabel
+      ? 'Button' // Fallback, should be provided by developer
+      : ariaLabel;
 
   return (
     <Comp

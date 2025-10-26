@@ -36,106 +36,115 @@ export function useKeyboardNavigation(
     const elements = Array.from(
       containerRef.current.querySelectorAll(focusableSelector)
     ) as HTMLElement[];
-    
-    return skipDisabled 
-      ? elements.filter(el => !el.hasAttribute('disabled') && !el.getAttribute('aria-disabled'))
+
+    return skipDisabled
+      ? elements.filter((el) => !el.hasAttribute('disabled') && !el.getAttribute('aria-disabled'))
       : elements;
   }, [containerRef, focusableSelector, skipDisabled]);
 
-  const focusElement = useCallback((index: number) => {
-    const elements = getFocusableElements();
-    if (elements.length === 0) return;
+  const focusElement = useCallback(
+    (index: number) => {
+      const elements = getFocusableElements();
+      if (elements.length === 0) return;
 
-    let targetIndex = index;
-    if (loop) {
-      targetIndex = ((index % elements.length) + elements.length) % elements.length;
-    } else {
-      targetIndex = Math.max(0, Math.min(index, elements.length - 1));
-    }
+      let targetIndex = index;
+      if (loop) {
+        targetIndex = ((index % elements.length) + elements.length) % elements.length;
+      } else {
+        targetIndex = Math.max(0, Math.min(index, elements.length - 1));
+      }
 
-    const element = elements[targetIndex];
-    if (element) {
-      element.focus();
-      currentFocusIndex.current = targetIndex;
-      
-      // Scroll into view if needed
-      element.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'nearest',
-        inline: 'nearest'
-      });
-    }
-  }, [getFocusableElements, loop]);
+      const element = elements[targetIndex];
+      if (element) {
+        element.focus();
+        currentFocusIndex.current = targetIndex;
 
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    const elements = getFocusableElements();
-    if (elements.length === 0) return;
+        // Scroll into view if needed
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest',
+        });
+      }
+    },
+    [getFocusableElements, loop]
+  );
 
-    // Update current focus index based on active element
-    const activeElement = document.activeElement as HTMLElement;
-    const activeIndex = elements.indexOf(activeElement);
-    if (activeIndex !== -1) {
-      currentFocusIndex.current = activeIndex;
-    }
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      const elements = getFocusableElements();
+      if (elements.length === 0) return;
 
-    // Handle custom keys first
-    if (customKeys[event.key]) {
-      customKeys[event.key](event);
-      return;
-    }
-
-    // Arrow key navigation
-    if (arrows && (event.key === 'ArrowDown' || event.key === 'ArrowUp' || 
-                   event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
-      event.preventDefault();
-      
-      const isVertical = event.key === 'ArrowDown' || event.key === 'ArrowUp';
-      const isForward = event.key === 'ArrowDown' || event.key === 'ArrowRight';
-      
-      const nextIndex = isForward 
-        ? currentFocusIndex.current + 1 
-        : currentFocusIndex.current - 1;
-      
-      focusElement(nextIndex);
-    }
-
-    // Tab navigation (enhanced)
-    if (tab && event.key === 'Tab') {
-      event.preventDefault();
-      const nextIndex = event.shiftKey 
-        ? currentFocusIndex.current - 1 
-        : currentFocusIndex.current + 1;
-      focusElement(nextIndex);
-    }
-
-    // Enter/Space activation
-    if (activation && (event.key === 'Enter' || event.key === ' ')) {
+      // Update current focus index based on active element
       const activeElement = document.activeElement as HTMLElement;
-      if (activeElement && elements.includes(activeElement)) {
-        // Don't prevent default for input elements
-        if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName)) {
-          event.preventDefault();
-          activeElement.click();
+      const activeIndex = elements.indexOf(activeElement);
+      if (activeIndex !== -1) {
+        currentFocusIndex.current = activeIndex;
+      }
+
+      // Handle custom keys first
+      if (customKeys[event.key]) {
+        customKeys[event.key](event);
+        return;
+      }
+
+      // Arrow key navigation
+      if (
+        arrows &&
+        (event.key === 'ArrowDown' ||
+          event.key === 'ArrowUp' ||
+          event.key === 'ArrowLeft' ||
+          event.key === 'ArrowRight')
+      ) {
+        event.preventDefault();
+
+        const isVertical = event.key === 'ArrowDown' || event.key === 'ArrowUp';
+        const isForward = event.key === 'ArrowDown' || event.key === 'ArrowRight';
+
+        const nextIndex = isForward ? currentFocusIndex.current + 1 : currentFocusIndex.current - 1;
+
+        focusElement(nextIndex);
+      }
+
+      // Tab navigation (enhanced)
+      if (tab && event.key === 'Tab') {
+        event.preventDefault();
+        const nextIndex = event.shiftKey
+          ? currentFocusIndex.current - 1
+          : currentFocusIndex.current + 1;
+        focusElement(nextIndex);
+      }
+
+      // Enter/Space activation
+      if (activation && (event.key === 'Enter' || event.key === ' ')) {
+        const activeElement = document.activeElement as HTMLElement;
+        if (activeElement && elements.includes(activeElement)) {
+          // Don't prevent default for input elements
+          if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName)) {
+            event.preventDefault();
+            activeElement.click();
+          }
         }
       }
-    }
 
-    // Escape handling
-    if (escape && event.key === 'Escape') {
-      event.preventDefault();
-      // Blur current element or trigger custom escape handler
-      if (document.activeElement) {
-        (document.activeElement as HTMLElement).blur();
+      // Escape handling
+      if (escape && event.key === 'Escape') {
+        event.preventDefault();
+        // Blur current element or trigger custom escape handler
+        if (document.activeElement) {
+          (document.activeElement as HTMLElement).blur();
+        }
       }
-    }
-  }, [getFocusableElements, arrows, tab, activation, escape, customKeys, focusElement]);
+    },
+    [getFocusableElements, arrows, tab, activation, escape, customKeys, focusElement]
+  );
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     container.addEventListener('keydown', handleKeyDown);
-    
+
     return () => {
       container.removeEventListener('keydown', handleKeyDown);
     };
@@ -151,10 +160,7 @@ export function useKeyboardNavigation(
 /**
  * Hook for managing focus trapping within a container
  */
-export function useFocusTrap(
-  containerRef: React.RefObject<HTMLElement>,
-  isActive: boolean = true
-) {
+export function useFocusTrap(containerRef: React.RefObject<HTMLElement>, isActive: boolean = true) {
   useEffect(() => {
     if (!isActive || !containerRef.current) return;
 
@@ -183,7 +189,7 @@ export function useFocusTrap(
     firstElement?.focus();
 
     container.addEventListener('keydown', handleTabKey);
-    
+
     return () => {
       container.removeEventListener('keydown', handleTabKey);
     };
@@ -206,7 +212,9 @@ export function useScreenReaderAnnouncement() {
       announcement.textContent = trimmed;
       document.body.appendChild(announcement);
       setTimeout(() => {
-        try { document.body.removeChild(announcement); } catch {}
+        try {
+          document.body.removeChild(announcement);
+        } catch {}
       }, 1000);
     } catch {}
   }, []);
@@ -224,8 +232,10 @@ export function useRovingTabIndex(
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const elements = containerRef.current.querySelectorAll('[role="menuitem"], [role="option"], [role="tab"]');
-    
+    const elements = containerRef.current.querySelectorAll(
+      '[role="menuitem"], [role="option"], [role="tab"]'
+    );
+
     elements.forEach((element, index) => {
       const htmlElement = element as HTMLElement;
       if (index === activeIndex) {

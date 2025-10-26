@@ -330,7 +330,9 @@ function LanguageSection() {
 
   function applyLocale(l: string) {
     setSelected(l);
-    try { setLocale(l); } catch {}
+    try {
+      setLocale(l);
+    } catch {}
   }
 
   function useDeviceLocale() {
@@ -387,9 +389,15 @@ function LanguageSection() {
 }
 
 function NotificationsSection() {
-  const [emailAssignment, setEmailAssignment] = useState<boolean>(loadBool('pref_email_assignment', true));
-  const [emailComments, setEmailComments] = useState<boolean>(loadBool('pref_email_comments', true));
-  const [emailProjectUpdates, setEmailProjectUpdates] = useState<boolean>(loadBool('pref_email_project_updates', false));
+  const [emailAssignment, setEmailAssignment] = useState<boolean>(
+    loadBool('pref_email_assignment', true)
+  );
+  const [emailComments, setEmailComments] = useState<boolean>(
+    loadBool('pref_email_comments', true)
+  );
+  const [emailProjectUpdates, setEmailProjectUpdates] = useState<boolean>(
+    loadBool('pref_email_project_updates', false)
+  );
   const [pushDesktop, setPushDesktop] = useState<boolean>(loadBool('pref_push_desktop', true));
   const [pushSound, setPushSound] = useState<boolean>(loadBool('pref_push_sound', false));
 
@@ -420,23 +428,49 @@ function NotificationsSection() {
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
                 <Label className="text-sm text-slate-900 dark:text-white">Task assignments</Label>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Get notified when you're assigned to a task</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Get notified when you're assigned to a task
+                </p>
               </div>
-              <Switch checked={emailAssignment} onCheckedChange={(v: boolean) => { setEmailAssignment(v); persist('pref_email_assignment', v); }} />
+              <Switch
+                checked={emailAssignment}
+                onCheckedChange={(v: boolean) => {
+                  setEmailAssignment(v);
+                  persist('pref_email_assignment', v);
+                }}
+              />
             </div>
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <Label className="text-sm text-slate-900 dark:text-white">Comments & mentions</Label>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Receive updates on comments and @mentions</p>
+                <Label className="text-sm text-slate-900 dark:text-white">
+                  Comments & mentions
+                </Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Receive updates on comments and @mentions
+                </p>
               </div>
-              <Switch checked={emailComments} onCheckedChange={(v: boolean) => { setEmailComments(v); persist('pref_email_comments', v); }} />
+              <Switch
+                checked={emailComments}
+                onCheckedChange={(v: boolean) => {
+                  setEmailComments(v);
+                  persist('pref_email_comments', v);
+                }}
+              />
             </div>
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
                 <Label className="text-sm text-slate-900 dark:text-white">Project updates</Label>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Stay informed about project changes</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Stay informed about project changes
+                </p>
               </div>
-              <Switch checked={emailProjectUpdates} onCheckedChange={(v: boolean) => { setEmailProjectUpdates(v); persist('pref_email_project_updates', v); }} />
+              <Switch
+                checked={emailProjectUpdates}
+                onCheckedChange={(v: boolean) => {
+                  setEmailProjectUpdates(v);
+                  persist('pref_email_project_updates', v);
+                }}
+              />
             </div>
           </div>
         </div>
@@ -448,17 +482,35 @@ function NotificationsSection() {
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <Label className="text-sm text-slate-900 dark:text-white">Desktop notifications</Label>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Show notifications on your desktop</p>
+                <Label className="text-sm text-slate-900 dark:text-white">
+                  Desktop notifications
+                </Label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Show notifications on your desktop
+                </p>
               </div>
-              <Switch checked={pushDesktop} onCheckedChange={(v: boolean) => { setPushDesktop(v); persist('pref_push_desktop', v); }} />
+              <Switch
+                checked={pushDesktop}
+                onCheckedChange={(v: boolean) => {
+                  setPushDesktop(v);
+                  persist('pref_push_desktop', v);
+                }}
+              />
             </div>
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
                 <Label className="text-sm text-slate-900 dark:text-white">Sound</Label>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Play a sound for new notifications</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Play a sound for new notifications
+                </p>
               </div>
-              <Switch checked={pushSound} onCheckedChange={(v: boolean) => { setPushSound(v); persist('pref_push_sound', v); }} />
+              <Switch
+                checked={pushSound}
+                onCheckedChange={(v: boolean) => {
+                  setPushSound(v);
+                  persist('pref_push_sound', v);
+                }}
+              />
             </div>
           </div>
         </div>

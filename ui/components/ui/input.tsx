@@ -18,7 +18,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const inputId = id ?? autoId;
     const errorId = error ? `${inputId}-error` : undefined;
     const helperId = helperText ? `${inputId}-helper` : undefined;
-    
+
     const describedBy = [errorId, helperId].filter(Boolean).join(' ') || undefined;
 
     return (

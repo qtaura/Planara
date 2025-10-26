@@ -28,9 +28,7 @@ function Label({ className, required, optional, children, ...props }: LabelProps
         </span>
       )}
       {optional && !required && (
-        <span className="text-muted-foreground ml-1 font-normal">
-          (optional)
-        </span>
+        <span className="text-muted-foreground ml-1 font-normal">(optional)</span>
       )}
     </LabelPrimitive.Root>
   );

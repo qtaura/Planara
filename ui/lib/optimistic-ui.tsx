@@ -84,10 +84,10 @@ export function useOptimisticState<T>(initialData: T) {
 
         rollback();
 
-        const errorMessage = action.errorMessage || 
-          (error instanceof Error ? error.message : 'An error occurred');
+        const errorMessage =
+          action.errorMessage || (error instanceof Error ? error.message : 'An error occurred');
 
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           error: errorMessage,
         }));
@@ -113,7 +113,7 @@ export function useOptimisticState<T>(initialData: T) {
   }, []);
 
   const clearError = React.useCallback(() => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       error: undefined,
     }));
@@ -229,19 +229,19 @@ export const taskOptimisticActions = {
   /**
    * Toggle subtask completion optimistically
    */
-  toggleSubtask: <T extends { 
-    id: string | number; 
-    subtasks: Array<{ id: string | number; completed: boolean }> 
-  }>(
+  toggleSubtask: <
+    T extends {
+      id: string | number;
+      subtasks: Array<{ id: string | number; completed: boolean }>;
+    },
+  >(
     subtaskId: string | number,
     serverAction: () => Promise<T>
   ): OptimisticAction<T> => ({
     optimisticUpdate: (task) => ({
       ...task,
-      subtasks: task.subtasks.map(subtask =>
-        subtask.id === subtaskId
-          ? { ...subtask, completed: !subtask.completed }
-          : subtask
+      subtasks: task.subtasks.map((subtask) =>
+        subtask.id === subtaskId ? { ...subtask, completed: !subtask.completed } : subtask
       ),
     }),
     serverAction,
@@ -252,10 +252,12 @@ export const taskOptimisticActions = {
   /**
    * Add new subtask optimistically
    */
-  addSubtask: <T extends { 
-    id: string | number; 
-    subtasks: Array<{ id: string | number; title: string; completed: boolean }> 
-  }>(
+  addSubtask: <
+    T extends {
+      id: string | number;
+      subtasks: Array<{ id: string | number; title: string; completed: boolean }>;
+    },
+  >(
     newSubtask: { id: string | number; title: string; completed: boolean },
     serverAction: () => Promise<T>
   ): OptimisticAction<T> => ({
@@ -275,7 +277,7 @@ export const taskOptimisticActions = {
     taskId: string | number,
     serverAction: () => Promise<void>
   ): OptimisticAction<T[]> => ({
-    optimisticUpdate: (tasks) => tasks.filter(task => task.id !== taskId),
+    optimisticUpdate: (tasks) => tasks.filter((task) => task.id !== taskId),
     serverAction: async () => {
       await serverAction();
       return [] as T[]; // Return empty array as we're filtering
@@ -291,50 +293,51 @@ export const taskOptimisticActions = {
 export function useOptimisticTask<T extends { id: string | number }>(initialTask: T) {
   const optimisticState = useOptimisticState(initialTask);
 
-  const actions = React.useMemo(() => ({
-    markAsDone: (serverAction: () => Promise<T>) =>
-      optimisticState.executeOptimisticAction(
-        taskOptimisticActions.markAsDone(serverAction)
-      ),
+  const actions = React.useMemo(
+    () => ({
+      markAsDone: (serverAction: () => Promise<T>) =>
+        optimisticState.executeOptimisticAction(taskOptimisticActions.markAsDone(serverAction)),
 
-    updateStatus: (newStatus: string, serverAction: () => Promise<T>) =>
-      optimisticState.executeOptimisticAction(
-        taskOptimisticActions.updateStatus(newStatus, serverAction)
-      ),
+      updateStatus: (newStatus: string, serverAction: () => Promise<T>) =>
+        optimisticState.executeOptimisticAction(
+          taskOptimisticActions.updateStatus(newStatus, serverAction)
+        ),
 
-    updateTitle: (newTitle: string, serverAction: () => Promise<T>) =>
-      optimisticState.executeOptimisticAction(
-        taskOptimisticActions.updateTitle(newTitle, serverAction)
-      ),
+      updateTitle: (newTitle: string, serverAction: () => Promise<T>) =>
+        optimisticState.executeOptimisticAction(
+          taskOptimisticActions.updateTitle(newTitle, serverAction)
+        ),
 
-    updateDescription: (newDescription: string, serverAction: () => Promise<T>) =>
-      optimisticState.executeOptimisticAction(
-        taskOptimisticActions.updateDescription(newDescription, serverAction)
-      ),
+      updateDescription: (newDescription: string, serverAction: () => Promise<T>) =>
+        optimisticState.executeOptimisticAction(
+          taskOptimisticActions.updateDescription(newDescription, serverAction)
+        ),
 
-    updatePriority: (newPriority: string, serverAction: () => Promise<T>) =>
-      optimisticState.executeOptimisticAction(
-        taskOptimisticActions.updatePriority(newPriority, serverAction)
-      ),
+      updatePriority: (newPriority: string, serverAction: () => Promise<T>) =>
+        optimisticState.executeOptimisticAction(
+          taskOptimisticActions.updatePriority(newPriority, serverAction)
+        ),
 
-    updateAssignee: (newAssignee: string, serverAction: () => Promise<T>) =>
-      optimisticState.executeOptimisticAction(
-        taskOptimisticActions.updateAssignee(newAssignee, serverAction)
-      ),
+      updateAssignee: (newAssignee: string, serverAction: () => Promise<T>) =>
+        optimisticState.executeOptimisticAction(
+          taskOptimisticActions.updateAssignee(newAssignee, serverAction)
+        ),
 
-    toggleSubtask: (subtaskId: string | number, serverAction: () => Promise<T>) =>
-      optimisticState.executeOptimisticAction(
-        taskOptimisticActions.toggleSubtask(subtaskId, serverAction)
-      ),
+      toggleSubtask: (subtaskId: string | number, serverAction: () => Promise<T>) =>
+        optimisticState.executeOptimisticAction(
+          taskOptimisticActions.toggleSubtask(subtaskId, serverAction)
+        ),
 
-    addSubtask: (
-      newSubtask: { id: string | number; title: string; completed: boolean },
-      serverAction: () => Promise<T>
-    ) =>
-      optimisticState.executeOptimisticAction(
-        taskOptimisticActions.addSubtask(newSubtask, serverAction)
-      ),
-  }), [optimisticState]);
+      addSubtask: (
+        newSubtask: { id: string | number; title: string; completed: boolean },
+        serverAction: () => Promise<T>
+      ) =>
+        optimisticState.executeOptimisticAction(
+          taskOptimisticActions.addSubtask(newSubtask, serverAction)
+        ),
+    }),
+    [optimisticState]
+  );
 
   return {
     ...optimisticState,
@@ -367,12 +370,7 @@ export function OptimisticIndicator({
         aria-label="Error occurred"
         title={error}
       >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -390,12 +388,7 @@ export function OptimisticIndicator({
         className={`inline-flex items-center text-muted-foreground ${className}`}
         aria-label="Saving changes"
       >
-        <svg
-          className="w-4 h-4 animate-spin"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
