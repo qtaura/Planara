@@ -7,6 +7,10 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
+    onConsoleLog: (log, type) => {
+      if (['log', 'info', 'debug'].includes(type)) return false;
+      return undefined;
+    },
     globals: true,
     css: true,
   },

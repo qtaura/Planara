@@ -6,6 +6,10 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.test.ts'],
+    onConsoleLog: (log, type) => {
+      if (['log', 'info', 'debug'].includes(type)) return false;
+      return undefined;
+    },
     reporters: 'default',
   },
 });
