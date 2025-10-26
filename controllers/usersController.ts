@@ -133,12 +133,10 @@ export async function signup(req: Request, res: Response) {
       source: 'signup',
       reason: 'format_invalid',
     });
-    return res
-      .status(400)
-      .json({
-        error:
-          'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.',
-      });
+    return res.status(400).json({
+      error:
+        'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.',
+    });
   }
   if (typeof username === 'string' && isUsernameDisallowed(username)) {
     await recordUsernameRejected({ req, email, username, source: 'signup' });
@@ -423,13 +421,11 @@ export async function adminSetUsername(req: Request, res: Response) {
         source: 'admin_set_username',
         reason: 'format_invalid',
       });
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error:
-            'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.',
-        });
+      return res.status(400).json({
+        success: false,
+        error:
+          'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.',
+      });
     }
     if (isUsernameDisallowed(String(newUsername))) {
       await recordUsernameRejected({
@@ -650,12 +646,10 @@ export async function updateProfile(req: Request, res: Response) {
     if (typeof username === 'string' && username.trim()) {
       const uname = username.trim();
       if (!isUsernameFormatValid(uname)) {
-        return res
-          .status(400)
-          .json({
-            error:
-              'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.',
-          });
+        return res.status(400).json({
+          error:
+            'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.',
+        });
       }
       if (isUsernameDisallowed(uname)) {
         return res.status(400).json({ error: 'This username isn’t allowed' });
@@ -836,14 +830,12 @@ export async function changeEmail(req: Request, res: Response) {
       );
     } catch {}
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: 'Email updated. Verification code sent.',
-        expiresAt: expiresAt.toISOString(),
-        devCode: process.env.RESEND_API_KEY ? undefined : code,
-      });
+    return res.status(200).json({
+      success: true,
+      message: 'Email updated. Verification code sent.',
+      expiresAt: expiresAt.toISOString(),
+      devCode: process.env.RESEND_API_KEY ? undefined : code,
+    });
   } catch (e) {
     return res.status(500).json({ success: false, error: 'failed to change email' });
   }

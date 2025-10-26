@@ -101,12 +101,10 @@ export const emailVerificationLimiter = rateLimit({
     try {
       await recordRateLimitHit({ req, limiter: 'emailVerificationLimiter' });
     } catch {}
-    res
-      .status(options.statusCode)
-      .json({
-        success: false,
-        error: 'Too many verification code requests. Please try again in 15 minutes.',
-      });
+    res.status(options.statusCode).json({
+      success: false,
+      error: 'Too many verification code requests. Please try again in 15 minutes.',
+    });
   },
 });
 
@@ -128,12 +126,10 @@ export const emailVerificationAttemptLimiter = rateLimit({
     try {
       await recordRateLimitHit({ req, limiter: 'emailVerificationAttemptLimiter' });
     } catch {}
-    res
-      .status(options.statusCode)
-      .json({
-        success: false,
-        error: 'Too many verification attempts. Please try again in 15 minutes.',
-      });
+    res.status(options.statusCode).json({
+      success: false,
+      error: 'Too many verification attempts. Please try again in 15 minutes.',
+    });
   },
 });
 

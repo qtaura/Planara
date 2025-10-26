@@ -48,12 +48,10 @@ export class EmailVerificationController {
 
       // Generic success for nonexistent or already verified to prevent enumeration
       if (!user || (user as any).isVerified) {
-        res
-          .status(200)
-          .json({
-            success: true,
-            message: 'If an account exists for this email, a verification code has been sent.',
-          });
+        res.status(200).json({
+          success: true,
+          message: 'If an account exists for this email, a verification code has been sent.',
+        });
         return;
       }
 
@@ -78,12 +76,10 @@ export class EmailVerificationController {
             })
           );
         } catch {}
-        res
-          .status(429)
-          .json({
-            success: false,
-            error: `Please wait ${secondsLeft}s before requesting another code.`,
-          });
+        res.status(429).json({
+          success: false,
+          error: `Please wait ${secondsLeft}s before requesting another code.`,
+        });
         return;
       }
 
@@ -116,12 +112,10 @@ export class EmailVerificationController {
               })
             );
           } catch {}
-          res
-            .status(429)
-            .json({
-              success: false,
-              error: `Please wait ${secondsLeft}s before requesting another code.`,
-            });
+          res.status(429).json({
+            success: false,
+            error: `Please wait ${secondsLeft}s before requesting another code.`,
+          });
           return;
         }
       }
@@ -193,14 +187,12 @@ export class EmailVerificationController {
         );
       } catch {}
 
-      res
-        .status(200)
-        .json({
-          success: true,
-          message: 'Verification code sent successfully',
-          expiresAt: expiresAt.toISOString(),
-          devCode: process.env.RESEND_API_KEY ? undefined : code,
-        });
+      res.status(200).json({
+        success: true,
+        message: 'Verification code sent successfully',
+        expiresAt: expiresAt.toISOString(),
+        devCode: process.env.RESEND_API_KEY ? undefined : code,
+      });
     } catch (error) {
       console.error('Send code error:', error);
       if (error instanceof z.ZodError) {
@@ -256,12 +248,10 @@ export class EmailVerificationController {
             })
           );
         } catch {}
-        res
-          .status(429)
-          .json({
-            success: false,
-            error: `Too many verification attempts. Account temporarily locked. Try again in ${secondsLeft}s.`,
-          });
+        res.status(429).json({
+          success: false,
+          error: `Too many verification attempts. Account temporarily locked. Try again in ${secondsLeft}s.`,
+        });
         return;
       }
       const backoffUntil = (user as any).verifyBackoffUntil as Date | undefined;
@@ -281,12 +271,10 @@ export class EmailVerificationController {
             })
           );
         } catch {}
-        res
-          .status(429)
-          .json({
-            success: false,
-            error: `Too many verification attempts. Please wait ${secondsLeft}s before next attempt.`,
-          });
+        res.status(429).json({
+          success: false,
+          error: `Too many verification attempts. Please wait ${secondsLeft}s before next attempt.`,
+        });
         return;
       }
 
@@ -360,12 +348,10 @@ export class EmailVerificationController {
             })
           );
         } catch {}
-        res
-          .status(400)
-          .json({
-            success: false,
-            error: 'Verification code has expired. Please request a new one.',
-          });
+        res.status(400).json({
+          success: false,
+          error: 'Verification code has expired. Please request a new one.',
+        });
         return;
       }
 
@@ -401,18 +387,16 @@ export class EmailVerificationController {
         );
       } catch {}
 
-      res
-        .status(200)
-        .json({
-          success: true,
-          message: 'Email verified successfully',
-          user: {
-            id: (user as any).id,
-            email: (user as any).email,
-            username: (user as any).username,
-            isVerified: true,
-          },
-        });
+      res.status(200).json({
+        success: true,
+        message: 'Email verified successfully',
+        user: {
+          id: (user as any).id,
+          email: (user as any).email,
+          username: (user as any).username,
+          isVerified: true,
+        },
+      });
     } catch (error) {
       console.error('Verify code error:', error);
       if (error instanceof z.ZodError) {
@@ -443,17 +427,15 @@ export class EmailVerificationController {
         res.status(404).json({ success: false, error: 'User not found with this email address' });
         return;
       }
-      res
-        .status(200)
-        .json({
-          success: true,
-          user: {
-            id: (user as any).id,
-            email: (user as any).email,
-            username: (user as any).username,
-            isVerified: (user as any).isVerified,
-          },
-        });
+      res.status(200).json({
+        success: true,
+        user: {
+          id: (user as any).id,
+          email: (user as any).email,
+          username: (user as any).username,
+          isVerified: (user as any).isVerified,
+        },
+      });
     } catch (error) {
       console.error('Verification status error:', error);
       res.status(500).json({ success: false, error: 'Failed to fetch verification status.' });
