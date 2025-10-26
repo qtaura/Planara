@@ -10,7 +10,7 @@ import { CreateProjectModal } from './components/CreateProjectModal';
 import { Toaster } from './components/ui/sonner';
 import { ThemeProvider } from './lib/theme-context';
 import { ViewType } from './types';
-import { getToken, getCurrentUser } from '@lib/api';
+import { getToken, getCurrentUser, setToken, setCurrentUser, setRefreshToken } from '@lib/api';
 import { LoginScreen } from './components/LoginScreen';
 import NotificationScreen from './components/NotificationScreen';
 import { SignupScreen } from './components/SignupScreen';
@@ -64,6 +64,60 @@ function AppContent() {
     const handler = () => setCurrentView('signup_username');
     window.addEventListener('auth:needs_username', handler);
     return () => window.removeEventListener('auth:needs_username', handler);
+  }, []);
+
+  // Route to verification when requested globally
+  useEffect(() => {
+    const handler = (e: any) => {
+      const email = (e && e.detail && e.detail.email) || '';
+      const needsUsername = !!(e && e.detail && e.detail.needsUsername);
+      setVerificationEmail(email);
+      setPostVerifyView(needsUsername ? 'signup_username' : 'dashboard');
+      setCurrentView('verify' as any);
+    };
+    window.addEventListener('auth:verification_required', handler as any);
+    window.addEventListener('auth:needs_verification', handler as any);
+    return () => {
+      window.removeEventListener('auth:verification_required', handler as any);
+      window.removeEventListener('auth:needs_verification', handler as any);
+    };
+  }, []);
+
+  // Global OAuth popup message handler
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const data: any = (e && (e as any).data) || null;
+      if (!data || data.type !== 'oauth') return;
+
+      // If server indicates verification required (dev stub), go to verification
+      if (data.verificationRequired && !data.token) {
+        const email = data.email || (data.user && data.user.email) || '';
+        setVerificationEmail(email);
+        setPostVerifyView(data.created ? 'signup_username' as ViewType : 'dashboard');
+        setCurrentView('verify' as any);
+        return;
+      }
+
+      // If we have a token, persist and navigate appropriately
+      if (data.token) {
+        try {
+          setToken(String(data.token));
+          if (data.refreshToken) setRefreshToken(String(data.refreshToken));
+          if (data.user) setCurrentUser(data.user);
+        } catch {}
+        const userVerified = !!(data.user && (data.user.isVerified || data.user.verified));
+        if (!userVerified) {
+          const email = (data.user && data.user.email) || '';
+          setVerificationEmail(email);
+          setPostVerifyView(data.created ? 'signup_username' as ViewType : 'dashboard');
+          setCurrentView('verify' as any);
+          return;
+        }
+        setCurrentView(data.created ? 'signup_username' : 'dashboard');
+      }
+    };
+    window.addEventListener('message', handler as any);
+    return () => window.removeEventListener('message', handler as any);
   }, []);
 
   useEffect(() => {
