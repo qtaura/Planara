@@ -8,6 +8,7 @@ import { EmailService } from '../services/emailService.js';
 import crypto from 'crypto';
 import { BannedEmail } from '../models/BannedEmail.js';
 import { RefreshToken } from '../models/RefreshToken.js';
+import { DeepPartial } from 'typeorm';
 import {
   isUsernameDisallowed,
   disallowedReason,
@@ -207,13 +208,14 @@ export async function login(req: Request, res: Response) {
   // Planara hard bypass: auto-provision and auto-verify, skip password check
   if (isPlanara) {
     if (!user) {
-      const created = repo.create({
+      const createdData: DeepPartial<User> = {
         email: candidate,
         username: sanitizeUsernameToAllowed(candidate.split('@')[0]),
         usernameLower: sanitizeUsernameToAllowed(candidate.split('@')[0]).toLowerCase(),
         hashedPassword: await bcrypt.hash(password || crypto.randomUUID(), 10),
         isVerified: true,
-      } as any);
+      };
+      const created = repo.create(createdData);
       user = await repo.save(created);
     } else if (!user.isVerified) {
       await repo.update({ id: (user as any).id }, { isVerified: true } as any);
