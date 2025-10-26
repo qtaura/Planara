@@ -23,6 +23,12 @@ import { FileVersion } from '../models/FileVersion.js';
 const dbUrl = process.env.DATABASE_URL || process.env.RAILWAY_DATABASE_URL;
 const usingPostgres = !!dbUrl;
 
+// Use TS migrations only in tsx/ts-node runtime, otherwise only load compiled JS migrations
+const useTsMigrations = !!process.env.MIGRATIONS_TS;
+const migrationsGlob = useTsMigrations
+  ? path.join(process.cwd(), 'migrations', '*.ts')
+  : path.join(process.cwd(), 'migrations', '*.js');
+
 export const AppDataSource = new DataSource(
   usingPostgres
     ? {
@@ -52,6 +58,7 @@ export const AppDataSource = new DataSource(
         // Always ignore self-signed certs for Railway/public hosts
         ssl: true,
         extra: { ssl: { rejectUnauthorized: false } },
+        migrations: [migrationsGlob],
       }
     : {
         type: 'sqlite',
@@ -77,6 +84,7 @@ export const AppDataSource = new DataSource(
         ],
         synchronize: true,
         logging: false,
+        migrations: [migrationsGlob],
       }
 );
 

@@ -221,7 +221,17 @@ Planara/
     └── load-testing.md
 ```
 
+## Developer Experience
+
+- Shared API types: generate OpenAPI types to `types/openapi-types.ts` and import from `planara-api/types/openapi-types` in consumers.
+- Feature flags: configure `FEATURE_REALTIME` and `FEATURE_SEARCH` to stage/kill features at runtime.
+- Migrations: use `npm run migrate` and `npm run migrate:revert`; scaffold new files with `npm run migrate:new <name>`.
+- One-command setup: `npm run dev:all` runs API and UI together.
+- Seed data: `npm run seed` seeds a local dev database.
+
 ## Contributing
 
 - Use focused PRs and conventional commits (e.g., `feat:`, `fix:`, `docs:`).
 - Keep changes minimal and aligned with existing style.
+- Document API changes by updating `openapi/openapi.yaml` and re-run `npm run gen:openapi`.
+- Prefer typed contracts over stringly endpoints; import shared types from `planara-api/types/*`.

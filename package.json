@@ -3,18 +3,25 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./types/*": "./types/*"
+  },
   "scripts": {
     "dev": "tsx watch index.ts",
+    "dev:all": "concurrently -n api,ui -c green,cyan \"npm run dev\" \"npm --prefix ui run dev\"",
     "build": "tsc -p tsconfig.server.json && npm --prefix ui ci --include=dev && npm --prefix ui run build && node -e \"require('fs').rmSync('ui/node_modules',{recursive:true,force:true})\"",
     "build:server": "tsc -p tsconfig.server.json",
     "build:ui": "npm --prefix ui ci --include=dev && npm --prefix ui run build",
     "start": "node dist/index.js",
     "test": "vitest",
-    "test:run": "npm run build:server && vitest run",
+    "test:run": "npm run build:server && concurrently -k -s first -n server,test -c green,cyan \"cross-env NODE_ENV=test REALTIME_ENABLED=false node dist/index.js\" \"wait-on http://localhost:3001/metrics && cross-env NODE_ENV=test vitest run\"",
     "lint": "eslint . --ext .ts,.tsx,.js",
     "format:check": "prettier -c \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
-    "gen:openapi": "openapi-typescript openapi/openapi.yaml -o ui/lib/openapi-types.ts",
+    "gen:openapi": "openapi-typescript openapi/openapi.yaml -o types/openapi-types.ts && openapi-typescript openapi/openapi.yaml -o ui/lib/openapi-types.ts",
+    "migrate": "cross-env MIGRATIONS_TS=1 tsx scripts/migrate.ts",
+    "migrate:revert": "cross-env MIGRATIONS_TS=1 tsx scripts/migrate-revert.ts",
+    "migrate:new": "tsx scripts/new-migration.ts",
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
@@ -48,6 +55,8 @@
     "@typescript-eslint/eslint-plugin": "^8.12.1",
     "@typescript-eslint/parser": "^8.12.1",
     "@vitejs/plugin-react": "^5.1.0",
+    "concurrently": "^9.0.0",
+    "cross-env": "^7.0.3",
     "eslint": "^9.14.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "jsdom": "^27.0.1",
@@ -59,6 +68,7 @@
     "typescript": "^5.5.3",
     "vite": "^7.1.12",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.0.2"
+    "vitest": "^4.0.2",
+    "wait-on": "^7.2.0"
   }
 }

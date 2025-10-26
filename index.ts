@@ -21,6 +21,7 @@ import { initDB } from './db/data-source.js';
 import attachmentsRouter from './routes/attachments.js';
 import searchRouter from './routes/search.js';
 import { cacheMiddleware, getCacheStats } from './middlewares/cache.js';
+import { flags } from './config/flags.js';
 
 // ===== OBSERVABILITY SETUP =====
 
@@ -333,7 +334,12 @@ app.use(
 app.use('/api/orgs', cacheMiddleware({ ttl: 10 * 60 * 1000 }), orgsRouter); // 10 minutes
 app.use('/api/teams', cacheMiddleware({ ttl: 5 * 60 * 1000 }), teamsRouter2); // 5 minutes
 app.use('/api/attachments', cacheMiddleware({ ttl: 30 * 60 * 1000 }), attachmentsRouter); // 30 minutes
-app.use('/api/search', cacheMiddleware({ ttl: 2 * 60 * 1000 }), searchRouter); // 2 minutes
+// Conditionally enable search based on feature flags
+if (flags.searchEnabled) {
+  app.use('/api/search', cacheMiddleware({ ttl: 2 * 60 * 1000 }), searchRouter);
+} else {
+  console.log('[flags] Search API disabled');
+}
 
 // Enhanced error handler with correlation ID and Sentry integration
 app.use((err: any, req: any, res: any, _next: any) => {
@@ -403,15 +409,22 @@ const host = process.env.HOST || '0.0.0.0';
 await initDB();
 
 const server = http.createServer(app);
-initRealtime(server);
+// Conditionally initialize realtime server
+if (flags.realtimeEnabled) {
+  initRealtime(server);
+} else {
+  console.log('[flags] Realtime disabled');
+}
 
 server.listen(port, host as any, () => {
   const url = `http://${host}:${port}`;
   const publicDomain = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_STATIC_URL;
   const hint = publicDomain ? ` (public: https://${publicDomain})` : '';
 
-  // Start backup scheduler
-  startBackupScheduler();
+  // Start backup scheduler only outside of test environment
+  if (process.env.NODE_ENV !== 'test') {
+    startBackupScheduler();
+  }
 
   // Structured startup logging
   structuredLog('info', 'Server started successfully', {

@@ -36,8 +36,8 @@ jobs:
 
       - name: Run backend server-dependent tests (metrics, backup)
         run: |
-          PORT=3001 node dist/index.js &
-          sleep 3
+          NODE_ENV=test REALTIME_ENABLED=false PORT=3001 node dist/index.js &
+          npx wait-on http://localhost:3001/metrics
           API_BASE=http://localhost:3001 npx vitest run tests/metrics.api.test.ts tests/backup.api.test.ts
 
       - name: Install UI deps
