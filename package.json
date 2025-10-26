@@ -7,7 +7,7 @@
     "./types/*": "./types/*"
   },
   "scripts": {
-    "dev": "tsx watch index.ts",
+    "dev": "concurrently -n build,serve -c yellow,green \"tsc -p tsconfig.server.json --watch\" \"node --watch dist/index.js\"",
     "dev:all": "concurrently -n api,ui -c green,cyan \"npm run dev\" \"npm --prefix ui run dev\"",
     "build": "tsc -p tsconfig.server.json && npm --prefix ui ci --include=dev && npm --prefix ui run build && node -e \"require('fs').rmSync('ui/node_modules',{recursive:true,force:true})\"",
     "build:server": "tsc -p tsconfig.server.json",
