@@ -1,6 +1,6 @@
-import { Request } from "express";
-import { AppDataSource } from "../db/data-source.js";
-import { SecurityEvent } from "../models/SecurityEvent.js";
+import { Request } from 'express';
+import { AppDataSource } from '../db/data-source.js';
+import { SecurityEvent } from '../models/SecurityEvent.js';
 
 export async function recordSearchEvent(opts: {
   req: Request;

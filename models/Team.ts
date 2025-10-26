@@ -1,12 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from "typeorm";
-import { Organization } from "./Organization.js";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
+import { Organization } from './Organization.js';
 
 @Entity()
 export class Team {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @ManyToOne(() => Organization, { onDelete: "CASCADE" })
+  @ManyToOne(() => Organization, { onDelete: 'CASCADE' })
   org!: Organization;
 
   @Column()

@@ -4,7 +4,13 @@ import { Input } from './ui/input';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 import { toast } from 'sonner';
-import { sendVerificationCode, verifyEmailCode, getVerificationStatus, getCurrentUser, setCurrentUser } from '@lib/api';
+import {
+  sendVerificationCode,
+  verifyEmailCode,
+  getVerificationStatus,
+  getCurrentUser,
+  setCurrentUser,
+} from '@lib/api';
 import { isOffline, waitForOnline } from '@lib/network';
 import { OtpInput } from './OtpInput';
 
@@ -14,7 +20,11 @@ interface EmailVerificationScreenProps {
   onCancel: () => void;
 }
 
-export function EmailVerificationScreen({ email: initialEmail, onVerified, onCancel }: EmailVerificationScreenProps) {
+export function EmailVerificationScreen({
+  email: initialEmail,
+  onVerified,
+  onCancel,
+}: EmailVerificationScreenProps) {
   const [email, setEmail] = useState(initialEmail || '');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -88,8 +98,14 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
   }, [email, status]);
 
   async function handleSendCode() {
-    const normalized = String(email || '').trim().toLowerCase();
-    if (!normalized) { toast.error('Enter your email'); setErrorMsg('Please enter your email address'); return; }
+    const normalized = String(email || '')
+      .trim()
+      .toLowerCase();
+    if (!normalized) {
+      toast.error('Enter your email');
+      setErrorMsg('Please enter your email address');
+      return;
+    }
     setLoading(true);
     try {
       if (isOffline()) {
@@ -121,8 +137,15 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
   async function handleVerify(e?: React.FormEvent) {
     if (e) e.preventDefault();
     setErrorMsg(null);
-    const normalized = String(email || '').trim().toLowerCase();
-    if (!normalized || !code || code.length !== 6) { const msg = 'Enter the 6-digit code'; toast.error(msg); setErrorMsg(msg); return; }
+    const normalized = String(email || '')
+      .trim()
+      .toLowerCase();
+    if (!normalized || !code || code.length !== 6) {
+      const msg = 'Enter the 6-digit code';
+      toast.error(msg);
+      setErrorMsg(msg);
+      return;
+    }
 
     // Simple client-side attempt limit to prevent brute force: 5 attempts then 60s lockout
     if (attempts >= 5) {
@@ -148,13 +171,17 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
         toast.success('Email verified');
         setAriaMessage('Email verified');
         // Confirm status and persist verification locally
-        try { await getVerificationStatus(normalized); } catch {}
+        try {
+          await getVerificationStatus(normalized);
+        } catch {}
         try {
           const user = getCurrentUser();
           if (user) {
             const updated = { ...user, isVerified: true };
             setCurrentUser(updated);
-            window.dispatchEvent(new CustomEvent('auth:verified', { detail: { email: normalized } }));
+            window.dispatchEvent(
+              new CustomEvent('auth:verified', { detail: { email: normalized } })
+            );
           }
         } catch {}
         onVerified();
@@ -205,47 +232,88 @@ export function EmailVerificationScreen({ email: initialEmail, onVerified, onCan
       <div className="container mx-auto px-6 py-16 flex items-start justify-center">
         <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-sm">
           <h1 className="text-xl font-semibold mb-2">Verify your email</h1>
-          <p className="text-slate-600 dark:text-slate-400 mb-6">We sent a verification code to your email. Enter it below to finish signing in.</p>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
+            We sent a verification code to your email. Enter it below to finish signing in.
+          </p>
 
           <div className="space-y-4">
             <div>
               <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Email</label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="alex@example.com" required />
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="alex@example.com"
+                required
+              />
             </div>
 
             {status !== 'verified' && (
               <div className="space-y-3">
-                <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">6-digit code</label>
+                <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">
+                  6-digit code
+                </label>
                 <OtpInput value={code} onChange={setCode} disabled={loading} autoFocus />
 
                 <div className="flex items-center gap-3">
-                  <Button onClick={handleSendCode} disabled={loading || !canResend} className="bg-indigo-600 hover:bg-indigo-700">
-                    {loading ? 'Sending…' : canResend ? 'Resend Code' : `Resend in ${cooldownSeconds}s`}
+                  <Button
+                    onClick={handleSendCode}
+                    disabled={loading || !canResend}
+                    className="bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    {loading
+                      ? 'Sending…'
+                      : canResend
+                        ? 'Resend Code'
+                        : `Resend in ${cooldownSeconds}s`}
                   </Button>
-                  <Button onClick={handleVerify} disabled={loading || code.length !== 6} className="bg-green-600 hover:bg-green-700">{loading ? 'Verifying…' : 'Verify'}</Button>
-                  <Button variant="outline" onClick={onCancel} disabled={loading}>Cancel</Button>
+                  <Button
+                    onClick={handleVerify}
+                    disabled={loading || code.length !== 6}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {loading ? 'Verifying…' : 'Verify'}
+                  </Button>
+                  <Button variant="outline" onClick={onCancel} disabled={loading}>
+                    Cancel
+                  </Button>
                 </div>
 
                 <div className="text-xs text-slate-500 dark:text-slate-400 flex gap-4">
                   {expiresAt && !expired && (
-                    <span>Code expires in {Math.floor(expirySeconds / 60)}m {expirySeconds % 60}s</span>
+                    <span>
+                      Code expires in {Math.floor(expirySeconds / 60)}m {expirySeconds % 60}s
+                    </span>
                   )}
                   {expired && (
-                    <span className="text-amber-600 dark:text-amber-400">Code expired — request a new one.</span>
+                    <span className="text-amber-600 dark:text-amber-400">
+                      Code expired — request a new one.
+                    </span>
                   )}
                 </div>
 
                 {errorMsg && (
-                  <div role="alert" className="rounded-md border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 p-2 text-xs">
+                  <div
+                    role="alert"
+                    className="rounded-md border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 p-2 text-xs"
+                  >
                     {errorMsg}
                   </div>
                 )}
-                <div aria-live="polite" className="sr-only">{ariaMessage}</div>
+                <div aria-live="polite" className="sr-only">
+                  {ariaMessage}
+                </div>
               </div>
             )}
 
             {status === 'verified' && (
-              <div role="status" aria-live="polite" className="rounded-lg bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200 p-3 text-sm">Email verified. Redirecting…</div>
+              <div
+                role="status"
+                aria-live="polite"
+                className="rounded-lg bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200 p-3 text-sm"
+              >
+                Email verified. Redirecting…
+              </div>
             )}
           </div>
         </div>

@@ -1,13 +1,13 @@
-export type ViewType = 
+export type ViewType =
   | 'login'
   | 'signup'
   | 'signup_providers'
   | 'signup_email'
   | 'signup_username'
-  | 'landing' 
-  | 'onboarding' 
-  | 'dashboard' 
-  | 'project' 
+  | 'landing'
+  | 'onboarding'
+  | 'dashboard'
+  | 'project'
   | 'settings'
   | 'verify'
   | 'search';

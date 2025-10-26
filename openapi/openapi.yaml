@@ -102,7 +102,7 @@ paths:
             schema:
               type: object
               properties:
-                identifier: { type: string, description: "Username or email" }
+                identifier: { type: string, description: 'Username or email' }
               required: [identifier]
       responses:
         '200': { description: Invite created }
@@ -118,8 +118,8 @@ paths:
             schema:
               type: object
               properties:
-                from: { type: number, description: "Inviter user id", nullable: true }
-                teamId: { type: number, description: "Team id", nullable: true }
+                from: { type: number, description: 'Inviter user id', nullable: true }
+                teamId: { type: number, description: 'Team id', nullable: true }
       responses:
         '200': { description: Joined team }
 components:

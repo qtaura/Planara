@@ -56,13 +56,31 @@ export default function SearchView() {
     setError(null);
     try {
       if (type === 'tasks') {
-        const res = await searchTasks({ q, teamId: teamId ? Number(teamId) : undefined, projectId: projectId ? Number(projectId) : undefined, limit: 50 });
+        const res = await searchTasks({
+          q,
+          teamId: teamId ? Number(teamId) : undefined,
+          projectId: projectId ? Number(projectId) : undefined,
+          limit: 50,
+        });
         setItems(res.items || []);
       } else if (type === 'projects') {
-        const res = await searchProjects({ q, teamId: teamId ? Number(teamId) : undefined, from: from || undefined, to: to || undefined, limit: 50 });
+        const res = await searchProjects({
+          q,
+          teamId: teamId ? Number(teamId) : undefined,
+          from: from || undefined,
+          to: to || undefined,
+          limit: 50,
+        });
         setItems(res.items || []);
       } else {
-        const res = await searchComments({ q, teamId: teamId ? Number(teamId) : undefined, projectId: projectId ? Number(projectId) : undefined, from: from || undefined, to: to || undefined, limit: 50 });
+        const res = await searchComments({
+          q,
+          teamId: teamId ? Number(teamId) : undefined,
+          projectId: projectId ? Number(projectId) : undefined,
+          from: from || undefined,
+          to: to || undefined,
+          limit: 50,
+        });
         setItems(res.items || []);
       }
     } catch (e: any) {
@@ -94,11 +112,21 @@ export default function SearchView() {
   return (
     <div className="p-6">
       <div className="flex items-center gap-2 mb-4">
-        <TypeSelect value={type} onChange={(v) => { setType(v); }} />
+        <TypeSelect
+          value={type}
+          onChange={(v) => {
+            setType(v);
+          }}
+        />
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { updateUrl(); runSearch(); } }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              updateUrl();
+              runSearch();
+            }
+          }}
           placeholder="Search query..."
           className="h-9 w-80"
         />
@@ -132,7 +160,15 @@ export default function SearchView() {
             />
           </>
         )}
-        <Button onClick={() => { updateUrl(); runSearch(); }} className="h-9">Search</Button>
+        <Button
+          onClick={() => {
+            updateUrl();
+            runSearch();
+          }}
+          className="h-9"
+        >
+          Search
+        </Button>
       </div>
 
       {loading && <p className="text-sm text-slate-600 dark:text-slate-300">Searching...</p>}
@@ -143,25 +179,46 @@ export default function SearchView() {
           <p className="text-sm text-slate-600 dark:text-slate-300">No results</p>
         )}
         {items.map((it: any) => (
-          <div key={`${it.type}:${it.id}`} className="p-3 rounded-md border border-slate-200 dark:border-slate-800">
+          <div
+            key={`${it.type}:${it.id}`}
+            className="p-3 rounded-md border border-slate-200 dark:border-slate-800"
+          >
             {type === 'tasks' && (
               <div>
                 <div className="text-sm font-medium">{it.title}</div>
-                {it.description && <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">{it.description}</div>}
-                <div className="text-xs text-slate-500 mt-1">Status: {it.status} • Priority: {it.priority} • Project: {it.projectId ?? '—'} • Assignee: {it.assignee ?? '—'}</div>
+                {it.description && (
+                  <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                    {it.description}
+                  </div>
+                )}
+                <div className="text-xs text-slate-500 mt-1">
+                  Status: {it.status} • Priority: {it.priority} • Project: {it.projectId ?? '—'} •
+                  Assignee: {it.assignee ?? '—'}
+                </div>
               </div>
             )}
             {type === 'projects' && (
               <div>
                 <div className="text-sm font-medium">{it.name}</div>
-                {it.description && <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">{it.description}</div>}
-                <div className="text-xs text-slate-500 mt-1">Created: {it.createdAt ? new Date(it.createdAt).toLocaleString() : '—'} • Archived: {String(!!it.archived)}</div>
+                {it.description && (
+                  <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                    {it.description}
+                  </div>
+                )}
+                <div className="text-xs text-slate-500 mt-1">
+                  Created: {it.createdAt ? new Date(it.createdAt).toLocaleString() : '—'} •
+                  Archived: {String(!!it.archived)}
+                </div>
               </div>
             )}
             {type === 'comments' && (
               <div>
                 <div className="text-sm">{it.content}</div>
-                <div className="text-xs text-slate-500 mt-1">Task: {it.taskId ?? '—'} • Project: {it.projectId ?? '—'} • Author: {it.author ?? '—'} • At: {it.createdAt ? new Date(it.createdAt).toLocaleString() : '—'}</div>
+                <div className="text-xs text-slate-500 mt-1">
+                  Task: {it.taskId ?? '—'} • Project: {it.projectId ?? '—'} • Author:{' '}
+                  {it.author ?? '—'} • At:{' '}
+                  {it.createdAt ? new Date(it.createdAt).toLocaleString() : '—'}
+                </div>
               </div>
             )}
           </div>

@@ -86,7 +86,9 @@ describe('RBAC API: task update/delete with team roles', () => {
     const suffix = Date.now();
     owner = await createUser(`owner${suffix}`, `owner${suffix}@example.com`, { verified: true });
     member = await createUser(`member${suffix}`, `member${suffix}@example.com`, { verified: true });
-    outsider = await createUser(`outsider${suffix}`, `outsider${suffix}@example.com`, { verified: true });
+    outsider = await createUser(`outsider${suffix}`, `outsider${suffix}@example.com`, {
+      verified: true,
+    });
     ownerToken = issueToken(owner.id);
     memberToken = issueToken(member.id);
     outsiderToken = issueToken(outsider.id);
@@ -153,7 +155,9 @@ describe('RBAC API: task update/delete with team roles', () => {
       .set('Authorization', `Bearer ${outsiderToken}`)
       .send({ status: 'done', teamId: team.id });
     expect(res.status).toBe(403);
-    expect(String(res.body?.error || '')).toMatch(/not_a_member|not a member|forbidden|insufficient/i);
+    expect(String(res.body?.error || '')).toMatch(
+      /not_a_member|not a member|forbidden|insufficient/i
+    );
   });
 
   it('member cannot delete task; requires admin minimum', async () => {

@@ -26,7 +26,10 @@ export function getSocket(): Socket | null {
   let tasksTick: any = null;
   const dispatchTasksChanged = (payload: any) => {
     if (tasksTick) return;
-    tasksTick = setTimeout(() => { tasksTick = null; forward('tasks:changed', payload); }, 300);
+    tasksTick = setTimeout(() => {
+      tasksTick = null;
+      forward('tasks:changed', payload);
+    }, 300);
   };
 
   // Task events → forward to app-wide listeners
@@ -56,7 +59,9 @@ export function joinProjectRoom(projectId: string | number) {
   const room = `project:${Number(projectId)}`;
   if (currentRoom === room) return;
   if (currentRoom) {
-    try { s.emit('room:leave', { projectId: Number(String(currentRoom).split(':')[1]) }); } catch {}
+    try {
+      s.emit('room:leave', { projectId: Number(String(currentRoom).split(':')[1]) });
+    } catch {}
   }
   currentRoom = room;
   s.emit('room:join', { projectId: Number(projectId) });
@@ -65,6 +70,8 @@ export function joinProjectRoom(projectId: string | number) {
 export function leaveCurrentRoom() {
   const s = getSocket();
   if (!s || !currentRoom) return;
-  try { s.emit('room:leave', { projectId: Number(String(currentRoom).split(':')[1]) }); } catch {}
+  try {
+    s.emit('room:leave', { projectId: Number(String(currentRoom).split(':')[1]) });
+  } catch {}
   currentRoom = null;
 }

@@ -1,9 +1,9 @@
-import { Request, Response } from "express";
-import { AppDataSource } from "../db/data-source.js";
-import { Project } from "../models/Project.js";
-import { Task } from "../models/Task.js";
-import { User } from "../models/User.js";
-import { Team } from "../models/Team.js";
+import { Request, Response } from 'express';
+import { AppDataSource } from '../db/data-source.js';
+import { Project } from '../models/Project.js';
+import { Task } from '../models/Task.js';
+import { User } from '../models/User.js';
+import { Team } from '../models/Team.js';
 
 export const getProjects = async (req: Request, res: Response) => {
   try {
@@ -16,23 +16,23 @@ export const getProjects = async (req: Request, res: Response) => {
 
     let projects: Project[];
     let total: number;
-    
+
     if (teamId) {
       [projects, total] = await projectRepo.findAndCount({
         where: { team: { id: teamId } },
         relations: { team: true, owner: true },
         take: limit,
         skip: offset,
-        order: { createdAt: 'DESC' }
+        order: { createdAt: 'DESC' },
       });
     } else {
       // Include team relation as well so the UI can gate actions by role
-      [projects, total] = await projectRepo.findAndCount({ 
-        where: { owner: { id: userId } }, 
+      [projects, total] = await projectRepo.findAndCount({
+        where: { owner: { id: userId } },
         relations: { owner: true, team: true },
         take: limit,
         skip: offset,
-        order: { createdAt: 'DESC' }
+        order: { createdAt: 'DESC' },
       });
     }
 
@@ -41,10 +41,10 @@ export const getProjects = async (req: Request, res: Response) => {
       total,
       limit,
       offset,
-      hasMore: offset + limit < total
+      hasMore: offset + limit < total,
     });
   } catch (err) {
-    res.status(500).json({ error: "Failed to retrieve projects" });
+    res.status(500).json({ error: 'Failed to retrieve projects' });
   }
 };
 
@@ -53,7 +53,7 @@ export const createProject = async (req: Request, res: Response) => {
     const userId = (req as any).userId as number | undefined;
     const { name, description, teamId } = req.body;
 
-    if (!userId) return res.status(401).json({ error: "unauthorized" });
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
 
     const projectRepo = AppDataSource.getRepository(Project);
     const userRepo = AppDataSource.getRepository(User);
@@ -66,15 +66,18 @@ export const createProject = async (req: Request, res: Response) => {
     project.owner = owner;
 
     if (teamId) {
-      const team = await teamRepo.findOne({ where: { id: Number(teamId) }, relations: { org: true } });
-      if (!team) return res.status(404).json({ error: "Team not found" });
+      const team = await teamRepo.findOne({
+        where: { id: Number(teamId) },
+        relations: { org: true },
+      });
+      if (!team) return res.status(404).json({ error: 'Team not found' });
       project.team = team;
     }
 
     await projectRepo.save(project);
     res.status(201).json(project);
   } catch (err) {
-    res.status(500).json({ error: "Failed to create project" });
+    res.status(500).json({ error: 'Failed to create project' });
   }
 };
 
@@ -87,20 +90,26 @@ export const updateProject = async (req: Request, res: Response) => {
     const projectRepo = AppDataSource.getRepository(Project);
     const teamRepo = AppDataSource.getRepository(Team);
 
-    const project = await projectRepo.findOne({ where: { id: projectId }, relations: { owner: true, team: true } });
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    const project = await projectRepo.findOne({
+      where: { id: projectId },
+      relations: { owner: true, team: true },
+    });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
 
     // Personal projects: owner must match when no team context provided
     if (!teamId && project.owner?.id !== userId) {
-      return res.status(403).json({ error: "Forbidden" });
+      return res.status(403).json({ error: 'Forbidden' });
     }
 
     // If teamId provided, enforce org boundary: project.team must match
     if (teamId) {
-      const team = await teamRepo.findOne({ where: { id: Number(teamId) }, relations: { org: true } });
-      if (!team) return res.status(404).json({ error: "Team not found" });
+      const team = await teamRepo.findOne({
+        where: { id: Number(teamId) },
+        relations: { org: true },
+      });
+      if (!team) return res.status(404).json({ error: 'Team not found' });
       if (project.team && project.team.id !== team.id) {
-        return res.status(403).json({ error: "Cross-team update forbidden" });
+        return res.status(403).json({ error: 'Cross-team update forbidden' });
       }
       project.team = team; // allow assigning if currently null or matching
     }
@@ -113,7 +122,7 @@ export const updateProject = async (req: Request, res: Response) => {
     await projectRepo.save(project);
     res.json(project);
   } catch (err) {
-    res.status(500).json({ error: "Failed to update project" });
+    res.status(500).json({ error: 'Failed to update project' });
   }
 };
 
@@ -125,22 +134,25 @@ export const deleteProject = async (req: Request, res: Response) => {
 
     const projectRepo = AppDataSource.getRepository(Project);
 
-    const project = await projectRepo.findOne({ where: { id: projectId }, relations: { owner: true, team: true } });
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    const project = await projectRepo.findOne({
+      where: { id: projectId },
+      relations: { owner: true, team: true },
+    });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
 
     // Personal projects: owner must match when no team context provided
     if (!teamId && project.owner?.id !== userId) {
-      return res.status(403).json({ error: "Forbidden" });
+      return res.status(403).json({ error: 'Forbidden' });
     }
 
     // If teamId provided, enforce cross-team boundary
     if (teamId && project.team && project.team.id !== teamId) {
-      return res.status(403).json({ error: "Cross-team delete forbidden" });
+      return res.status(403).json({ error: 'Cross-team delete forbidden' });
     }
 
     await projectRepo.remove(project);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: "Failed to delete project" });
+    res.status(500).json({ error: 'Failed to delete project' });
   }
 };

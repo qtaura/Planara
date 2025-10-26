@@ -15,7 +15,7 @@ export function validateBody<T>(schema: ZodSchema<T>) {
       return res.status(400).json({
         success: false,
         error: 'invalid_request',
-        details: issues.map((i: any) => ({ path: i.path?.join('.') || '', message: i.message }))
+        details: issues.map((i: any) => ({ path: i.path?.join('.') || '', message: i.message })),
       });
     }
   };
@@ -33,7 +33,7 @@ export function validateQuery<T>(schema: ZodSchema<T>) {
       return res.status(400).json({
         success: false,
         error: 'invalid_query',
-        details: issues.map((i: any) => ({ path: i.path?.join('.') || '', message: i.message }))
+        details: issues.map((i: any) => ({ path: i.path?.join('.') || '', message: i.message })),
       });
     }
   };
@@ -43,28 +43,28 @@ export function validateQuery<T>(schema: ZodSchema<T>) {
 export const SignupSchema = z.object({
   username: z.string().min(2).max(64),
   email: z.string().email(),
-  password: z.string().min(6).max(256)
+  password: z.string().min(6).max(256),
 });
 
 export const LoginSchema = z.object({
   usernameOrEmail: z.string().min(1).max(256),
-  password: z.string().min(6).max(256)
+  password: z.string().min(6).max(256),
 });
 
 export const SendCodeSchema = z.object({
-  email: z.string().email()
+  email: z.string().email(),
 });
 
 export const VerifyCodeSchema = z.object({
   email: z.string().email(),
-  code: z.string().regex(/^\d{6}$/)
+  code: z.string().regex(/^\d{6}$/),
 });
 
 export const InviteSchema = z.object({
-  identifier: z.string().min(1)
+  identifier: z.string().min(1),
 });
 
 export const AcceptInviteSchema = z.object({
   from: z.number().int().optional(),
-  teamId: z.number().int().optional()
+  teamId: z.number().int().optional(),
 });

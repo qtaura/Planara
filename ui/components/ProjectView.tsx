@@ -54,12 +54,16 @@ export function ProjectView({ projectId }: ProjectViewProps) {
   useEffect(() => {
     let cancelled = false;
     refreshProject().catch(() => {});
-    function onTasksChanged() { if (!cancelled) refreshProject().catch(() => {}); }
-    function onProjectsChanged() { if (!cancelled) refreshProject().catch(() => {}); }
+    function onTasksChanged() {
+      if (!cancelled) refreshProject().catch(() => {});
+    }
+    function onProjectsChanged() {
+      if (!cancelled) refreshProject().catch(() => {});
+    }
     window.addEventListener('tasks:changed', onTasksChanged as EventListener);
     window.addEventListener('projects:changed', onProjectsChanged as EventListener);
-    return () => { 
-      cancelled = true; 
+    return () => {
+      cancelled = true;
       window.removeEventListener('tasks:changed', onTasksChanged as EventListener);
       window.removeEventListener('projects:changed', onProjectsChanged as EventListener);
     };
@@ -100,16 +104,11 @@ export function ProjectView({ projectId }: ProjectViewProps) {
         <div className="p-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div
-                className="w-2 h-8 rounded-full"
-                style={{ backgroundColor: project.color }}
-              />
+              <div className="w-2 h-8 rounded-full" style={{ backgroundColor: project.color }} />
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h1 className="text-slate-900 dark:text-white">{project.name}</h1>
-                  {project.favorite && (
-                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  )}
+                  {project.favorite && <Star className="w-4 h-4 fill-amber-400 text-amber-400" />}
                   {project.githubLinked && (
                     <Badge
                       variant="outline"
@@ -134,7 +133,9 @@ export function ProjectView({ projectId }: ProjectViewProps) {
                 ))}
                 {presentUsers.length > 5 && (
                   <Avatar className="h-6 w-6 border border-white dark:border-slate-800">
-                    <AvatarFallback className="text-[10px]">+{presentUsers.length - 5}</AvatarFallback>
+                    <AvatarFallback className="text-[10px]">
+                      +{presentUsers.length - 5}
+                    </AvatarFallback>
                   </Avatar>
                 )}
               </div>
@@ -162,7 +163,9 @@ export function ProjectView({ projectId }: ProjectViewProps) {
             <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-slate-800 rounded-lg p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Calendar className="w-4 h-4 text-indigo-600" />
-                <span className="text-sm text-slate-600 dark:text-slate-400">Upcoming milestones</span>
+                <span className="text-sm text-slate-600 dark:text-slate-400">
+                  Upcoming milestones
+                </span>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -219,9 +222,7 @@ export function ProjectView({ projectId }: ProjectViewProps) {
         </Tabs>
       </div>
 
-      {selectedTask && (
-        <TaskModal task={selectedTask} onClose={() => setSelectedTask(null)} />
-      )}
+      {selectedTask && <TaskModal task={selectedTask} onClose={() => setSelectedTask(null)} />}
     </div>
   );
 }

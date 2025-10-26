@@ -1,8 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, Index } from "typeorm";
-import { User } from "./User.js";
-import { Project } from "./Project.js";
-import { Task } from "./Task.js";
-import { NotificationPreference } from "./NotificationPreference.js";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  Index,
+} from 'typeorm';
+import { User } from './User.js';
+import { Project } from './Project.js';
+import { Task } from './Task.js';
+import { NotificationPreference } from './NotificationPreference.js';
 
 @Entity()
 export class Notification {
@@ -15,10 +22,18 @@ export class Notification {
   @Column()
   message!: string;
 
-  @Column({ 
-    type: "varchar",
-    enum: ["task_assigned", "task_completed", "project_updated", "comment_added", "milestone_due", "general", "team_invite"],
-    default: "general"
+  @Column({
+    type: 'varchar',
+    enum: [
+      'task_assigned',
+      'task_completed',
+      'project_updated',
+      'comment_added',
+      'milestone_due',
+      'general',
+      'team_invite',
+    ],
+    default: 'general',
   })
   @Index()
   type!: string;
@@ -30,9 +45,9 @@ export class Notification {
   @Column({ nullable: true })
   readAt?: Date;
 
-  @Column({ type: "varchar", enum: ["in_app", "email", "push"], default: "in_app" })
+  @Column({ type: 'varchar', enum: ['in_app', 'email', 'push'], default: 'in_app' })
   @Index()
-  channel!: "in_app" | "email" | "push";
+  channel!: 'in_app' | 'email' | 'push';
 
   @CreateDateColumn()
   createdAt!: Date;

@@ -35,12 +35,12 @@ export function CalendarView({ tasks, milestones, onTaskClick }: CalendarViewPro
     const date = new Date(year, month, day);
     const dateString = date.toISOString().split('T')[0];
 
-    const dayTasks = tasks.filter(task => {
+    const dayTasks = tasks.filter((task) => {
       if (!task.dueDate) return false;
       return task.dueDate === dateString;
     });
 
-    const dayMilestones = milestones.filter(milestone => {
+    const dayMilestones = milestones.filter((milestone) => {
       const start = new Date(milestone.startDate);
       const end = new Date(milestone.endDate);
       return date >= start && date <= end;
@@ -113,19 +113,14 @@ export function CalendarView({ tasks, milestones, onTaskClick }: CalendarViewPro
         {/* Weekday labels */}
         <div className="grid grid-cols-7 gap-2 mb-2">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div
-              key={day}
-              className="text-center text-sm text-slate-400 py-2"
-            >
+            <div key={day} className="text-center text-sm text-slate-400 py-2">
               {day}
             </div>
           ))}
         </div>
 
         {/* Calendar days */}
-        <div className="grid grid-cols-7 gap-2">
-          {days}
-        </div>
+        <div className="grid grid-cols-7 gap-2">{days}</div>
       </Card>
 
       {/* Legend */}
@@ -161,26 +156,20 @@ function CalendarDay({ day, isToday, tasks, milestones, onTaskClick }: CalendarD
         isToday
           ? 'bg-purple-900/20 border-purple-500'
           : hasEvents
-          ? 'bg-slate-800/50 border-slate-700 hover:border-purple-500/50 cursor-pointer'
-          : 'bg-slate-800/20 border-slate-800'
+            ? 'bg-slate-800/50 border-slate-700 hover:border-purple-500/50 cursor-pointer'
+            : 'bg-slate-800/20 border-slate-800'
       }`}
     >
       <div className="flex justify-between items-start mb-2">
         <span
           className={`text-sm ${
-            isToday
-              ? 'text-purple-300'
-              : hasEvents
-              ? 'text-white'
-              : 'text-slate-500'
+            isToday ? 'text-purple-300' : hasEvents ? 'text-white' : 'text-slate-500'
           }`}
         >
           {day}
         </span>
         {isToday && (
-          <Badge className="bg-purple-600 text-white border-0 h-5 px-1.5 text-xs">
-            Today
-          </Badge>
+          <Badge className="bg-purple-600 text-white border-0 h-5 px-1.5 text-xs">Today</Badge>
         )}
       </div>
 

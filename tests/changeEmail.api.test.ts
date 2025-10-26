@@ -46,7 +46,9 @@ describe('Change email workflow', () => {
   it('updates email, resets verification, issues code, and logs events', async () => {
     const oldEmail = `old-${Date.now()}@example.com`;
     const user = await createUser(oldEmail);
-    const token = jwt.sign({ userId: (user as any).id }, process.env.JWT_SECRET || 'dev_secret', { expiresIn: '15m' });
+    const token = jwt.sign({ userId: (user as any).id }, process.env.JWT_SECRET || 'dev_secret', {
+      expiresIn: '15m',
+    });
 
     const newEmail = `new-${Date.now()}@example.com`;
     const res = await request(app)

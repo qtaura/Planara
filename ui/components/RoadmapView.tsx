@@ -12,10 +12,10 @@ interface RoadmapViewProps {
 export function RoadmapView({ milestones }: RoadmapViewProps) {
   // Generate timeline based on milestones
   const today = new Date();
-  const allDates = milestones.flatMap(m => [new Date(m.startDate), new Date(m.endDate)]);
-  const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
-  const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
-  
+  const allDates = milestones.flatMap((m) => [new Date(m.startDate), new Date(m.endDate)]);
+  const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())));
+  const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())));
+
   // Generate month labels
   const months: Date[] = [];
   const current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
@@ -63,7 +63,7 @@ export function RoadmapView({ milestones }: RoadmapViewProps) {
               </div>
             );
           })}
-          
+
           {/* Today indicator */}
           {today >= minDate && today <= maxDate && (
             <div
@@ -103,9 +103,7 @@ export function RoadmapView({ milestones }: RoadmapViewProps) {
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="text-white">{milestone.title}</h4>
                       {milestone.progress === 100 && (
-                        <Badge className="bg-green-600/30 text-green-300 border-0">
-                          Completed
-                        </Badge>
+                        <Badge className="bg-green-600/30 text-green-300 border-0">Completed</Badge>
                       )}
                     </div>
                     <p className="text-sm text-slate-400 mb-2">{milestone.description}</p>
@@ -113,7 +111,11 @@ export function RoadmapView({ milestones }: RoadmapViewProps) {
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         <span>
-                          {startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {' '}
+                          {startDate.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                          })}{' '}
+                          -{' '}
                           {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                       </div>

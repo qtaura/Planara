@@ -33,7 +33,11 @@ describe('EmailVerificationScreen', () => {
   it('auto-sends verification code on mount when email provided', async () => {
     render(
       <ThemeProvider>
-        <EmailVerificationScreen email="test@example.com" onVerified={() => {}} onCancel={() => {}} />
+        <EmailVerificationScreen
+          email="test@example.com"
+          onVerified={() => {}}
+          onCancel={() => {}}
+        />
       </ThemeProvider>
     );
 
@@ -52,7 +56,11 @@ describe('EmailVerificationScreen', () => {
     const onVerified = vi.fn();
     render(
       <ThemeProvider>
-        <EmailVerificationScreen email="test@example.com" onVerified={onVerified} onCancel={() => {}} />
+        <EmailVerificationScreen
+          email="test@example.com"
+          onVerified={onVerified}
+          onCancel={() => {}}
+        />
       </ThemeProvider>
     );
 
@@ -74,7 +82,11 @@ describe('EmailVerificationScreen', () => {
     const onVerified = vi.fn();
     render(
       <ThemeProvider>
-        <EmailVerificationScreen email="test@example.com" onVerified={onVerified} onCancel={() => {}} />
+        <EmailVerificationScreen
+          email="test@example.com"
+          onVerified={onVerified}
+          onCancel={() => {}}
+        />
       </ThemeProvider>
     );
 

@@ -28,6 +28,7 @@
 ---
 
 ## Overview
+
 Planara is a full-stack TypeScript application with a React + Vite frontend and an Express + TypeORM backend. It delivers a secure, enumeration-safe email verification journey and a modern, accessible UI.
 
 - End-to-end TypeScript with strict configs.
@@ -36,6 +37,7 @@ Planara is a full-stack TypeScript application with a React + Vite frontend and 
 - Optional monitoring hooks (Sentry) without hard dependencies.
 
 ## What Is Planara
+
 Planara is a verification-first, collaborative workspace that helps teams plan, execute, and track work with clarity. It brings projects, tasks, milestones, roadmaps, files, and team communication into a cohesive experience designed for everyday momentum and high-level visibility.
 
 - Single place to organize projects, tasks, and timelines.
@@ -44,6 +46,7 @@ Planara is a verification-first, collaborative workspace that helps teams plan, 
 - Reliable onboarding using secure email verification (plus OAuth options).
 
 ## Key Capabilities
+
 - Project and Task Management: create, assign, and track progress.
 - Kanban Boards: drag-and-drop task management in a modern interface.
 - Calendar & Roadmap Views: visualize schedules and longer-term plans.
@@ -55,6 +58,7 @@ Planara is a verification-first, collaborative workspace that helps teams plan, 
 - Theming: dark/light modes with persistent preferences.
 
 ## Use Cases
+
 - Product Planning: roadmap alignment across squads and milestones.
 - Execution Tracking: operational heartbeat for sprints and releases.
 - Milestone Reviews: ensure critical deliverables stay on track.
@@ -62,6 +66,7 @@ Planara is a verification-first, collaborative workspace that helps teams plan, 
 - Team Visibility: shared source of truth for project status.
 
 ## Verification Flow
+
 Email verification is designed to be secure, predictable, and user-friendly.
 
 - Case-insensitive emails: all emails are trimmed and lowercased on receipt.
@@ -75,16 +80,20 @@ Email verification is designed to be secure, predictable, and user-friendly.
 - Status endpoint: provides verification state for known users.
 
 Endpoints (under `GET/POST /api/users/...`):
+
 - `POST /auth/send-code` – Request a verification code.
 - `POST /auth/verify-code` – Submit the 6-digit code to verify.
 - `GET /auth/verification-status/:email` – Check a user’s verification status.
 
 ## Quickstart
+
 ### Prerequisites
+
 - `Node.js 20+` (18 works, 20 recommended)
 - `npm 9+`
 
 ### Install
+
 ```bash
 # Clone
 git clone https://github.com/qtaura/Planara.git
@@ -99,6 +108,7 @@ npm install
 ```
 
 ### Run Backend
+
 ```bash
 cd ..
 # Build TypeScript (ensures decorator metadata for TypeORM)
@@ -109,6 +119,7 @@ PORT=3010 npm start
 ```
 
 ### Run Frontend
+
 ```bash
 cd ui
 # Point UI at your API
@@ -117,7 +128,9 @@ VITE_API_URL=http://localhost:3010/api npm run dev
 ```
 
 ## Configuration
+
 ### Backend
+
 - `PORT` – API port (default: `3001`).
 - `JWT_SECRET` – Secret for signing tokens.
 - `RESEND_API_KEY` – Email provider key (if absent, dev mode exposes `devCode`).
@@ -127,12 +140,14 @@ VITE_API_URL=http://localhost:3010/api npm run dev
   - `SENTRY_TRACES_SAMPLE_RATE` – Optional traces sampling rate (e.g., `0.1`).
 
 ### Frontend (ui/)
+
 - `VITE_API_URL` – Base API URL (e.g., `http://localhost:3010/api`).
 - Optional monitoring:
   - `VITE_SENTRY_DSN` – Enable frontend monitoring (if set).
   - `VITE_SENTRY_TRACES_SAMPLE_RATE` – Optional traces sampling rate.
 
 ## Dev Mode
+
 Purpose: make local development easy without external providers.
 
 - If `RESEND_API_KEY` is not set, `POST /auth/send-code` responds with `devCode` containing the 6-digit code so you can verify immediately.
@@ -141,40 +156,49 @@ Purpose: make local development easy without external providers.
 - UI detects offline mode and surfaces helpful messaging for retry.
 
 ## API
+
 Detailed request/response examples for verification are available at:
+
 - `docs/api/email-verification.md`
 
 Summary:
+
 - `POST /api/users/auth/send-code`
 - `POST /api/users/auth/verify-code`
 - `GET /api/users/auth/verification-status/:email`
 
 Admin endpoints:
+
 - `POST /api/users/auth/admin/unlock` – Clear lockouts/backoffs for a user (auth required).
 - `GET /api/users/auth/admin/lockout-state/:email` – Inspect lockout/backoff state (auth required).
 - `GET /api/users/auth/admin/events/:email` – Recent security events (auth required).
 - `GET /api/users/auth/admin/rotations/:email` – Verification secret rotations (auth required).
 
 ## Testing
+
 - Backend tests (integration): `npm run test:run`
 - UI tests (vitest):
   - From `ui/`: `npm run test`
   - Email normalization and offline behavior covered in `ui/components/__tests__/`.
 
 ## Monitoring
+
 Sentry instrumentation is optional and uses runtime-only imports:
+
 - Backend: set `SENTRY_DSN` to enable; no package required unless configured.
 - Frontend: set `VITE_SENTRY_DSN` to enable.
 
 Errors are captured via global handlers in both backend and UI.
 
 ## Troubleshooting
+
 - Port conflicts: change `PORT` for backend or `VITE_API_URL` for UI.
 - Decorators: build the backend before starting (`npm run build`).
 - Offline UI: UI shows offline toasts and retries once network reconnects.
 - Windows build EPERM: ensure dev servers are stopped before running UI build or run terminal as Administrator.
 
 ## Project Structure
+
 ```
 Planara/
 ├── README.md
@@ -198,5 +222,6 @@ Planara/
 ```
 
 ## Contributing
+
 - Use focused PRs and conventional commits (e.g., `feat:`, `fix:`, `docs:`).
 - Keep changes minimal and aligned with existing style.

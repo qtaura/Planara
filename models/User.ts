@@ -1,8 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Index } from "typeorm";
-import { Task } from "./Task.js";
-import { Comment } from "./Comment.js";
-import { Project } from "./Project.js";
-import { Notification } from "./Notification.js";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Index } from 'typeorm';
+import { Task } from './Task.js';
+import { Comment } from './Comment.js';
+import { Project } from './Project.js';
+import { Notification } from './Notification.js';
 
 @Entity()
 export class User {

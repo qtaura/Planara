@@ -32,16 +32,16 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
               <stop offset="100%" stopColor="#8b5cf6" />
             </linearGradient>
           </defs>
-          
+
           {/* Background circle */}
           <rect width="32" height="32" rx="8" fill="url(#logo-gradient)" />
-          
+
           {/* Letter P in modern geometric style */}
           <path
             d="M10 8h7c2.76 0 5 2.24 5 5s-2.24 5-5 5h-3v6h-4V8zm4 4v4h3c1.1 0 2-.9 2-2s-.9-2-2-2h-3z"
             fill="white"
           />
-          
+
           {/* Subtle accent dot */}
           <circle cx="23" cy="23" r="2" fill="white" opacity="0.6" />
         </svg>

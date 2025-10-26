@@ -14,7 +14,13 @@ type CommentType = {
 
 type TaskRef = { id: number; projectId?: number };
 
-function ReactionBar({ comment, onReact }: { comment: CommentType; onReact: (type: string, op?: 'add' | 'remove') => void }) {
+function ReactionBar({
+  comment,
+  onReact,
+}: {
+  comment: CommentType;
+  onReact: (type: string, op?: 'add' | 'remove') => void;
+}) {
   const types: Array<{ key: keyof NonNullable<CommentType['reactions']>; label: string }> = [
     { key: 'thumbs_up' as any, label: '👍' },
     { key: 'heart' as any, label: '❤️' },
@@ -31,7 +37,13 @@ function ReactionBar({ comment, onReact }: { comment: CommentType; onReact: (typ
           key={String(t.key)}
           onClick={() => onReact(String(t.key), 'add')}
           title={`React with ${String(t.key)}`}
-          style={{ padding: '2px 6px', borderRadius: 6, border: '1px solid #ddd', background: '#fff', cursor: 'pointer' }}
+          style={{
+            padding: '2px 6px',
+            borderRadius: 6,
+            border: '1px solid #ddd',
+            background: '#fff',
+            cursor: 'pointer',
+          }}
         >
           {t.label} {r[String(t.key)] ? ` ${r[String(t.key)]}` : ''}
         </button>
@@ -40,7 +52,13 @@ function ReactionBar({ comment, onReact }: { comment: CommentType; onReact: (typ
   );
 }
 
-function CommentItem({ comment, depth, children, onReply, onReact }: {
+function CommentItem({
+  comment,
+  depth,
+  children,
+  onReply,
+  onReact,
+}: {
   comment: CommentType;
   depth: number;
   children: React.ReactNode;
@@ -67,7 +85,13 @@ function CommentItem({ comment, depth, children, onReply, onReact }: {
               onReply(comment.id, replyText.trim());
               setReplyText('');
             }}
-            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #ddd', background: '#f8f8f8', cursor: 'pointer' }}
+            style={{
+              padding: '6px 10px',
+              borderRadius: 6,
+              border: '1px solid #ddd',
+              background: '#f8f8f8',
+              cursor: 'pointer',
+            }}
           >
             Reply
           </button>
@@ -131,7 +155,9 @@ export default function CommentsPanel({ task }: { task: TaskRef }) {
             await createReply(parentId, content).then(load).catch(console.error);
           }}
           onReact={async (commentId, type, op) => {
-            await reactToComment(commentId, type as any, op).then(load).catch(console.error);
+            await reactToComment(commentId, type as any, op)
+              .then(load)
+              .catch(console.error);
           }}
         >
           {ch.map((kid) => renderNode(kid, Math.min(depth + 1, 3)))}
@@ -154,12 +180,20 @@ export default function CommentsPanel({ task }: { task: TaskRef }) {
         <button
           onClick={async () => {
             if (!newText.trim()) return;
-            await createComment({ taskId: task.id, content: newText.trim() }).then(() => {
-              setNewText('');
-              load();
-            }).catch(console.error);
+            await createComment({ taskId: task.id, content: newText.trim() })
+              .then(() => {
+                setNewText('');
+                load();
+              })
+              .catch(console.error);
           }}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #ddd', background: '#f7f7f7', cursor: 'pointer' }}
+          style={{
+            padding: '8px 12px',
+            borderRadius: 8,
+            border: '1px solid #ddd',
+            background: '#f7f7f7',
+            cursor: 'pointer',
+          }}
         >
           Add
         </button>

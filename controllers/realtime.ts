@@ -55,8 +55,12 @@ function recordMessage() {
   telemetry.messagesLastMinute += 1;
 }
 
-export function getIO(): Server | null { return io; }
-export function getPresence(room: string): number[] { return Array.from(presence.get(room) || new Set()); }
+export function getIO(): Server | null {
+  return io;
+}
+export function getPresence(room: string): number[] {
+  return Array.from(presence.get(room) || new Set());
+}
 
 async function canJoinProject(userId: number, projectId: number): Promise<boolean> {
   try {
@@ -78,16 +82,21 @@ async function canJoinProject(userId: number, projectId: number): Promise<boolea
 export function initRealtime(server: HTTPServer) {
   io = new Server(server, {
     cors: {
-      origin: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
-      methods: ['GET','POST']
-    }
+      origin: (process.env.CORS_ORIGINS || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      methods: ['GET', 'POST'],
+    },
   });
 
   io.use((socket, next) => {
     try {
-      const token = (socket.handshake.auth as any)?.token
-        || (socket.handshake.query as any)?.token
-        || (socket.handshake.headers?.authorization || '').split(' ')[1] || '';
+      const token =
+        (socket.handshake.auth as any)?.token ||
+        (socket.handshake.query as any)?.token ||
+        (socket.handshake.headers?.authorization || '').split(' ')[1] ||
+        '';
       if (!token) return next(new Error('unauthorized'));
       const payload = jwt.verify(token, JWT_SECRET) as any;
       (socket as any).userId = Number(payload.userId);
@@ -111,7 +120,9 @@ export function initRealtime(server: HTTPServer) {
       }
     });
 
-    socket.on('reconnect', () => { telemetry.reconnects += 1; });
+    socket.on('reconnect', () => {
+      telemetry.reconnects += 1;
+    });
 
     socket.on('room:join', async (data: { projectId: number }) => {
       recordMessage();
@@ -144,15 +155,24 @@ export function initRealtime(server: HTTPServer) {
     });
 
     // Guard against client-originating update floods; authoritative updates come from API
-    socket.on('client:ping', () => { recordMessage(); if (!rateOk(socket.id)) return; socket.emit('server:pong'); });
+    socket.on('client:ping', () => {
+      recordMessage();
+      if (!rateOk(socket.id)) return;
+      socket.emit('server:pong');
+    });
   });
 
   // Expose a lightweight telemetry log
   setInterval(() => {
     try {
       const rooms = Array.from(io?.sockets.adapter.rooms?.keys() || []);
-      const roomSizes = rooms.map((r) => ({ room: r, size: (io?.sockets.adapter.rooms?.get(r)?.size || 0) }));
-      console.log(`[realtime] conn=${telemetry.connected} dropped=${telemetry.dropped} msg/min=${telemetry.messagesLastMinute} rooms=${JSON.stringify(roomSizes)}`);
+      const roomSizes = rooms.map((r) => ({
+        room: r,
+        size: io?.sockets.adapter.rooms?.get(r)?.size || 0,
+      }));
+      console.log(
+        `[realtime] conn=${telemetry.connected} dropped=${telemetry.dropped} msg/min=${telemetry.messagesLastMinute} rooms=${JSON.stringify(roomSizes)}`
+      );
     } catch {}
   }, 15000);
 

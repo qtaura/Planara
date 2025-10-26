@@ -5,20 +5,45 @@ import fs from 'fs';
 
 const BASE_RESERVED = [
   // impersonation / staff / official service names
-  "admin", "administrator", "moderator", "mod", "support", "help", "helpdesk", "planara", "staff", "team", "owner", "official", "service", "services", "system",
+  'admin',
+  'administrator',
+  'moderator',
+  'mod',
+  'support',
+  'help',
+  'helpdesk',
+  'planara',
+  'staff',
+  'team',
+  'owner',
+  'official',
+  'service',
+  'services',
+  'system',
   // roles and common deceptive variants
-  "sysop", "root", "superuser", "sudo", "operator", "ops",
+  'sysop',
+  'root',
+  'superuser',
+  'sudo',
+  'operator',
+  'ops',
 ];
 
 const BASE_SLURS = [
   // Racial/homophobic slurs — keep minimal and focused; not exhaustive
-  "nigger", "nigga", "faggot", "fag", "tranny", "retard", "retarded",
+  'nigger',
+  'nigga',
+  'faggot',
+  'fag',
+  'tranny',
+  'retard',
+  'retarded',
 ];
 
 function readReservedFromEnv(): string[] {
   const envList = String(process.env.RESERVED_USERNAMES || '')
     .split(',')
-    .map(s => s.trim())
+    .map((s) => s.trim())
     .filter(Boolean);
   const filePath = process.env.RESERVED_USERNAMES_FILE;
   const fileList: string[] = [];
@@ -47,38 +72,46 @@ function readReservedFromEnv(): string[] {
   const out: string[] = [];
   for (const w of merged) {
     const key = w.toLowerCase();
-    if (!seen.has(key)) { seen.add(key); out.push(w); }
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(w);
+    }
   }
   return out;
 }
 
 export function normalizeUsernameForPolicy(raw: string): string {
-  const s = String(raw || "")
+  const s = String(raw || '')
     .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "") // strip diacritics
-    .replace(/[_\-\.\s]+/g, "") // collapse common separators
-    .replace(/[^a-z0-9]/g, ""); // remove non-alphanumerics
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '') // strip diacritics
+    .replace(/[_\-\.\s]+/g, '') // collapse common separators
+    .replace(/[^a-z0-9]/g, ''); // remove non-alphanumerics
   return s;
 }
 
 function includesAny(base: string, words: string[]): boolean {
-  return words.some(w => base.includes(w));
+  return words.some((w) => base.includes(w));
 }
 
 function getReservedTokensNormalized(): string[] {
   const extra = readReservedFromEnv();
-  const norm = (arr: string[]) => arr.map(w => normalizeUsernameForPolicy(w)).filter(Boolean);
+  const norm = (arr: string[]) => arr.map((w) => normalizeUsernameForPolicy(w)).filter(Boolean);
   // Combine base + extra; normalize and dedupe
   const combined = [...norm(BASE_RESERVED), ...norm(extra)];
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const w of combined) { if (!seen.has(w)) { seen.add(w); out.push(w); } }
+  for (const w of combined) {
+    if (!seen.has(w)) {
+      seen.add(w);
+      out.push(w);
+    }
+  }
   return out;
 }
 
 function getSlurTokensNormalized(): string[] {
-  return BASE_SLURS.map(w => normalizeUsernameForPolicy(w)).filter(Boolean);
+  return BASE_SLURS.map((w) => normalizeUsernameForPolicy(w)).filter(Boolean);
 }
 
 export function isUsernameDisallowed(raw: string): boolean {
@@ -93,9 +126,10 @@ export function isUsernameDisallowed(raw: string): boolean {
 
 export function disallowedReason(raw: string): string | null {
   const n = normalizeUsernameForPolicy(raw);
-  if (!n) return "empty username";
-  if (includesAny(n, getSlurTokensNormalized())) return "contains offensive language";
-  if (includesAny(n, getReservedTokensNormalized())) return "impersonates staff or official service";
+  if (!n) return 'empty username';
+  if (includesAny(n, getSlurTokensNormalized())) return 'contains offensive language';
+  if (includesAny(n, getReservedTokensNormalized()))
+    return 'impersonates staff or official service';
   return null;
 }
 
@@ -107,16 +141,16 @@ export function isUsernameFormatValid(raw: string): boolean {
 }
 
 export function sanitizeUsernameToAllowed(raw: string): string {
-  if (!raw) return "";
+  if (!raw) return '';
   // Replace any disallowed character with underscore
-  let s = raw.replace(/[^A-Za-z0-9_]/g, "_");
+  let s = raw.replace(/[^A-Za-z0-9_]/g, '_');
   // Collapse multiple underscores
-  s = s.replace(/_+/g, "_");
+  s = s.replace(/_+/g, '_');
   // Trim underscores at edges
-  s = s.replace(/^_+/, "").replace(/_+$/, "");
+  s = s.replace(/^_+/, '').replace(/_+$/, '');
   // Enforce max length 20
   if (s.length > 20) s = s.slice(0, 20);
   // Ensure minimum length 3 by padding underscores if needed
-  while (s.length < 3) s = s + "_";
+  while (s.length < 3) s = s + '_';
   return s;
 }

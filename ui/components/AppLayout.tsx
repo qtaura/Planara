@@ -74,9 +74,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         onSelectProject={handleSelectProject}
         onOpenCreateProject={handleOpenCreateProject}
       />
-      <div className="flex-1 h-screen overflow-y-auto">
-        {children}
-      </div>
+      <div className="flex-1 h-screen overflow-y-auto">{children}</div>
     </div>
   );
 }

@@ -1,9 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, ManyToOne, Index } from "typeorm";
-import { Task } from "./Task.js";
-import { Milestone } from "./Milestone.js";
-import { User } from "./User.js";
-import { Team } from "./Team.js";
-import { Attachment } from "./Attachment.js";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  CreateDateColumn,
+  ManyToOne,
+  Index,
+} from 'typeorm';
+import { Task } from './Task.js';
+import { Milestone } from './Milestone.js';
+import { User } from './User.js';
+import { Team } from './Team.js';
+import { Attachment } from './Attachment.js';
 
 @Entity()
 export class Project {
@@ -28,12 +36,12 @@ export class Project {
   @Index()
   favorite!: boolean;
 
-  @ManyToOne(() => User, (user) => user.projects, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, (user) => user.projects, { onDelete: 'CASCADE' })
   @Index()
   owner!: any;
 
   @Index()
-  @ManyToOne(() => Team, { nullable: true, onDelete: "SET NULL" })
+  @ManyToOne(() => Team, { nullable: true, onDelete: 'SET NULL' })
   team?: Team | null;
 
   @OneToMany(() => Task, (task) => task.project)

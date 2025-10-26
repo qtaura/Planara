@@ -1,5 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from "typeorm";
-import { User } from "./User.js";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+} from 'typeorm';
+import { User } from './User.js';
 
 @Entity()
 export class EmailVerificationCode {
@@ -26,6 +33,6 @@ export class EmailVerificationCode {
 
   // Avoid design:type circular reference like in Notification
   @ManyToOne(() => User)
-  @JoinColumn({ name: "userId" })
+  @JoinColumn({ name: 'userId' })
   user?: any;
 }

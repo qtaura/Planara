@@ -14,12 +14,6 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "include": [
-    "index.ts",
-    "routes/**/*.ts",
-    "controllers/**/*.ts",
-    "models/**/*.ts",
-    "db/**/*.ts"
-  ],
+  "include": ["index.ts", "routes/**/*.ts", "controllers/**/*.ts", "models/**/*.ts", "db/**/*.ts"],
   "exclude": ["node_modules", "dist", "db/json.ts"]
 }

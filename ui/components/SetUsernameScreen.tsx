@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
-import { signup, login, setToken, updateUser, getCurrentUser, getCurrentUserFromAPI, setCurrentUser } from '@lib/api';
+import {
+  signup,
+  login,
+  setToken,
+  updateUser,
+  getCurrentUser,
+  getCurrentUserFromAPI,
+  setCurrentUser,
+} from '@lib/api';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -75,14 +83,27 @@ export function SetUsernameScreen({ email, password, onSuccess }: SetUsernameScr
           </div>
 
           <h1 className="text-xl font-semibold mb-2">Create your username</h1>
-          <p className="text-slate-600 dark:text-slate-400 mb-6">Pick a unique username for your profile</p>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
+            Pick a unique username for your profile
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Username</label>
-              <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="alex" required />
+              <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">
+                Username
+              </label>
+              <Input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="alex"
+                required
+              />
             </div>
-            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 w-full">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-indigo-600 hover:bg-indigo-700 w-full"
+            >
               {loading ? 'Finish…' : 'Finish'}
             </Button>
           </form>

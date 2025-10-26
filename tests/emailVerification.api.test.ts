@@ -47,16 +47,12 @@ describe('Email verification API rate limits', () => {
     await createUser(email);
 
     // First send succeeds
-    const res1 = await request(app)
-      .post('/api/users/auth/send-code')
-      .send({ email });
+    const res1 = await request(app).post('/api/users/auth/send-code').send({ email });
     expect(res1.status).toBe(200);
     expect(res1.body?.success).toBe(true);
 
     // Immediate second send should be blocked by perEmailSendLimiter (429)
-    const res2 = await request(app)
-      .post('/api/users/auth/send-code')
-      .send({ email });
+    const res2 = await request(app).post('/api/users/auth/send-code').send({ email });
     expect(res2.status).toBe(429);
     expect(res2.body?.success).toBe(false);
     expect(String(res2.body?.error || '')).toMatch(/wait/i);
@@ -119,9 +115,7 @@ describe('Email verification API rate limits', () => {
 
   it('returns generic success for nonexistent email (enumeration-safe)', async () => {
     const email = `no-user-${Date.now()}@example.com`;
-    const res = await request(app)
-      .post('/api/users/auth/send-code')
-      .send({ email });
+    const res = await request(app).post('/api/users/auth/send-code').send({ email });
     expect(res.status).toBe(200);
     expect(res.body?.success).toBe(true);
     // In dev, devCode should not be present for non-existent emails
@@ -135,9 +129,7 @@ describe('Email verification API rate limits', () => {
 
     // Send with lowercase
     const lower = original.toLowerCase();
-    const send = await request(app)
-      .post('/api/users/auth/send-code')
-      .send({ email: lower });
+    const send = await request(app).post('/api/users/auth/send-code').send({ email: lower });
     expect(send.status).toBe(200);
     const devCode = String(send.body?.devCode || '');
     expect(devCode).toMatch(/^\d{6}$/);
@@ -152,7 +144,9 @@ describe('Email verification API rate limits', () => {
 
     // Status with mixed case
     const status = await request(app)
-      .get(`/api/users/auth/verification-status/${encodeURIComponent('mIxEd-' + lower.split('@')[0].split('-')[1] + '@example.com')}`)
+      .get(
+        `/api/users/auth/verification-status/${encodeURIComponent('mIxEd-' + lower.split('@')[0].split('-')[1] + '@example.com')}`
+      )
       .send();
     expect(status.status).toBe(200);
     expect(status.body?.success).toBe(true);

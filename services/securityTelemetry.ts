@@ -1,7 +1,7 @@
-import { Request } from "express";
-import { AppDataSource } from "../db/data-source.js";
-import { SecurityEvent } from "../models/SecurityEvent.js";
-import { normalizeUsernameForPolicy, disallowedReason } from "./usernamePolicy.js";
+import { Request } from 'express';
+import { AppDataSource } from '../db/data-source.js';
+import { SecurityEvent } from '../models/SecurityEvent.js';
+import { normalizeUsernameForPolicy, disallowedReason } from './usernamePolicy.js';
 
 export type UsernameRejectionSource = 'signup' | 'update' | 'admin_set_username';
 
@@ -18,7 +18,10 @@ export async function recordUsernameRejected(opts: {
     const username = String(opts.username || '');
     const normalized = normalizeUsernameForPolicy(username);
     const repo = AppDataSource.getRepository(SecurityEvent);
-    const reason = (typeof opts.reason === 'string' && opts.reason) ? opts.reason : (disallowedReason(username) || 'policy_disallowed');
+    const reason =
+      typeof opts.reason === 'string' && opts.reason
+        ? opts.reason
+        : disallowedReason(username) || 'policy_disallowed';
     const metadata = {
       reason,
       username,
@@ -78,7 +81,12 @@ export async function recordCommentEvent(opts: {
 
 export async function recordAttachmentEvent(opts: {
   req: Request;
-  eventType: 'file_uploaded' | 'file_deleted' | 'file_previewed' | 'file_upload_failed' | 'file_version_rolled_back';
+  eventType:
+    | 'file_uploaded'
+    | 'file_deleted'
+    | 'file_previewed'
+    | 'file_upload_failed'
+    | 'file_version_rolled_back';
   userId?: number | null;
   email?: string | null;
   attachmentId: number;
@@ -144,7 +152,12 @@ export async function recordTokenAnomaly(opts: {
   userId: number;
   refreshTokenId?: number | null;
   jti?: string | null;
-  reason: 'revoked_reuse' | 'expired_use' | 'unknown_jti' | 'rotation_mismatch' | 'concurrent_limit_exceeded';
+  reason:
+    | 'revoked_reuse'
+    | 'expired_use'
+    | 'unknown_jti'
+    | 'rotation_mismatch'
+    | 'concurrent_limit_exceeded';
   extra?: Record<string, any> | null;
 }) {
   try {

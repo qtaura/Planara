@@ -18,7 +18,9 @@ export function EmailSignupScreen({ onNext }: EmailSignupScreenProps) {
   const [formError, setFormError] = useState<string | null>(null);
 
   function generateTempUsername(email: string) {
-    const base = String(email.split('@')[0] || 'user').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 12);
+    const base = String(email.split('@')[0] || 'user')
+      .replace(/[^a-zA-Z0-9_-]/g, '')
+      .slice(0, 12);
     const suffix = Math.random().toString(36).slice(2, 8);
     return `${base || 'user'}_${suffix}`.toLowerCase();
   }
@@ -50,7 +52,9 @@ export function EmailSignupScreen({ onNext }: EmailSignupScreenProps) {
       const tempUsername = generateTempUsername(email);
       const res = await signup({ username: tempUsername, email, password });
       if (res?.user) {
-        try { setCurrentUser(res.user); } catch {}
+        try {
+          setCurrentUser(res.user);
+        } catch {}
       }
       onNext({ email, password });
     } catch (err: any) {
@@ -93,24 +97,54 @@ export function EmailSignupScreen({ onNext }: EmailSignupScreenProps) {
           </div>
 
           <h1 className="text-xl font-semibold mb-2">Sign up with email</h1>
-          <p className="text-slate-600 dark:text-slate-400 mb-6">We will verify your email and secure your account</p>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
+            We will verify your email and secure your account
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>
               <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Email</label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="alex@example.com" required aria-invalid={!!emailError} aria-describedby={emailError ? 'email-error' : undefined} />
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="alex@example.com"
+                required
+                aria-invalid={!!emailError}
+                aria-describedby={emailError ? 'email-error' : undefined}
+              />
               {emailError && (
-                <p id="email-error" className="mt-1 text-xs text-red-600 dark:text-red-400">{emailError}</p>
+                <p id="email-error" className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {emailError}
+                </p>
               )}
             </div>
             <div>
-              <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Password</label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+              <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">
+                Password
+              </label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
             </div>
             {formError && (
-              <div role="alert" aria-live="polite" className="rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200 p-3 text-xs">{formError}</div>
+              <div
+                role="alert"
+                aria-live="polite"
+                className="rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200 p-3 text-xs"
+              >
+                {formError}
+              </div>
             )}
-            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 w-full">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-indigo-600 hover:bg-indigo-700 w-full"
+            >
               {loading ? 'Continue…' : 'Continue'}
             </Button>
           </form>

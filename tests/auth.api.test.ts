@@ -34,7 +34,9 @@ describe('Signup and Login flows', () => {
   });
 
   it('rejects missing signup fields via Zod', async () => {
-    const res = await request(app).post('/api/users/signup').send({ username: '', email: '', password: '' });
+    const res = await request(app)
+      .post('/api/users/signup')
+      .send({ username: '', email: '', password: '' });
     expect(res.status).toBe(400);
     expect(res.body?.error).toBe('invalid_request');
   });
@@ -44,11 +46,15 @@ describe('Signup and Login flows', () => {
     const username = `tester_${suffix}`;
     const email = `tester_${suffix}@example.com`;
 
-    const ok = await request(app).post('/api/users/signup').send({ username, email, password: 'secret123' });
-    expect([200,201]).toContain(ok.status);
+    const ok = await request(app)
+      .post('/api/users/signup')
+      .send({ username, email, password: 'secret123' });
+    expect([200, 201]).toContain(ok.status);
     expect(ok.body?.id).toBeDefined();
 
-    const dup = await request(app).post('/api/users/signup').send({ username, email, password: 'secret123' });
+    const dup = await request(app)
+      .post('/api/users/signup')
+      .send({ username, email, password: 'secret123' });
     expect(dup.status).toBe(409);
   });
 
@@ -59,20 +65,31 @@ describe('Signup and Login flows', () => {
 
     // Seed user directly via repo to control password hash simplicity
     const repo = AppDataSource.getRepository(Models.User);
-    const user = repo.create({ username, usernameLower: username.toLowerCase(), email, hashedPassword: await (await import('bcryptjs')).default.hash('secret123', 10) } as any);
+    const user = repo.create({
+      username,
+      usernameLower: username.toLowerCase(),
+      email,
+      hashedPassword: await (await import('bcryptjs')).default.hash('secret123', 10),
+    } as any);
     await repo.save(user);
 
-    const byUser = await request(app).post('/api/users/login').send({ usernameOrEmail: username, password: 'secret123' });
+    const byUser = await request(app)
+      .post('/api/users/login')
+      .send({ usernameOrEmail: username, password: 'secret123' });
     expect(byUser.status).toBe(200);
     expect(typeof byUser.body?.token).toBe('string');
     expect(typeof byUser.body?.refreshToken).toBe('string');
 
-    const byEmail = await request(app).post('/api/users/login').send({ usernameOrEmail: email.toUpperCase(), password: 'secret123' });
+    const byEmail = await request(app)
+      .post('/api/users/login')
+      .send({ usernameOrEmail: email.toUpperCase(), password: 'secret123' });
     expect(byEmail.status).toBe(200);
     expect(typeof byEmail.body?.token).toBe('string');
     expect(typeof byEmail.body?.refreshToken).toBe('string');
 
-    const bad = await request(app).post('/api/users/login').send({ usernameOrEmail: username, password: 'wrongpw' });
+    const bad = await request(app)
+      .post('/api/users/login')
+      .send({ usernameOrEmail: username, password: 'wrongpw' });
     expect(bad.status).toBe(401);
   });
 });

@@ -12,7 +12,10 @@ const sendCodeSchema = z.object({
 
 const verifyCodeSchema = z.object({
   email: z.string().email('Invalid email address'),
-  code: z.string().length(6, 'Code must be exactly 6 digits').regex(/^\d{6}$/,'Code must contain only digits'),
+  code: z
+    .string()
+    .length(6, 'Code must be exactly 6 digits')
+    .regex(/^\d{6}$/, 'Code must contain only digits'),
 });
 
 // Backoff/lockout constants
@@ -45,7 +48,12 @@ export class EmailVerificationController {
 
       // Generic success for nonexistent or already verified to prevent enumeration
       if (!user || (user as any).isVerified) {
-        res.status(200).json({ success: true, message: 'If an account exists for this email, a verification code has been sent.' });
+        res
+          .status(200)
+          .json({
+            success: true,
+            message: 'If an account exists for this email, a verification code has been sent.',
+          });
         return;
       }
 
@@ -53,13 +61,29 @@ export class EmailVerificationController {
       const now = new Date();
       const sendBackoffUntil = (user as any).sendBackoffUntil as Date | undefined;
       if (sendBackoffUntil && now < new Date(sendBackoffUntil)) {
-        const secondsLeft = Math.ceil((new Date(sendBackoffUntil).getTime() - now.getTime()) / 1000);
+        const secondsLeft = Math.ceil(
+          (new Date(sendBackoffUntil).getTime() - now.getTime()) / 1000
+        );
         // Log send backoff event
         try {
           const evRepo = AppDataSource.getRepository(SecurityEvent);
-          await evRepo.save(evRepo.create({ email: (user as any).email, userId: (user as any).id, eventType: 'send_backoff', ip: req.ip, metadata: { secondsLeft }, createdAt: new Date() }));
+          await evRepo.save(
+            evRepo.create({
+              email: (user as any).email,
+              userId: (user as any).id,
+              eventType: 'send_backoff',
+              ip: req.ip,
+              metadata: { secondsLeft },
+              createdAt: new Date(),
+            })
+          );
         } catch {}
-        res.status(429).json({ success: false, error: `Please wait ${secondsLeft}s before requesting another code.` });
+        res
+          .status(429)
+          .json({
+            success: false,
+            error: `Please wait ${secondsLeft}s before requesting another code.`,
+          });
         return;
       }
 
@@ -74,14 +98,30 @@ export class EmailVerificationController {
         if (elapsed < RESEND_COOLDOWN_MS) {
           // escalate backoff on cooldown violation
           const backoffUntil = new Date(Date.now() + RESEND_COOLDOWN_MS * 2);
-          await userRepository.update({ id: (user as any).id }, { sendBackoffUntil: backoffUntil } as any);
+          await userRepository.update({ id: (user as any).id }, {
+            sendBackoffUntil: backoffUntil,
+          } as any);
           const secondsLeft = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
           // Log send backoff event
           try {
             const evRepo = AppDataSource.getRepository(SecurityEvent);
-            await evRepo.save(evRepo.create({ email: (user as any).email, userId: (user as any).id, eventType: 'send_backoff', ip: req.ip, metadata: { secondsLeft }, createdAt: new Date() }));
+            await evRepo.save(
+              evRepo.create({
+                email: (user as any).email,
+                userId: (user as any).id,
+                eventType: 'send_backoff',
+                ip: req.ip,
+                metadata: { secondsLeft },
+                createdAt: new Date(),
+              })
+            );
           } catch {}
-          res.status(429).json({ success: false, error: `Please wait ${secondsLeft}s before requesting another code.` });
+          res
+            .status(429)
+            .json({
+              success: false,
+              error: `Please wait ${secondsLeft}s before requesting another code.`,
+            });
           return;
         }
       }
@@ -90,11 +130,22 @@ export class EmailVerificationController {
       const code = crypto.randomInt(100000, 999999).toString();
       // Rotate per-user verification secret for revocation control
       const newSecret = crypto.randomBytes(16).toString('hex');
-      await userRepository.update({ id: (user as any).id }, { verificationSecret: newSecret } as any);
+      await userRepository.update({ id: (user as any).id }, {
+        verificationSecret: newSecret,
+      } as any);
       // Log verification secret rotation
       try {
         const evRepo = AppDataSource.getRepository(SecurityEvent);
-        await evRepo.save(evRepo.create({ email: (user as any).email, userId: (user as any).id, eventType: 'rotation', ip: req.ip, metadata: null, createdAt: new Date() }));
+        await evRepo.save(
+          evRepo.create({
+            email: (user as any).email,
+            userId: (user as any).id,
+            eventType: 'rotation',
+            ip: req.ip,
+            metadata: null,
+            createdAt: new Date(),
+          })
+        );
       } catch {}
       const codeHash = hmacCode(code, newSecret);
 
@@ -104,34 +155,61 @@ export class EmailVerificationController {
       // Invalidate any existing codes for this user
       await codeRepository.update({ userId: (user as any).id, isUsed: false }, { isUsed: true });
       // Purge expired codes
-      await codeRepository.createQueryBuilder()
+      await codeRepository
+        .createQueryBuilder()
         .delete()
         .from(EmailVerificationCode)
-        .where("userId = :uid AND expiresAt < :now", { uid: (user as any).id, now: new Date() })
+        .where('userId = :uid AND expiresAt < :now', { uid: (user as any).id, now: new Date() })
         .execute();
 
       // Create new verification code
-      const verificationCode = codeRepository.create({ userId: (user as any).id, code, codeHash, expiresAt });
+      const verificationCode = codeRepository.create({
+        userId: (user as any).id,
+        code,
+        codeHash,
+        expiresAt,
+      });
       await codeRepository.save(verificationCode);
 
       console.log('[DEV] Email verification code issued', { email: (user as any).email, code });
-      await EmailService.sendVerificationCode({ email: (user as any).email, username: (user as any).username, code });
+      await EmailService.sendVerificationCode({
+        email: (user as any).email,
+        username: (user as any).username,
+        code,
+      });
 
       // Log code sent event
       try {
         const evRepo = AppDataSource.getRepository(SecurityEvent);
-        await evRepo.save(evRepo.create({ email: (user as any).email, userId: (user as any).id, eventType: 'code_sent', ip: req.ip, metadata: { expiresAt: expiresAt.toISOString() }, createdAt: new Date() }));
+        await evRepo.save(
+          evRepo.create({
+            email: (user as any).email,
+            userId: (user as any).id,
+            eventType: 'code_sent',
+            ip: req.ip,
+            metadata: { expiresAt: expiresAt.toISOString() },
+            createdAt: new Date(),
+          })
+        );
       } catch {}
 
-      res.status(200).json({ success: true, message: 'Verification code sent successfully', expiresAt: expiresAt.toISOString(), devCode: process.env.RESEND_API_KEY ? undefined : code });
-
+      res
+        .status(200)
+        .json({
+          success: true,
+          message: 'Verification code sent successfully',
+          expiresAt: expiresAt.toISOString(),
+          devCode: process.env.RESEND_API_KEY ? undefined : code,
+        });
     } catch (error) {
       console.error('Send code error:', error);
       if (error instanceof z.ZodError) {
         res.status(400).json({ success: false, error: 'Invalid input', details: error.issues });
         return;
       }
-      res.status(500).json({ success: false, error: 'Failed to send verification code. Please try again.' });
+      res
+        .status(500)
+        .json({ success: false, error: 'Failed to send verification code. Please try again.' });
     }
   }
 
@@ -167,9 +245,23 @@ export class EmailVerificationController {
         // Log lockout event
         try {
           const evRepo = AppDataSource.getRepository(SecurityEvent);
-          await evRepo.save(evRepo.create({ email, userId: (user as any).id, eventType: 'lockout', ip: req.ip, metadata: { secondsLeft }, createdAt: new Date() }));
+          await evRepo.save(
+            evRepo.create({
+              email,
+              userId: (user as any).id,
+              eventType: 'lockout',
+              ip: req.ip,
+              metadata: { secondsLeft },
+              createdAt: new Date(),
+            })
+          );
         } catch {}
-        res.status(429).json({ success: false, error: `Too many verification attempts. Account temporarily locked. Try again in ${secondsLeft}s.` });
+        res
+          .status(429)
+          .json({
+            success: false,
+            error: `Too many verification attempts. Account temporarily locked. Try again in ${secondsLeft}s.`,
+          });
         return;
       }
       const backoffUntil = (user as any).verifyBackoffUntil as Date | undefined;
@@ -178,14 +270,30 @@ export class EmailVerificationController {
         // Log backoff event
         try {
           const evRepo = AppDataSource.getRepository(SecurityEvent);
-          await evRepo.save(evRepo.create({ email, userId: (user as any).id, eventType: 'backoff', ip: req.ip, metadata: { secondsLeft }, createdAt: new Date() }));
+          await evRepo.save(
+            evRepo.create({
+              email,
+              userId: (user as any).id,
+              eventType: 'backoff',
+              ip: req.ip,
+              metadata: { secondsLeft },
+              createdAt: new Date(),
+            })
+          );
         } catch {}
-        res.status(429).json({ success: false, error: `Too many verification attempts. Please wait ${secondsLeft}s before next attempt.` });
+        res
+          .status(429)
+          .json({
+            success: false,
+            error: `Too many verification attempts. Please wait ${secondsLeft}s before next attempt.`,
+          });
         return;
       }
 
       const codeRepository = AppDataSource.getRepository(EmailVerificationCode);
-      const candidate = await codeRepository.findOne({ where: { userId: (user as any).id, isUsed: false } });
+      const candidate = await codeRepository.findOne({
+        where: { userId: (user as any).id, isUsed: false },
+      });
       let valid = false;
       if (candidate) {
         const expectedHash = candidate.codeHash;
@@ -200,7 +308,9 @@ export class EmailVerificationController {
       if (!candidate || !valid) {
         // invalid attempt: increase backoff; lockout if threshold reached
         const invalidCount = ((user as any).verifyInvalidCount || 0) + 1;
-        let newBackoff = new Date(now.getTime() + Math.min(BASE_VERIFY_BACKOFF_MS * invalidCount, MAX_VERIFY_BACKOFF_MS));
+        let newBackoff = new Date(
+          now.getTime() + Math.min(BASE_VERIFY_BACKOFF_MS * invalidCount, MAX_VERIFY_BACKOFF_MS)
+        );
         let updates: any = { verifyInvalidCount: invalidCount, verifyBackoffUntil: newBackoff };
         if (invalidCount >= LOCKOUT_INVALID_THRESHOLD) {
           updates.verifyLockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MS);
@@ -209,7 +319,16 @@ export class EmailVerificationController {
         // Log failed attempt
         try {
           const evRepo = AppDataSource.getRepository(SecurityEvent);
-          await evRepo.save(evRepo.create({ email, userId: (user as any).id, eventType: 'verify_failed', ip: req.ip, metadata: { invalidCount }, createdAt: new Date() }));
+          await evRepo.save(
+            evRepo.create({
+              email,
+              userId: (user as any).id,
+              eventType: 'verify_failed',
+              ip: req.ip,
+              metadata: { invalidCount },
+              createdAt: new Date(),
+            })
+          );
         } catch {}
         res.status(400).json({ success: false, error: 'Invalid verification code' });
         return;
@@ -219,7 +338,9 @@ export class EmailVerificationController {
       if (new Date() > candidate.expiresAt) {
         await codeRepository.update({ id: candidate.id }, { isUsed: true });
         const invalidCount = ((user as any).verifyInvalidCount || 0) + 1;
-        let newBackoff = new Date(now.getTime() + Math.min(BASE_VERIFY_BACKOFF_MS * invalidCount, MAX_VERIFY_BACKOFF_MS));
+        let newBackoff = new Date(
+          now.getTime() + Math.min(BASE_VERIFY_BACKOFF_MS * invalidCount, MAX_VERIFY_BACKOFF_MS)
+        );
         let updates: any = { verifyInvalidCount: invalidCount, verifyBackoffUntil: newBackoff };
         if (invalidCount >= LOCKOUT_INVALID_THRESHOLD) {
           updates.verifyLockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MS);
@@ -228,31 +349,70 @@ export class EmailVerificationController {
         // Log expired attempt
         try {
           const evRepo = AppDataSource.getRepository(SecurityEvent);
-          await evRepo.save(evRepo.create({ email, userId: (user as any).id, eventType: 'verify_failed', ip: req.ip, metadata: { reason: 'expired', invalidCount }, createdAt: new Date() }));
+          await evRepo.save(
+            evRepo.create({
+              email,
+              userId: (user as any).id,
+              eventType: 'verify_failed',
+              ip: req.ip,
+              metadata: { reason: 'expired', invalidCount },
+              createdAt: new Date(),
+            })
+          );
         } catch {}
-        res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new one.' });
+        res
+          .status(400)
+          .json({
+            success: false,
+            error: 'Verification code has expired. Please request a new one.',
+          });
         return;
       }
 
       // Mark code as used and purge all codes for this user (replay protection)
       await codeRepository.update({ id: candidate.id }, { isUsed: true });
-      await codeRepository.createQueryBuilder()
+      await codeRepository
+        .createQueryBuilder()
         .delete()
         .from(EmailVerificationCode)
-        .where("userId = :uid", { uid: (user as any).id })
+        .where('userId = :uid', { uid: (user as any).id })
         .execute();
 
       // Mark user verified; reset counters and backoffs
-      await userRepository.update({ id: (user as any).id }, { isVerified: true, verifyInvalidCount: 0, verifyBackoffUntil: null as any, verifyLockedUntil: null as any } as any);
+      await userRepository.update({ id: (user as any).id }, {
+        isVerified: true,
+        verifyInvalidCount: 0,
+        verifyBackoffUntil: null as any,
+        verifyLockedUntil: null as any,
+      } as any);
 
       // Log success
       try {
         const evRepo = AppDataSource.getRepository(SecurityEvent);
-        await evRepo.save(evRepo.create({ email, userId: (user as any).id, eventType: 'verify_success', ip: req.ip, metadata: null, createdAt: new Date() }));
+        await evRepo.save(
+          evRepo.create({
+            email,
+            userId: (user as any).id,
+            eventType: 'verify_success',
+            ip: req.ip,
+            metadata: null,
+            createdAt: new Date(),
+          })
+        );
       } catch {}
 
-      res.status(200).json({ success: true, message: 'Email verified successfully', user: { id: (user as any).id, email: (user as any).email, username: (user as any).username, isVerified: true } });
-
+      res
+        .status(200)
+        .json({
+          success: true,
+          message: 'Email verified successfully',
+          user: {
+            id: (user as any).id,
+            email: (user as any).email,
+            username: (user as any).username,
+            isVerified: true,
+          },
+        });
     } catch (error) {
       console.error('Verify code error:', error);
       if (error instanceof z.ZodError) {
@@ -283,7 +443,17 @@ export class EmailVerificationController {
         res.status(404).json({ success: false, error: 'User not found with this email address' });
         return;
       }
-      res.status(200).json({ success: true, user: { id: (user as any).id, email: (user as any).email, username: (user as any).username, isVerified: (user as any).isVerified } });
+      res
+        .status(200)
+        .json({
+          success: true,
+          user: {
+            id: (user as any).id,
+            email: (user as any).email,
+            username: (user as any).username,
+            isVerified: (user as any).isVerified,
+          },
+        });
     } catch (error) {
       console.error('Verification status error:', error);
       res.status(500).json({ success: false, error: 'Failed to fetch verification status.' });
@@ -308,11 +478,25 @@ export class EmailVerificationController {
         res.status(404).json({ success: false, error: 'User not found' });
         return;
       }
-      await userRepository.update({ id: (user as any).id }, { verifyInvalidCount: 0, verifyLockedUntil: null as any, verifyBackoffUntil: null as any, sendBackoffUntil: null as any } as any);
+      await userRepository.update({ id: (user as any).id }, {
+        verifyInvalidCount: 0,
+        verifyLockedUntil: null as any,
+        verifyBackoffUntil: null as any,
+        sendBackoffUntil: null as any,
+      } as any);
       // Log unlock
       try {
         const evRepo = AppDataSource.getRepository(SecurityEvent);
-        await evRepo.save(evRepo.create({ email, userId: (user as any).id, eventType: 'unlock', ip: req.ip, metadata: null, createdAt: new Date() }));
+        await evRepo.save(
+          evRepo.create({
+            email,
+            userId: (user as any).id,
+            eventType: 'unlock',
+            ip: req.ip,
+            metadata: null,
+            createdAt: new Date(),
+          })
+        );
       } catch {}
       res.status(200).json({ success: true, message: 'User lockouts cleared' });
     } catch (error) {

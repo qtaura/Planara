@@ -98,7 +98,9 @@ describe('Search API: filters and RBAC enforcement', () => {
 
     owner = await createUser(`owner${suffix}`, `owner${suffix}@example.com`, { verified: true });
     member = await createUser(`member${suffix}`, `member${suffix}@example.com`, { verified: true });
-    outsider = await createUser(`outsider${suffix}`, `outsider${suffix}@example.com`, { verified: true });
+    outsider = await createUser(`outsider${suffix}`, `outsider${suffix}@example.com`, {
+      verified: true,
+    });
     ownerToken = issueToken(owner.id);
     memberToken = issueToken(member.id);
     outsiderToken = issueToken(outsider.id);
@@ -188,7 +190,9 @@ describe('Search API: filters and RBAC enforcement', () => {
     const earlier = new Date(now.getTime() - 1000 * 60 * 60);
     const later = new Date(now.getTime() + 1000 * 60 * 60);
     const res = await request(app)
-      .get(`/api/search/projects?teamId=${team.id}&from=${encodeURIComponent(earlier.toISOString())}&to=${encodeURIComponent(later.toISOString())}`)
+      .get(
+        `/api/search/projects?teamId=${team.id}&from=${encodeURIComponent(earlier.toISOString())}&to=${encodeURIComponent(later.toISOString())}`
+      )
       .set('Authorization', `Bearer ${ownerToken}`)
       .send();
     expect(res.status).toBe(200);
@@ -199,7 +203,9 @@ describe('Search API: filters and RBAC enforcement', () => {
 
   it('owner can search comments by projectId and q in team', async () => {
     const res = await request(app)
-      .get(`/api/search/comments?teamId=${team.id}&projectId=${project.id}&q=${encodeURIComponent(uniqueQ)}`)
+      .get(
+        `/api/search/comments?teamId=${team.id}&projectId=${project.id}&q=${encodeURIComponent(uniqueQ)}`
+      )
       .set('Authorization', `Bearer ${ownerToken}`)
       .send();
     expect(res.status).toBe(200);

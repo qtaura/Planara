@@ -25,11 +25,7 @@ export function LandingScreen({ onNavigate }: LandingScreenProps) {
               <Github className="w-4 h-4 mr-2" />
               GitHub
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onNavigate('login')}
-            >
+            <Button variant="outline" size="sm" onClick={() => onNavigate('login')}>
               Sign in
             </Button>
             <Button
@@ -52,7 +48,9 @@ export function LandingScreen({ onNavigate }: LandingScreenProps) {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/50 mb-8">
             <Zap className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-            <span className="text-xs text-indigo-600 dark:text-indigo-400">AI-powered planning</span>
+            <span className="text-xs text-indigo-600 dark:text-indigo-400">
+              AI-powered planning
+            </span>
           </div>
 
           <h1 className="text-6xl md:text-7xl tracking-tight mb-6 max-w-4xl mx-auto bg-gradient-to-br from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
@@ -62,8 +60,8 @@ export function LandingScreen({ onNavigate }: LandingScreenProps) {
           </h1>
 
           <p className="text-xl text-slate-600 dark:text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-            A modern project management tool that helps teams break down complex work,
-            track progress, and collaborate seamlessly.
+            A modern project management tool that helps teams break down complex work, track
+            progress, and collaborate seamlessly.
           </p>
 
           <div className="flex items-center justify-center gap-4 mb-20">
@@ -178,9 +176,7 @@ export function LandingScreen({ onNavigate }: LandingScreenProps) {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-6">
               <Logo size="sm" />
-              <span className="text-sm text-slate-500 dark:text-slate-400">
-                © 2025 Planara
-              </span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">© 2025 Planara</span>
             </div>
             <div className="flex items-center gap-6">
               <a

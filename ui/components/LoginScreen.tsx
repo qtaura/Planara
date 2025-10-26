@@ -29,10 +29,18 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
           toast.message('Verify your email to complete sign-in');
           const email = data.email || data.user?.email;
           const needsUsername = !!data.created;
-          try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email, needsUsername, provider: data.provider } })); } catch {}
+          try {
+            window.dispatchEvent(
+              new CustomEvent('auth:needs_verification', {
+                detail: { email, needsUsername, provider: data.provider },
+              })
+            );
+          } catch {}
         } else {
           toast.success(`Welcome, ${data.user?.username || data.user?.email || 'user'}!`);
-          try { window.dispatchEvent(new CustomEvent('auth:logged_in')); } catch {}
+          try {
+            window.dispatchEvent(new CustomEvent('auth:logged_in'));
+          } catch {}
           onSuccess();
         }
       }
@@ -57,7 +65,11 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
       } else {
         toast.message('Verify your email to complete sign-in');
         const email = user?.email;
-        try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email, needsUsername: false } })); } catch {}
+        try {
+          window.dispatchEvent(
+            new CustomEvent('auth:needs_verification', { detail: { email, needsUsername: false } })
+          );
+        } catch {}
       }
     } catch (err: any) {
       const baseMsg = err?.message || 'Login failed';

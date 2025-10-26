@@ -1,23 +1,23 @@
-import "reflect-metadata";
-import { DataSource } from "typeorm";
-import path from "path";
-import { User } from "../models/User.js";
-import { Project } from "../models/Project.js";
-import { Task } from "../models/Task.js";
-import { Milestone } from "../models/Milestone.js";
-import { Comment } from "../models/Comment.js";
-import { EmailVerificationCode } from "../models/EmailVerificationCode.js";
-import { Notification } from "../models/Notification.js";
-import { NotificationPreference } from "../models/NotificationPreference.js";
-import { SecurityEvent } from "../models/SecurityEvent.js";
-import { BannedEmail } from "../models/BannedEmail.js";
-import { RefreshToken } from "../models/RefreshToken.js";
-import { Organization } from "../models/Organization.js"
-import { Team } from "../models/Team.js"
-import { Membership } from "../models/Membership.js"
-import { Thread } from "../models/Thread.js"
-import { Attachment } from "../models/Attachment.js"
-import { FileVersion } from "../models/FileVersion.js"
+import 'reflect-metadata';
+import { DataSource } from 'typeorm';
+import path from 'path';
+import { User } from '../models/User.js';
+import { Project } from '../models/Project.js';
+import { Task } from '../models/Task.js';
+import { Milestone } from '../models/Milestone.js';
+import { Comment } from '../models/Comment.js';
+import { EmailVerificationCode } from '../models/EmailVerificationCode.js';
+import { Notification } from '../models/Notification.js';
+import { NotificationPreference } from '../models/NotificationPreference.js';
+import { SecurityEvent } from '../models/SecurityEvent.js';
+import { BannedEmail } from '../models/BannedEmail.js';
+import { RefreshToken } from '../models/RefreshToken.js';
+import { Organization } from '../models/Organization.js';
+import { Team } from '../models/Team.js';
+import { Membership } from '../models/Membership.js';
+import { Thread } from '../models/Thread.js';
+import { Attachment } from '../models/Attachment.js';
+import { FileVersion } from '../models/FileVersion.js';
 
 // Prefer Postgres when DATABASE_URL/RAILWAY_DATABASE_URL is provided; otherwise fall back to SQLite
 const dbUrl = process.env.DATABASE_URL || process.env.RAILWAY_DATABASE_URL;
@@ -26,9 +26,27 @@ const usingPostgres = !!dbUrl;
 export const AppDataSource = new DataSource(
   usingPostgres
     ? {
-        type: "postgres",
+        type: 'postgres',
         url: dbUrl,
-        entities: [User, Project, Task, Milestone, Comment, EmailVerificationCode, Notification, NotificationPreference, SecurityEvent, BannedEmail, RefreshToken, Organization, Team, Membership, Thread, Attachment, FileVersion],
+        entities: [
+          User,
+          Project,
+          Task,
+          Milestone,
+          Comment,
+          EmailVerificationCode,
+          Notification,
+          NotificationPreference,
+          SecurityEvent,
+          BannedEmail,
+          RefreshToken,
+          Organization,
+          Team,
+          Membership,
+          Thread,
+          Attachment,
+          FileVersion,
+        ],
         synchronize: true,
         logging: false,
         // Always ignore self-signed certs for Railway/public hosts
@@ -36,9 +54,27 @@ export const AppDataSource = new DataSource(
         extra: { ssl: { rejectUnauthorized: false } },
       }
     : {
-        type: "sqlite",
-        database: path.join(process.cwd(), "db", "planara.sqlite"),
-        entities: [User, Project, Task, Milestone, Comment, EmailVerificationCode, Notification, NotificationPreference, SecurityEvent, BannedEmail, RefreshToken, Organization, Team, Membership, Thread, Attachment, FileVersion],
+        type: 'sqlite',
+        database: path.join(process.cwd(), 'db', 'planara.sqlite'),
+        entities: [
+          User,
+          Project,
+          Task,
+          Milestone,
+          Comment,
+          EmailVerificationCode,
+          Notification,
+          NotificationPreference,
+          SecurityEvent,
+          BannedEmail,
+          RefreshToken,
+          Organization,
+          Team,
+          Membership,
+          Thread,
+          Attachment,
+          FileVersion,
+        ],
         synchronize: true,
         logging: false,
       }

@@ -2,19 +2,26 @@ import { motion } from 'motion/react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { 
-  FileText, 
-  Link2, 
-  Code, 
-  Image as ImageIcon, 
-  Upload, 
+import {
+  FileText,
+  Link2,
+  Code,
+  Image as ImageIcon,
+  Upload,
   Search,
   MoreVertical,
   Download,
-  Sparkles
+  Sparkles,
 } from 'lucide-react';
 import { Input } from './ui/input';
-import { listAttachments, uploadAttachment, getAttachmentPreviewUrl, deleteAttachment, listAttachmentVersions, rollbackAttachmentVersion } from '@lib/api';
+import {
+  listAttachments,
+  uploadAttachment,
+  getAttachmentPreviewUrl,
+  deleteAttachment,
+  listAttachmentVersions,
+  rollbackAttachmentVersion,
+} from '@lib/api';
 
 export function FilesView({ projectId }: { projectId: string }) {
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -158,13 +165,21 @@ export function FilesView({ projectId }: { projectId: string }) {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-white mb-1">Files & Documentation</h3>
-          <p className="text-sm text-slate-400">
-            Centralized storage for project resources
-          </p>
+          <p className="text-sm text-slate-400">Centralized storage for project resources</p>
         </div>
         <div className="flex items-center gap-3">
-          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => onUploadSelected(e.target.files)} />
-          <Button disabled={uploading} onClick={() => fileInputRef.current?.click()} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => onUploadSelected(e.target.files)}
+          />
+          <Button
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500"
+          >
             <Upload className="w-4 h-4 mr-2" />
             {uploading ? 'Uploading...' : 'Upload File'}
           </Button>
@@ -183,7 +198,11 @@ export function FilesView({ projectId }: { projectId: string }) {
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-slate-800/50 rounded flex items-center justify-center overflow-hidden">
                   {(att.latestVersionMimeType || att.mimeType || '').startsWith('image/') ? (
-                    <img src={getAttachmentPreviewUrl(att.id)} alt={att.fileName} className="w-16 h-16 object-cover" />
+                    <img
+                      src={getAttachmentPreviewUrl(att.id)}
+                      alt={att.fileName}
+                      className="w-16 h-16 object-cover"
+                    />
                   ) : (
                     <FileText className="w-6 h-6 text-slate-400" />
                   )}
@@ -197,8 +216,12 @@ export function FilesView({ projectId }: { projectId: string }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => openVersions(att.id)}>Versions</Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(att.id)}>Delete</Button>
+                  <Button variant="outline" size="sm" onClick={() => openVersions(att.id)}>
+                    Versions
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(att.id)}>
+                    Delete
+                  </Button>
                 </div>
               </div>
             </Card>
@@ -210,15 +233,28 @@ export function FilesView({ projectId }: { projectId: string }) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-white">Version History</h4>
-            <Button variant="ghost" size="sm" onClick={() => { setVersionsFor(null); setVersions([]); }}>Close</Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setVersionsFor(null);
+                setVersions([]);
+              }}
+            >
+              Close
+            </Button>
           </div>
           <div className="space-y-2">
             {versions.map((v) => (
               <Card key={v.id} className="bg-slate-900/50 border-slate-800 p-3">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-white">v{v.versionNumber}</div>
-                  <div className="text-xs text-slate-500">{Math.round((v.size || 0)/1024)} KB</div>
-                  <Button variant="outline" size="sm" onClick={() => doRollback(v.versionNumber)}>Rollback here</Button>
+                  <div className="text-xs text-slate-500">
+                    {Math.round((v.size || 0) / 1024)} KB
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => doRollback(v.versionNumber)}>
+                    Rollback here
+                  </Button>
                 </div>
               </Card>
             ))}
@@ -261,9 +297,7 @@ export function FilesView({ projectId }: { projectId: string }) {
                   className="bg-slate-900/50 border-slate-800 p-4 hover:border-purple-500/50 transition-all cursor-pointer"
                 >
                   <h4 className="text-white mb-2">{note.title}</h4>
-                  <p className="text-sm text-slate-400 mb-3 line-clamp-2">
-                    {note.content}
-                  </p>
+                  <p className="text-sm text-slate-400 mb-3 line-clamp-2">{note.content}</p>
                   <div className="flex items-center justify-between">
                     <div className="flex gap-2">
                       {note.tags.map((tag) => (
@@ -293,8 +327,8 @@ export function FilesView({ projectId }: { projectId: string }) {
               <h4 className="text-white">AI Summary</h4>
             </div>
             <p className="text-sm text-purple-200/80 mb-4">
-              Your project documentation is well-structured. Consider adding more architecture diagrams 
-              for the authentication flow.
+              Your project documentation is well-structured. Consider adding more architecture
+              diagrams for the authentication flow.
             </p>
             <Button
               size="sm"
@@ -381,7 +415,7 @@ function FileCard({ file, index }: FileCardProps) {
           <div className="p-3 bg-slate-800/50 rounded-lg group-hover:scale-110 transition-transform">
             {getIcon(file.type)}
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h4 className="text-white truncate">{file.name}</h4>

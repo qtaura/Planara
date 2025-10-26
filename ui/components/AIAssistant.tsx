@@ -11,7 +11,8 @@ export function AIAssistant() {
     {
       id: '1',
       type: 'ai' as const,
-      content: 'Hi! I can help you break down tasks, estimate deadlines, and set priorities. What would you like to work on?',
+      content:
+        'Hi! I can help you break down tasks, estimate deadlines, and set priorities. What would you like to work on?',
       timestamp: new Date(),
     },
   ]);
@@ -77,7 +78,9 @@ export function AIAssistant() {
                   </div>
                   <div>
                     <h3 className="text-sm text-slate-900 dark:text-white">AI Assistant</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Always here to help</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Always here to help
+                    </p>
                   </div>
                 </div>
                 <Button
@@ -130,9 +133,9 @@ export function AIAssistant() {
                     >
                       <p>{message.content}</p>
                       <p className="text-xs opacity-60 mt-1">
-                        {message.timestamp.toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
+                        {message.timestamp.toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
                         })}
                       </p>
                     </div>
@@ -153,10 +156,7 @@ export function AIAssistant() {
                       }
                     }}
                   />
-                  <Button
-                    size="sm"
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-3"
-                  >
+                  <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white px-3">
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>

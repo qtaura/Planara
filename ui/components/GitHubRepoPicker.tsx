@@ -14,7 +14,12 @@ interface GitHubRepoPickerProps {
   onLinked: () => void;
 }
 
-export function GitHubRepoPicker({ isOpen, accessToken, onClose, onLinked }: GitHubRepoPickerProps) {
+export function GitHubRepoPicker({
+  isOpen,
+  accessToken,
+  onClose,
+  onLinked,
+}: GitHubRepoPickerProps) {
   const [repos, setRepos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +85,7 @@ export function GitHubRepoPicker({ isOpen, accessToken, onClose, onLinked }: Git
         <DialogHeader>
           <DialogTitle>Import from GitHub</DialogTitle>
         </DialogHeader>
-        
+
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
             <Github className="h-4 w-4" />
@@ -94,7 +99,11 @@ export function GitHubRepoPicker({ isOpen, accessToken, onClose, onLinked }: Git
 
         <div className="mb-3 flex items-center gap-2">
           <Search className="h-4 w-4 text-slate-400" />
-          <Input placeholder="Filter repositories" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <Input
+            placeholder="Filter repositories"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </div>
 
         {loading ? (
@@ -110,12 +119,17 @@ export function GitHubRepoPicker({ isOpen, accessToken, onClose, onLinked }: Git
             {filtered.map((repo) => (
               <Card key={repo.id} className="p-3 flex items-center justify-between">
                 <div>
-                  <p className="text-slate-900 dark:text-white">{repo.owner?.login}/{repo.name}</p>
+                  <p className="text-slate-900 dark:text-white">
+                    {repo.owner?.login}/{repo.name}
+                  </p>
                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                    {repo.private ? 'Private' : 'Public'} • Updated {new Date(repo.updated_at).toLocaleDateString()}
+                    {repo.private ? 'Private' : 'Public'} • Updated{' '}
+                    {new Date(repo.updated_at).toLocaleDateString()}
                   </p>
                 </div>
-                <Button size="sm" onClick={() => linkRepository(repo)}>Link</Button>
+                <Button size="sm" onClick={() => linkRepository(repo)}>
+                  Link
+                </Button>
               </Card>
             ))}
           </div>

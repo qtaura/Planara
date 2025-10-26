@@ -21,16 +21,16 @@ function getCacheKey(req: Request): string {
   const { method, originalUrl, query } = req;
   const userId = (req as any).userId || 'anonymous';
   const teamId = (req as any).teamId || 'no-team';
-  
+
   // Include relevant query params and user context in cache key
   const keyData = {
     method,
     url: originalUrl,
     query,
     userId,
-    teamId
+    teamId,
   };
-  
+
   return crypto.createHash('sha256').update(JSON.stringify(keyData)).digest('hex');
 }
 
@@ -40,7 +40,7 @@ function isExpired(entry: CacheEntry): boolean {
 
 export function cacheMiddleware(options: { ttl?: number; skipCache?: boolean } = {}) {
   const ttl = options.ttl || CACHE_TTL;
-  
+
   return (req: Request, res: Response, next: NextFunction) => {
     // Only cache GET requests
     if (req.method !== 'GET' || options.skipCache) {
@@ -49,48 +49,48 @@ export function cacheMiddleware(options: { ttl?: number; skipCache?: boolean } =
 
     const cacheKey = getCacheKey(req);
     const cachedEntry = cache.get(cacheKey);
-    
+
     // Check if we have a valid cached entry
     if (cachedEntry && !isExpired(cachedEntry)) {
       const clientETag = req.headers['if-none-match'];
-      
+
       // If client has the same ETag, return 304 Not Modified
       if (clientETag === cachedEntry.etag) {
         return res.status(304).end();
       }
-      
+
       // Return cached response with ETag
       res.set('ETag', cachedEntry.etag);
       res.set('Cache-Control', `max-age=${Math.floor(ttl / 1000)}`);
-      
+
       // Set any additional headers that were cached
       Object.entries(cachedEntry.headers).forEach(([key, value]) => {
         res.set(key, value);
       });
-      
+
       return res.json(cachedEntry.data);
     }
 
     // Override res.json to cache the response
     const originalJson = res.json.bind(res);
-    res.json = function(data: any) {
+    res.json = function (data: any) {
       const etag = generateETag(data);
-      
+
       // Store in cache
       const entry: CacheEntry = {
         data,
         etag,
         timestamp: Date.now(),
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       };
       cache.set(cacheKey, entry);
-      
+
       // Set response headers
       res.set('ETag', etag);
       res.set('Cache-Control', `max-age=${Math.floor(ttl / 1000)}`);
-      
+
       return originalJson(data);
     };
 
@@ -104,7 +104,7 @@ export function invalidateCache(pattern?: string) {
     cache.clear();
     return;
   }
-  
+
   const regex = new RegExp(pattern);
   for (const [key] of cache) {
     if (regex.test(key)) {
@@ -127,7 +127,7 @@ export function getCacheStats() {
   const now = Date.now();
   let expired = 0;
   let active = 0;
-  
+
   for (const entry of cache.values()) {
     if (isExpired(entry)) {
       expired++;
@@ -135,11 +135,11 @@ export function getCacheStats() {
       active++;
     }
   }
-  
+
   return {
     total: cache.size,
     active,
     expired,
-    hitRate: 0 // TODO: Implement hit rate tracking
+    hitRate: 0, // TODO: Implement hit rate tracking
   };
 }

@@ -46,7 +46,7 @@ describe('OtpInput', () => {
 
     expect(getValueFromCells()).toBe('123456');
     const texts = cells.map((c) => (c as HTMLInputElement).value);
-    expect(texts).toEqual(['1','2','3','4','5','6']);
+    expect(texts).toEqual(['1', '2', '3', '4', '5', '6']);
     expect(document.activeElement).toBe(cells[5]);
   });
 

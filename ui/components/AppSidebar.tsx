@@ -1,14 +1,14 @@
-import { 
-  LayoutDashboard, 
-  FolderKanban, 
-  Star, 
-  Archive, 
-  Users, 
-  Bell, 
-  Settings, 
+import {
+  LayoutDashboard,
+  FolderKanban,
+  Star,
+  Archive,
+  Users,
+  Bell,
+  Settings,
   Plus,
   Search,
-  LogOut
+  LogOut,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -28,7 +28,13 @@ import {
 
 import { Project } from '../types';
 import { useEffect, useState } from 'react';
-import { listProjects, getCurrentUser, getCurrentUserFromAPI, signOut, getUnreadNotificationCount } from '@lib/api';
+import {
+  listProjects,
+  getCurrentUser,
+  getCurrentUserFromAPI,
+  signOut,
+  getUnreadNotificationCount,
+} from '@lib/api';
 import { toast } from 'sonner';
 
 interface AppSidebarProps {
@@ -39,20 +45,20 @@ interface AppSidebarProps {
   onOpenCreateProject: () => void;
 }
 
-export function AppSidebar({ 
-  activeView, 
-  activeProject, 
-  onNavigate, 
+export function AppSidebar({
+  activeView,
+  activeProject,
+  onNavigate,
   onSelectProject,
-  onOpenCreateProject 
+  onOpenCreateProject,
 }: AppSidebarProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any | null>(getCurrentUser());
-const [notificationCount, setNotificationCount] = useState<number>(0);
-const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
-const [searchText, setSearchText] = useState('');
+  const [notificationCount, setNotificationCount] = useState<number>(0);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   async function fetchProjects() {
     setLoading(true);
@@ -71,7 +77,10 @@ const [searchText, setSearchText] = useState('');
   async function refreshUser() {
     try {
       const u = getCurrentUser();
-      if (u) { setUser(u); return; }
+      if (u) {
+        setUser(u);
+        return;
+      }
       const fromApi = await getCurrentUserFromAPI();
       if (fromApi) setUser(fromApi);
     } catch {}
@@ -108,18 +117,18 @@ const [searchText, setSearchText] = useState('');
     window.addEventListener('auth:logged_in', onAuth as EventListener);
     window.addEventListener('user:updated', onAuth as EventListener);
     window.addEventListener('notifications:changed', onNotificationChanged as EventListener);
-    return () => { 
-      cancelled = true; 
+    return () => {
+      cancelled = true;
       window.removeEventListener('projects:changed', onChanged as EventListener);
       window.removeEventListener('auth:logged_in', onAuth as EventListener);
       window.removeEventListener('user:updated', onAuth as EventListener);
       window.removeEventListener('notifications:changed', onNotificationChanged as EventListener);
     };
   }, []);
-  const activeProjects = projects.filter(p => p.status === 'active');
-  const favoriteProjects = activeProjects.filter(p => p.favorite);
+  const activeProjects = projects.filter((p) => p.status === 'active');
+  const favoriteProjects = activeProjects.filter((p) => p.favorite);
 
-  const initials = (user?.username || user?.email || 'U').slice(0,2).toUpperCase();
+  const initials = (user?.username || user?.email || 'U').slice(0, 2).toUpperCase();
 
   return (
     <div className="w-64 h-screen bg-white dark:bg-[#0A0A0A] border-r border-slate-200 dark:border-slate-800/50 flex flex-col">
@@ -129,132 +138,174 @@ const [searchText, setSearchText] = useState('');
           <Logo size="sm" />
           <ThemeToggle />
         </div>
-        
-        <button className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 w-full transition-colors" onClick={() => { try { localStorage.setItem('settings_active_section', 'profile'); } catch {}; onNavigate('settings'); }}>
+
+        <button
+          className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 w-full transition-colors"
+          onClick={() => {
+            try {
+              localStorage.setItem('settings_active_section', 'profile');
+            } catch {}
+            onNavigate('settings');
+          }}
+        >
           <Avatar className="h-6 w-6">
             <AvatarImage src={user?.avatar || ''} />
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-sm text-slate-900 dark:text-white truncate">{user?.username || 'You'}</p>
+            <p className="text-sm text-slate-900 dark:text-white truncate">
+              {user?.username || 'You'}
+            </p>
           </div>
         </button>
         {loading && (
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Refreshing projects...</p>
         )}
-        {error && (
-          <p className="text-xs text-red-600 dark:text-red-400 mt-1">{error}</p>
-        )}
-<div className="mt-3">
-  <Button
-    className="w-full h-9 bg-red-600 hover:bg-red-700 text-white"
-    onClick={() => setShowSignOutConfirm(true)}
-  >
-    <LogOut className="w-4 h-4" />
-    <span className="ml-2">Sign out</span>
-  </Button>
-</div>
+        {error && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{error}</p>}
+        <div className="mt-3">
+          <Button
+            className="w-full h-9 bg-red-600 hover:bg-red-700 text-white"
+            onClick={() => setShowSignOutConfirm(true)}
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="ml-2">Sign out</span>
+          </Button>
+        </div>
       </div>
 
-{/* Search */}
-<div className="p-3 border-b border-slate-200 dark:border-slate-800/50">
-  <div className="relative">
-    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-    <Input
-      placeholder="Search..."
-      className="pl-9 h-9 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/50 text-sm"
-      value={searchText}
-      onChange={(e) => setSearchText(e.target.value)}
-      onKeyDown={(e) => { if (e.key === 'Enter') { const qs = new URLSearchParams(); if (searchText.trim()) qs.set('q', searchText.trim()); try { window.history.pushState({}, '', `/search${qs.toString() ? `?${qs.toString()}` : ''}`); } catch {}; onNavigate('search'); } }}
-    />
-  </div>
-</div>
+      {/* Search */}
+      <div className="p-3 border-b border-slate-200 dark:border-slate-800/50">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Search..."
+            className="pl-9 h-9 bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/50 text-sm"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const qs = new URLSearchParams();
+                if (searchText.trim()) qs.set('q', searchText.trim());
+                try {
+                  window.history.pushState(
+                    {},
+                    '',
+                    `/search${qs.toString() ? `?${qs.toString()}` : ''}`
+                  );
+                } catch {}
+                onNavigate('search');
+              }
+            }}
+          />
+        </div>
+      </div>
 
-{/* Navigation */}
-<div className="flex-1 overflow-y-auto py-3">
-  <div className="px-3 space-y-0.5 mb-4">
-    <NavItem
-      icon={<LayoutDashboard className="w-4 h-4" />}
-      label="Dashboard"
-      active={activeView === 'dashboard'}
-      onClick={() => { try { localStorage.setItem('dashboard_filter', 'active'); } catch {}; onNavigate('dashboard'); }}
-    />
-    <NavItem
-      icon={<Bell className="w-4 h-4" />}
-      label="Notifications"
-      active={activeView === 'notifications'}
-      badge={notificationCount > 0 ? notificationCount.toString() : undefined}
-      onClick={() => onNavigate('notifications')}
-    />
-    <NavItem
-      icon={<Users className="w-4 h-4" />}
-      label="Team"
-      onClick={() => { try { localStorage.setItem('settings_active_section', 'team'); } catch {}; onNavigate('settings'); }}
-    />
-  </div>
+      {/* Navigation */}
+      <div className="flex-1 overflow-y-auto py-3">
+        <div className="px-3 space-y-0.5 mb-4">
+          <NavItem
+            icon={<LayoutDashboard className="w-4 h-4" />}
+            label="Dashboard"
+            active={activeView === 'dashboard'}
+            onClick={() => {
+              try {
+                localStorage.setItem('dashboard_filter', 'active');
+              } catch {}
+              onNavigate('dashboard');
+            }}
+          />
+          <NavItem
+            icon={<Bell className="w-4 h-4" />}
+            label="Notifications"
+            active={activeView === 'notifications'}
+            badge={notificationCount > 0 ? notificationCount.toString() : undefined}
+            onClick={() => onNavigate('notifications')}
+          />
+          <NavItem
+            icon={<Users className="w-4 h-4" />}
+            label="Team"
+            onClick={() => {
+              try {
+                localStorage.setItem('settings_active_section', 'team');
+              } catch {}
+              onNavigate('settings');
+            }}
+          />
+        </div>
 
-{/* Favorites */}
-{favoriteProjects.length > 0 && (
-  <div className="px-3 mb-4">
-    <div className="flex items-center justify-between px-2 mb-1">
-      <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Favorites</span>
-    </div>
-<div className="space-y-0.5">
-  {favoriteProjects.map((project) => (
-    <ProjectItem
-      key={project.id}
-      project={project}
-      active={activeProject === project.id}
-      onClick={() => {
-        onSelectProject(project.id);
-        onNavigate('project');
-      }}
-    />
-  ))}
-</div>
-</div>
-)}
+        {/* Favorites */}
+        {favoriteProjects.length > 0 && (
+          <div className="px-3 mb-4">
+            <div className="flex items-center justify-between px-2 mb-1">
+              <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Favorites
+              </span>
+            </div>
+            <div className="space-y-0.5">
+              {favoriteProjects.map((project) => (
+                <ProjectItem
+                  key={project.id}
+                  project={project}
+                  active={activeProject === project.id}
+                  onClick={() => {
+                    onSelectProject(project.id);
+                    onNavigate('project');
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
-{/* All Projects */}
-<div className="px-3">
-  <div className="flex items-center justify-between px-2 mb-1">
-    <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Projects</span>
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-5 w-5 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
-      onClick={onOpenCreateProject}
-    >
-      <Plus className="w-3 h-3" />
-    </Button>
-  </div>
-  <div className="space-y-0.5">
-    {activeProjects.length === 0 ? (
-      <p className="text-xs text-slate-500 dark:text-slate-400 px-2 py-1.5">No projects yet</p>
-    ) : (
-      activeProjects.map((project) => (
-        <ProjectItem
-          key={project.id}
-          project={project}
-          active={activeProject === project.id}
-          onClick={() => {
-            onSelectProject(project.id);
-            onNavigate('project');
-          }}
-        />
-      ))
-    )}
-  </div>
-</div>
+        {/* All Projects */}
+        <div className="px-3">
+          <div className="flex items-center justify-between px-2 mb-1">
+            <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Projects
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
+              onClick={onOpenCreateProject}
+            >
+              <Plus className="w-3 h-3" />
+            </Button>
+          </div>
+          <div className="space-y-0.5">
+            {activeProjects.length === 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400 px-2 py-1.5">
+                No projects yet
+              </p>
+            ) : (
+              activeProjects.map((project) => (
+                <ProjectItem
+                  key={project.id}
+                  project={project}
+                  active={activeProject === project.id}
+                  onClick={() => {
+                    onSelectProject(project.id);
+                    onNavigate('project');
+                  }}
+                />
+              ))
+            )}
+          </div>
+        </div>
 
-<div className="px-3 mt-4 space-y-0.5">
-  <NavItem
-    icon={<Archive className="w-4 h-4" />}
-    label="Archived"
-    onClick={() => { try { localStorage.setItem('dashboard_filter', 'archived'); } catch {}; onNavigate('dashboard'); }}
-  />
-</div>
-</div>
+        <div className="px-3 mt-4 space-y-0.5">
+          <NavItem
+            icon={<Archive className="w-4 h-4" />}
+            label="Archived"
+            onClick={() => {
+              try {
+                localStorage.setItem('dashboard_filter', 'archived');
+              } catch {}
+              onNavigate('dashboard');
+            }}
+          />
+        </div>
+      </div>
       {/* Bottom */}
       <div className="p-3 border-t border-slate-200 dark:border-slate-800/50 space-y-1.5">
         <NavItem
@@ -270,31 +321,31 @@ const [searchText, setSearchText] = useState('');
         />
       </div>
 
-     <AlertDialog open={showSignOutConfirm} onOpenChange={setShowSignOutConfirm}>
-       <AlertDialogContent>
-         <AlertDialogHeader>
-           <AlertDialogTitle>Sign out?</AlertDialogTitle>
-           <AlertDialogDescription>
-             You will be logged out and redirected to the login screen.
-           </AlertDialogDescription>
-         </AlertDialogHeader>
-         <AlertDialogFooter>
-           <AlertDialogCancel>Cancel</AlertDialogCancel>
-           <AlertDialogAction
-             className="bg-red-600 hover:bg-red-700 text-white"
-             onClick={() => {
-               try {
-                 signOut();
-                 toast.success('Signed out');
-               } catch {}
-               navigate('/login');
-             }}
-           >
-             Yes, sign out
-           </AlertDialogAction>
-         </AlertDialogFooter>
-       </AlertDialogContent>
-     </AlertDialog>
+      <AlertDialog open={showSignOutConfirm} onOpenChange={setShowSignOutConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will be logged out and redirected to the login screen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                try {
+                  signOut();
+                  toast.success('Signed out');
+                } catch {}
+                navigate('/login');
+              }}
+            >
+              Yes, sign out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -349,9 +400,7 @@ function ProjectItem({ project, active, onClick }: ProjectItemProps) {
         style={{ backgroundColor: project.color }}
       />
       <span className="flex-1 text-left truncate">{project.name}</span>
-      {project.githubLinked && (
-        <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-      )}
+      {project.githubLinked && <div className="w-1.5 h-1.5 rounded-full bg-green-500" />}
     </button>
   );
 }

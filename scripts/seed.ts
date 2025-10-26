@@ -32,15 +32,17 @@ async function main() {
   } as any);
   await projectsRepo.save(project);
 
-  const tasks = ['Design landing page', 'Implement auth', 'Set up CI', 'Write tests'].map((t, i) => tasksRepo.create({
-    title: t,
-    description: `${t} - seeded task`,
-    status: i % 2 === 0 ? 'in-progress' : 'backlog',
-    labels: i % 2 === 0 ? ['ui'] : ['backend'],
-    priority: i % 2 === 0 ? 'medium' : 'low',
-    project,
-    assignee: 'Alex Chen',
-  } as any));
+  const tasks = ['Design landing page', 'Implement auth', 'Set up CI', 'Write tests'].map((t, i) =>
+    tasksRepo.create({
+      title: t,
+      description: `${t} - seeded task`,
+      status: i % 2 === 0 ? 'in-progress' : 'backlog',
+      labels: i % 2 === 0 ? ['ui'] : ['backend'],
+      priority: i % 2 === 0 ? 'medium' : 'low',
+      project,
+      assignee: 'Alex Chen',
+    } as any)
+  );
   await tasksRepo.save(tasks);
 
   console.log('Seeded demo user, project, and tasks.');

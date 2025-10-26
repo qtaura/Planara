@@ -90,7 +90,9 @@ describe('Attachments API with RBAC', () => {
     const suffix = Date.now();
     owner = await createUser(`owner${suffix}`, `owner${suffix}@example.com`, { verified: true });
     member = await createUser(`member${suffix}`, `member${suffix}@example.com`, { verified: true });
-    outsider = await createUser(`outsider${suffix}`, `outsider${suffix}@example.com`, { verified: true });
+    outsider = await createUser(`outsider${suffix}`, `outsider${suffix}@example.com`, {
+      verified: true,
+    });
     ownerToken = issueToken(owner.id);
     memberToken = issueToken(member.id);
     outsiderToken = issueToken(outsider.id);
@@ -128,7 +130,11 @@ describe('Attachments API with RBAC', () => {
     const projRes = await request(app)
       .post('/api/projects')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ name: `Attachments Project ${Date.now()}`, description: 'attachments test', teamId: team.id });
+      .send({
+        name: `Attachments Project ${Date.now()}`,
+        description: 'attachments test',
+        teamId: team.id,
+      });
     expect([200, 201]).toContain(projRes.status);
     project = projRes.body;
 
@@ -197,7 +203,14 @@ describe('Attachments API with RBAC', () => {
     const baseRes = await request(app)
       .post('/api/attachments/upload')
       .set('Authorization', `Bearer ${memberToken}`)
-      .send({ taskId: task.id, teamId: team.id, fileName: 'versioned.txt', mimeType: 'text/plain', size: base.length, contentBase64: base.toString('base64') });
+      .send({
+        taskId: task.id,
+        teamId: team.id,
+        fileName: 'versioned.txt',
+        mimeType: 'text/plain',
+        size: base.length,
+        contentBase64: base.toString('base64'),
+      });
     expect(baseRes.status).toBe(201);
     const att = baseRes.body;
 
@@ -206,7 +219,14 @@ describe('Attachments API with RBAC', () => {
     const v2Res = await request(app)
       .post('/api/attachments/upload')
       .set('Authorization', `Bearer ${memberToken}`)
-      .send({ attachmentId: att.id, teamId: team.id, fileName: 'versioned.txt', mimeType: 'text/plain', size: v2.length, contentBase64: v2.toString('base64') });
+      .send({
+        attachmentId: att.id,
+        teamId: team.id,
+        fileName: 'versioned.txt',
+        mimeType: 'text/plain',
+        size: v2.length,
+        contentBase64: v2.toString('base64'),
+      });
     expect(v2Res.status).toBe(201);
     expect(v2Res.body?.latestVersionNumber).toBe(2);
 
@@ -228,7 +248,13 @@ describe('Attachments API with RBAC', () => {
     const create = await request(app)
       .post('/api/attachments/upload')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ taskId: task.id, fileName: 'preview.txt', mimeType: 'text/plain', size: buf.length, contentBase64: buf.toString('base64') });
+      .send({
+        taskId: task.id,
+        fileName: 'preview.txt',
+        mimeType: 'text/plain',
+        size: buf.length,
+        contentBase64: buf.toString('base64'),
+      });
     const att = create.body;
 
     const deny = await request(app)
@@ -251,7 +277,14 @@ describe('Attachments API with RBAC', () => {
     const create = await request(app)
       .post('/api/attachments/upload')
       .set('Authorization', `Bearer ${memberToken}`)
-      .send({ taskId: task.id, teamId: team.id, fileName: 'delete.txt', mimeType: 'text/plain', size: buf.length, contentBase64: buf.toString('base64') });
+      .send({
+        taskId: task.id,
+        teamId: team.id,
+        fileName: 'delete.txt',
+        mimeType: 'text/plain',
+        size: buf.length,
+        contentBase64: buf.toString('base64'),
+      });
     const att = create.body;
 
     const deny = await request(app)
@@ -281,7 +314,14 @@ describe('Attachments API with RBAC', () => {
     const baseRes = await request(app)
       .post('/api/attachments/upload')
       .set('Authorization', `Bearer ${memberToken}`)
-      .send({ taskId: task.id, teamId: team.id, fileName: 'rb.txt', mimeType: 'text/plain', size: v1.length, contentBase64: v1.toString('base64') });
+      .send({
+        taskId: task.id,
+        teamId: team.id,
+        fileName: 'rb.txt',
+        mimeType: 'text/plain',
+        size: v1.length,
+        contentBase64: v1.toString('base64'),
+      });
     expect(baseRes.status).toBe(201);
     const att = baseRes.body;
 
@@ -289,7 +329,14 @@ describe('Attachments API with RBAC', () => {
     const v2Res = await request(app)
       .post('/api/attachments/upload')
       .set('Authorization', `Bearer ${memberToken}`)
-      .send({ attachmentId: att.id, teamId: team.id, fileName: 'rb.txt', mimeType: 'text/plain', size: v2.length, contentBase64: v2.toString('base64') });
+      .send({
+        attachmentId: att.id,
+        teamId: team.id,
+        fileName: 'rb.txt',
+        mimeType: 'text/plain',
+        size: v2.length,
+        contentBase64: v2.toString('base64'),
+      });
     expect(v2Res.status).toBe(201);
 
     const rb = await request(app)

@@ -36,11 +36,17 @@ export function SignupScreen({ onSuccess }: SignupScreenProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0A0A0A] px-4">
       <div className="w-full max-w-sm p-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-1">Create your account</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Sign up with a username, email, and password</p>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-1">
+          Create your account
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+          Sign up with a username, email, and password
+        </p>
         <form onSubmit={handleSignup} className="space-y-4">
           <div>
-            <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Username</label>
+            <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">
+              Username
+            </label>
             <Input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -59,7 +65,9 @@ export function SignupScreen({ onSuccess }: SignupScreenProps) {
             />
           </div>
           <div>
-            <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Password</label>
+            <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">
+              Password
+            </label>
             <Input
               type="password"
               value={password}
@@ -68,7 +76,11 @@ export function SignupScreen({ onSuccess }: SignupScreenProps) {
               required
             />
           </div>
-          <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
             {loading ? 'Creating account…' : 'Sign up'}
           </Button>
         </form>

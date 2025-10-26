@@ -13,12 +13,14 @@ Rate limits and backoffs apply to send/verify endpoints. Admin helpers are liste
 ---
 
 ## POST /auth/send-code
+
 Requests a verification code to be sent to the user’s email.
 
 - Method: `POST`
 - Path: `/auth/send-code`
 - Auth: Not required
 - Body:
+
 ```json
 {
   "email": "user@example.com"
@@ -26,11 +28,13 @@ Requests a verification code to be sent to the user’s email.
 ```
 
 Notes:
+
 - Always returns a generic success if the user does not exist or is already verified.
 - Resend cooldown is enforced (1 minute); violating cooldown triggers escalating backoff.
 - In local development, if `RESEND_API_KEY` is not set, response includes `devCode`.
 
 ### Success (existing, not verified)
+
 ```json
 {
   "success": true,
@@ -40,6 +44,7 @@ Notes:
 ```
 
 ### Success (nonexistent or already verified)
+
 ```json
 {
   "success": true,
@@ -48,6 +53,7 @@ Notes:
 ```
 
 ### Success (dev mode, returns devCode)
+
 ```json
 {
   "success": true,
@@ -58,7 +64,9 @@ Notes:
 ```
 
 ### Rate limited (cooldown/backoff)
+
 Status: `429`
+
 ```json
 {
   "success": false,
@@ -67,7 +75,9 @@ Status: `429`
 ```
 
 ### Validation error
+
 Status: `400`
+
 ```json
 {
   "success": false,
@@ -85,12 +95,14 @@ Status: `400`
 ---
 
 ## POST /auth/verify-code
+
 Submits the 6-digit code to verify the user.
 
 - Method: `POST`
 - Path: `/auth/verify-code`
 - Auth: Not required
 - Body:
+
 ```json
 {
   "email": "user@example.com",
@@ -99,11 +111,13 @@ Submits the 6-digit code to verify the user.
 ```
 
 Notes:
+
 - Returns a generic invalid response for nonexistent users and already-verified accounts.
 - Progressive backoff applies to repeated invalid attempts; lockout occurs after a threshold.
 - Expired codes return a specific error.
 
 ### Success
+
 ```json
 {
   "success": true,
@@ -118,7 +132,9 @@ Notes:
 ```
 
 ### Invalid code
+
 Status: `400`
+
 ```json
 {
   "success": false,
@@ -127,7 +143,9 @@ Status: `400`
 ```
 
 ### Locked out (too many attempts)
+
 Status: `429`
+
 ```json
 {
   "success": false,
@@ -136,7 +154,9 @@ Status: `429`
 ```
 
 ### Backoff (too frequent attempts)
+
 Status: `429`
+
 ```json
 {
   "success": false,
@@ -145,7 +165,9 @@ Status: `429`
 ```
 
 ### Expired code
+
 Status: `400`
+
 ```json
 {
   "success": false,
@@ -154,7 +176,9 @@ Status: `400`
 ```
 
 ### Validation error
+
 Status: `400`
+
 ```json
 {
   "success": false,
@@ -172,6 +196,7 @@ Status: `400`
 ---
 
 ## GET /auth/verification-status/:email
+
 Returns the verification status of a known user.
 
 - Method: `GET`
@@ -179,6 +204,7 @@ Returns the verification status of a known user.
 - Auth: Not required
 
 ### Success
+
 ```json
 {
   "success": true,
@@ -192,7 +218,9 @@ Returns the verification status of a known user.
 ```
 
 ### Not found
+
 Status: `404`
+
 ```json
 {
   "success": false,
@@ -201,7 +229,9 @@ Status: `404`
 ```
 
 ### Validation error
+
 Status: `400`
+
 ```json
 {
   "success": false,
@@ -212,6 +242,7 @@ Status: `400`
 ---
 
 ## Curl Examples
+
 Assuming `PORT=3010` and `API=http://localhost:3010/api/users`.
 
 ```bash
@@ -232,6 +263,7 @@ curl "$API/auth/verification-status/user@example.com"
 ---
 
 ## Admin Helpers
+
 - `POST /auth/admin/unlock` – Clear lockouts/backoffs for a user (auth required)
 - `GET /auth/admin/lockout-state/:email` – Inspect lockout/backoff state (auth required)
 - `GET /auth/admin/events/:email` – Recent security events (auth required)

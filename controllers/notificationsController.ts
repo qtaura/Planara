@@ -1,19 +1,19 @@
-import { Request, Response } from "express";
-import { AppDataSource } from "../db/data-source.js";
-import { Notification } from "../models/Notification.js";
-import { User } from "../models/User.js";
+import { Request, Response } from 'express';
+import { AppDataSource } from '../db/data-source.js';
+import { Notification } from '../models/Notification.js';
+import { User } from '../models/User.js';
 
 function parseBoolean(v: any): boolean | undefined {
   if (v === undefined || v === null) return undefined;
   const s = String(v).trim().toLowerCase();
-  if (["true", "1", "yes"].includes(s)) return true;
-  if (["false", "0", "no"].includes(s)) return false;
+  if (['true', '1', 'yes'].includes(s)) return true;
+  if (['false', '0', 'no'].includes(s)) return false;
   return undefined;
 }
 
 export async function getNotifications(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
-  if (!userId) return res.status(401).json({ error: "unauthorized" });
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
 
   const { type, channel, read, from, to, limit } = req.query as any;
   const qb = AppDataSource.getRepository(Notification)
@@ -38,11 +38,11 @@ export async function getNotifications(req: Request, res: Response) {
 
 export async function getUnreadCount(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
-  if (!userId) return res.status(401).json({ error: "unauthorized" });
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
 
   const repo = AppDataSource.getRepository(Notification);
   const count = await repo.count({
-    where: { user: { id: userId }, read: false }
+    where: { user: { id: userId }, read: false },
   });
 
   res.json({ count });
@@ -50,36 +50,40 @@ export async function getUnreadCount(req: Request, res: Response) {
 
 export async function createNotification(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
-  if (!userId) return res.status(401).json({ error: "unauthorized" });
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
 
   const { title, message, type, projectId, taskId, actionUrl, channel } = req.body;
   if (!title || !message) {
-    return res.status(400).json({ error: "title and message are required" });
+    return res.status(400).json({ error: 'title and message are required' });
   }
 
   const repo = AppDataSource.getRepository(Notification);
   const userRepo = AppDataSource.getRepository(User);
-  
+
   const user = await userRepo.findOne({ where: { id: userId } });
-  if (!user) return res.status(404).json({ error: "user not found" });
+  if (!user) return res.status(404).json({ error: 'user not found' });
 
   // Simple rate limit for noisy events
   const now = new Date();
   const windowMs = 60 * 1000; // 1 minute
   const windowStart = new Date(now.getTime() - windowMs);
-  const recentCount = await repo.createQueryBuilder('n')
+  const recentCount = await repo
+    .createQueryBuilder('n')
     .where('n.userId = :uid', { uid: userId })
     .andWhere('n.type = :type', { type: type || 'general' })
     .andWhere('n.createdAt >= :ws', { ws: windowStart })
     .getCount();
-  if (recentCount > 100) { // hard cap
-    return res.status(429).json({ error: 'rate_limited', message: 'Too many notifications recently' });
+  if (recentCount > 100) {
+    // hard cap
+    return res
+      .status(429)
+      .json({ error: 'rate_limited', message: 'Too many notifications recently' });
   }
 
   const notification = repo.create({
     title,
     message,
-    type: type || "general",
+    type: type || 'general',
     user,
     actionUrl,
     channel: channel || 'in_app',
@@ -95,17 +99,17 @@ export async function createNotification(req: Request, res: Response) {
 
 export async function markAsRead(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
-  if (!userId) return res.status(401).json({ error: "unauthorized" });
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
 
   const id = Number(req.params.id);
   const repo = AppDataSource.getRepository(Notification);
-  
+
   const notification = await repo.findOne({
-    where: { id, user: { id: userId } }
+    where: { id, user: { id: userId } },
   });
-  
+
   if (!notification) {
-    return res.status(404).json({ error: "notification not found" });
+    return res.status(404).json({ error: 'notification not found' });
   }
 
   notification.read = true;
@@ -116,17 +120,17 @@ export async function markAsRead(req: Request, res: Response) {
 
 export async function markAsUnread(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
-  if (!userId) return res.status(401).json({ error: "unauthorized" });
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
 
   const id = Number(req.params.id);
   const repo = AppDataSource.getRepository(Notification);
-  
+
   const notification = await repo.findOne({
-    where: { id, user: { id: userId } }
+    where: { id, user: { id: userId } },
   });
-  
+
   if (!notification) {
-    return res.status(404).json({ error: "notification not found" });
+    return res.status(404).json({ error: 'notification not found' });
   }
 
   notification.read = false;
@@ -137,30 +141,27 @@ export async function markAsUnread(req: Request, res: Response) {
 
 export async function markAllAsRead(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
-  if (!userId) return res.status(401).json({ error: "unauthorized" });
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
 
   const repo = AppDataSource.getRepository(Notification);
-  await repo.update(
-    { user: { id: userId }, read: false },
-    { read: true, readAt: new Date() }
-  );
+  await repo.update({ user: { id: userId }, read: false }, { read: true, readAt: new Date() });
 
   res.json({ success: true });
 }
 
 export async function deleteNotification(req: Request, res: Response) {
   const userId = (req as any).userId as number | undefined;
-  if (!userId) return res.status(401).json({ error: "unauthorized" });
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
 
   const id = Number(req.params.id);
   const repo = AppDataSource.getRepository(Notification);
-  
+
   const notification = await repo.findOne({
-    where: { id, user: { id: userId } }
+    where: { id, user: { id: userId } },
   });
-  
+
   if (!notification) {
-    return res.status(404).json({ error: "notification not found" });
+    return res.status(404).json({ error: 'notification not found' });
   }
 
   await repo.remove(notification);

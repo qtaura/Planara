@@ -40,7 +40,9 @@ function AppContent() {
 
   // Initialize socket connection and stay connected across views
   useEffect(() => {
-    try { getSocket(); } catch {}
+    try {
+      getSocket();
+    } catch {}
   }, []);
 
   // Join/leave project rooms based on current view
@@ -93,7 +95,7 @@ function AppContent() {
       if (data.verificationRequired && !data.token) {
         const email = data.email || (data.user && data.user.email) || '';
         setVerificationEmail(email);
-        setPostVerifyView(data.created ? 'signup_username' as ViewType : 'dashboard');
+        setPostVerifyView(data.created ? ('signup_username' as ViewType) : 'dashboard');
         setCurrentView('verify' as any);
         return;
       }
@@ -109,7 +111,7 @@ function AppContent() {
         if (!userVerified) {
           const email = (data.user && data.user.email) || '';
           setVerificationEmail(email);
-          setPostVerifyView(data.created ? 'signup_username' as ViewType : 'dashboard');
+          setPostVerifyView(data.created ? ('signup_username' as ViewType) : 'dashboard');
           setCurrentView('verify' as any);
           return;
         }
@@ -123,7 +125,11 @@ function AppContent() {
   useEffect(() => {
     const handler = () => {
       const p = localStorage.getItem('navigate_to_project');
-      if (p) { setSelectedProject(p); setCurrentView('project'); localStorage.removeItem('navigate_to_project'); }
+      if (p) {
+        setSelectedProject(p);
+        setCurrentView('project');
+        localStorage.removeItem('navigate_to_project');
+      }
     };
     window.addEventListener('projects:open', handler);
     return () => window.removeEventListener('projects:open', handler);
@@ -144,20 +150,34 @@ function AppContent() {
 
   const viewToPath = (view: ViewType): string => {
     switch (view) {
-      case 'landing': return '/';
-      case 'login': return '/login';
-      case 'signup': return '/signup';
-      case 'signup_providers': return '/signup';
-      case 'signup_email': return '/signup/email';
-      case 'signup_username': return '/signup/username';
-      case 'verify': return '/verify';
-      case 'dashboard': return '/dashboard';
-      case 'onboarding': return '/onboarding';
-      case 'settings': return '/settings';
-      case 'notifications': return '/notifications';
-      case 'project': return selectedProject ? `/projects/${selectedProject}` : '/project';
-      case 'search': return window.location.pathname + window.location.search;
-      default: return '/';
+      case 'landing':
+        return '/';
+      case 'login':
+        return '/login';
+      case 'signup':
+        return '/signup';
+      case 'signup_providers':
+        return '/signup';
+      case 'signup_email':
+        return '/signup/email';
+      case 'signup_username':
+        return '/signup/username';
+      case 'verify':
+        return '/verify';
+      case 'dashboard':
+        return '/dashboard';
+      case 'onboarding':
+        return '/onboarding';
+      case 'settings':
+        return '/settings';
+      case 'notifications':
+        return '/notifications';
+      case 'project':
+        return selectedProject ? `/projects/${selectedProject}` : '/project';
+      case 'search':
+        return window.location.pathname + window.location.search;
+      default:
+        return '/';
     }
   };
 
@@ -191,7 +211,8 @@ function AppContent() {
   };
 
   const user = getCurrentUser();
-  const showUnverifiedBanner = !!(user && !(user.isVerified || user.verified)) && currentView !== 'verify';
+  const showUnverifiedBanner =
+    !!(user && !(user.isVerified || user.verified)) && currentView !== 'verify';
 
   if (currentView === 'login') {
     return <LoginScreen onSuccess={() => setCurrentView('dashboard')} />;
@@ -240,11 +261,7 @@ function AppContent() {
   }
 
   if (currentView === 'onboarding') {
-    return (
-      <OnboardingScreen
-        onComplete={() => handleNavigate('dashboard')}
-      />
-    );
+    return <OnboardingScreen onComplete={() => handleNavigate('dashboard')} />;
   }
 
   return (
@@ -265,12 +282,17 @@ function AppContent() {
         )}
 
         {currentView === 'dashboard' && (
-          <Dashboard onOpenCreateProject={() => setShowCreateProject(true)} onOpenProject={(id) => handleNavigate('project', id)} />
+          <Dashboard
+            onOpenCreateProject={() => setShowCreateProject(true)}
+            onOpenProject={(id) => handleNavigate('project', id)}
+          />
         )}
 
         {currentView === 'settings' && <SettingsScreen />}
         {currentView === 'notifications' && <NotificationScreen />}
-        {currentView === 'project' && selectedProject && <ProjectView projectId={selectedProject} />}
+        {currentView === 'project' && selectedProject && (
+          <ProjectView projectId={selectedProject} />
+        )}
         {currentView === 'search' && <SearchView />}
         {currentView === 'verify' && (
           <EmailVerificationScreen

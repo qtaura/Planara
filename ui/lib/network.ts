@@ -12,22 +12,31 @@ export function waitForOnline(timeoutMs = 120000): Promise<void> {
     const onOnline = () => {
       if (done) return;
       done = true;
-      try { window.removeEventListener('online', onOnline); } catch {}
+      try {
+        window.removeEventListener('online', onOnline);
+      } catch {}
       resolve();
     };
-    try { window.addEventListener('online', onOnline); } catch {}
+    try {
+      window.addEventListener('online', onOnline);
+    } catch {}
     if (timeoutMs > 0) {
       setTimeout(() => {
         if (done) return;
         done = true;
-        try { window.removeEventListener('online', onOnline); } catch {}
+        try {
+          window.removeEventListener('online', onOnline);
+        } catch {}
         resolve();
       }, timeoutMs);
     }
   });
 }
 
-export async function retryWhenOnline<T>(fn: () => Promise<T>, options?: { delayMs?: number }): Promise<T> {
+export async function retryWhenOnline<T>(
+  fn: () => Promise<T>,
+  options?: { delayMs?: number }
+): Promise<T> {
   if (isOffline()) {
     await waitForOnline(options?.delayMs ?? 0);
   }

@@ -7,20 +7,54 @@ import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Separator } from './ui/separator';
-import {
-  User,
-  Bell,
-  Palette,
-  Users,
-  Shield,
-  Github,
-  Mail,
-  Trash2,
-} from 'lucide-react';
+import { User, Bell, Palette, Users, Shield, Github, Mail, Trash2 } from 'lucide-react';
 import { useTheme } from '../lib/theme-context';
 import { toast } from 'sonner';
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from './ui/alert-dialog';
-import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents, getRotationHistory, adminBanUser, adminSetUsername, setAdminTokenSession, getAdminTokenSession, inviteToTeam, getOrganizations, createOrganization, updateOrganization, deleteOrganization, transferOrgOwnership, listTeams, createTeam, listMembers, changeRole, transferTeamOwnership, leaveTeam, getSessions, revokeSession, renameSession, revokeOtherSessions, changeEmail, changePassword, deleteAccount } from '../lib/api';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from './ui/alert-dialog';
+import {
+  getCurrentUser,
+  getCurrentUserFromAPI,
+  updateUser,
+  getNotifications,
+  getUnreadNotificationCount,
+  adminUnlock,
+  getLockoutState,
+  getSecurityEvents,
+  getRotationHistory,
+  adminBanUser,
+  adminSetUsername,
+  setAdminTokenSession,
+  getAdminTokenSession,
+  inviteToTeam,
+  getOrganizations,
+  createOrganization,
+  updateOrganization,
+  deleteOrganization,
+  transferOrgOwnership,
+  listTeams,
+  createTeam,
+  listMembers,
+  changeRole,
+  transferTeamOwnership,
+  leaveTeam,
+  getSessions,
+  revokeSession,
+  renameSession,
+  revokeOtherSessions,
+  changeEmail,
+  changePassword,
+  deleteAccount,
+} from '../lib/api';
 
 export function SettingsScreen() {
   const [activeSection, setActiveSection] = useState('profile');
@@ -28,9 +62,11 @@ export function SettingsScreen() {
 
   useEffect(() => {
     if (!user) {
-      getCurrentUserFromAPI().then((u) => {
-        if (u) setUser(u);
-      }).catch(() => {});
+      getCurrentUserFromAPI()
+        .then((u) => {
+          if (u) setUser(u);
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -90,7 +126,9 @@ export function SettingsScreen() {
 
           {/* Content */}
           <div className="lg:col-span-3">
-            {activeSection === 'profile' && <ProfileSection user={user} onUserUpdated={(u) => setUser(u)} />}
+            {activeSection === 'profile' && (
+              <ProfileSection user={user} onUserUpdated={(u) => setUser(u)} />
+            )}
             {activeSection === 'appearance' && <AppearanceSection />}
             {activeSection === 'notifications' && <NotificationsSection />}
             {activeSection === 'organizations' && <OrganizationSection />}
@@ -110,7 +148,13 @@ export function SettingsScreen() {
   );
 }
 
-function ProfileSection({ user, onUserUpdated }: { user: any | null; onUserUpdated: (u: any) => void; }) {
+function ProfileSection({
+  user,
+  onUserUpdated,
+}: {
+  user: any | null;
+  onUserUpdated: (u: any) => void;
+}) {
   const [username, setUsername] = useState<string>(user?.username || '');
   const [email, setEmail] = useState<string>(user?.email || '');
   const [avatarPreview, setAvatarPreview] = useState<string>(user?.avatar || '');
@@ -162,9 +206,23 @@ function ProfileSection({ user, onUserUpdated }: { user: any | null; onUserUpdat
             <Badge variant="secondary">Unverified</Badge>
           )}
           {!user?.isVerified && (
-            <Button variant="outline" size="sm" onClick={() => { try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email: user?.email } })); } catch {} }}>Verify email</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                try {
+                  window.dispatchEvent(
+                    new CustomEvent('auth:needs_verification', { detail: { email: user?.email } })
+                  );
+                } catch {}
+              }}
+            >
+              Verify email
+            </Button>
           )}
-          <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">Save changes</Button>
+          <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            Save changes
+          </Button>
         </div>
       </div>
       <div className="flex items-center gap-4">
@@ -173,8 +231,16 @@ function ProfileSection({ user, onUserUpdated }: { user: any | null; onUserUpdat
           <AvatarFallback className="text-sm">{initials}</AvatarFallback>
         </Avatar>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleAvatarClick}>Change avatar</Button>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+          <Button variant="outline" size="sm" onClick={handleAvatarClick}>
+            Change avatar
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
         </div>
       </div>
 
@@ -231,14 +297,8 @@ function AppearanceSection() {
         <Separator />
 
         <div className="space-y-4">
-          <SettingToggle
-            label="Compact mode"
-            description="Reduce spacing for a denser layout"
-          />
-          <SettingToggle
-            label="Reduce motion"
-            description="Minimize animations and transitions"
-          />
+          <SettingToggle label="Compact mode" description="Reduce spacing for a denser layout" />
+          <SettingToggle label="Reduce motion" description="Minimize animations and transitions" />
         </div>
       </div>
     </Card>
@@ -281,10 +341,7 @@ function NotificationsSection() {
               description="Show notifications on your desktop"
               defaultChecked
             />
-            <SettingToggle
-              label="Sound"
-              description="Play a sound for new notifications"
-            />
+            <SettingToggle label="Sound" description="Play a sound for new notifications" />
           </div>
         </div>
       </div>
@@ -299,7 +356,9 @@ function OrganizationSection() {
   const [editing, setEditing] = useState<Record<number, string>>({});
   const [transfers, setTransfers] = useState<Record<number, string>>({});
 
-  useEffect(() => { loadOrgs(); }, []);
+  useEffect(() => {
+    loadOrgs();
+  }, []);
 
   async function loadOrgs() {
     setLoading(true);
@@ -308,12 +367,17 @@ function OrganizationSection() {
       setOrgs(Array.isArray(list) ? list : []);
     } catch (e: any) {
       toast.error(e?.message || 'Failed to load organizations');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleCreate() {
     const name = newOrgName.trim();
-    if (!name) { toast.error('Enter organization name'); return; }
+    if (!name) {
+      toast.error('Enter organization name');
+      return;
+    }
     try {
       await createOrganization(name);
       toast.success('Organization created');
@@ -326,7 +390,10 @@ function OrganizationSection() {
 
   async function handleUpdate(id: number) {
     const name = (editing[id] || '').trim();
-    if (!name) { toast.error('Enter a name'); return; }
+    if (!name) {
+      toast.error('Enter a name');
+      return;
+    }
     try {
       await updateOrganization(id, name);
       toast.success('Organization updated');
@@ -348,7 +415,10 @@ function OrganizationSection() {
 
   async function handleTransfer(id: number) {
     const newOwnerUserId = Number(transfers[id] || '');
-    if (!newOwnerUserId) { toast.error('Enter new owner userId'); return; }
+    if (!newOwnerUserId) {
+      toast.error('Enter new owner userId');
+      return;
+    }
     try {
       await transferOrgOwnership(id, newOwnerUserId);
       toast.success('Ownership transferred');
@@ -363,8 +433,18 @@ function OrganizationSection() {
     <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
       <h3 className="text-slate-900 dark:text-white mb-4">Organizations</h3>
       <div className="mb-6 flex gap-2">
-        <Input placeholder="New organization name" value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} />
-        <Button onClick={handleCreate} disabled={loading || !newOrgName.trim()} className="bg-indigo-600 text-white">Create</Button>
+        <Input
+          placeholder="New organization name"
+          value={newOrgName}
+          onChange={(e) => setNewOrgName(e.target.value)}
+        />
+        <Button
+          onClick={handleCreate}
+          disabled={loading || !newOrgName.trim()}
+          className="bg-indigo-600 text-white"
+        >
+          Create
+        </Button>
       </div>
       {orgs.length === 0 ? (
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -373,15 +453,33 @@ function OrganizationSection() {
       ) : (
         <div className="space-y-4">
           {orgs.map((org: any) => (
-            <div key={org.id} className="rounded-md border border-slate-200 dark:border-slate-800 p-4">
+            <div
+              key={org.id}
+              className="rounded-md border border-slate-200 dark:border-slate-800 p-4"
+            >
               <div className="flex items-center gap-3">
-                <Input className="flex-1" value={editing[org.id] ?? org.name} onChange={(e) => setEditing((s) => ({ ...s, [org.id]: e.target.value }))} />
-                <Button variant="outline" onClick={() => handleUpdate(org.id)}>Update</Button>
-                <Button variant="destructive" onClick={() => handleDelete(org.id)}><Trash2 className="w-4 h-4 mr-1" />Delete</Button>
+                <Input
+                  className="flex-1"
+                  value={editing[org.id] ?? org.name}
+                  onChange={(e) => setEditing((s) => ({ ...s, [org.id]: e.target.value }))}
+                />
+                <Button variant="outline" onClick={() => handleUpdate(org.id)}>
+                  Update
+                </Button>
+                <Button variant="destructive" onClick={() => handleDelete(org.id)}>
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete
+                </Button>
               </div>
               <div className="mt-3 flex items-center gap-2">
-                <Input placeholder="New owner userId" value={transfers[org.id] ?? ''} onChange={(e) => setTransfers((s) => ({ ...s, [org.id]: e.target.value }))} />
-                <Button variant="outline" onClick={() => handleTransfer(org.id)}>Transfer ownership</Button>
+                <Input
+                  placeholder="New owner userId"
+                  value={transfers[org.id] ?? ''}
+                  onChange={(e) => setTransfers((s) => ({ ...s, [org.id]: e.target.value }))}
+                />
+                <Button variant="outline" onClick={() => handleTransfer(org.id)}>
+                  Transfer ownership
+                </Button>
               </div>
             </div>
           ))}
@@ -402,9 +500,11 @@ function TeamSection() {
     if (u) {
       setMembers([u]);
     } else {
-      getCurrentUserFromAPI().then((cu) => {
-        if (cu) setMembers([cu]);
-      }).catch(() => {});
+      getCurrentUserFromAPI()
+        .then((cu) => {
+          if (cu) setMembers([cu]);
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -456,7 +556,10 @@ function TeamSection() {
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={sending}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleSendInvite} disabled={sending || !identifier.trim()}>
+              <AlertDialogAction
+                onClick={handleSendInvite}
+                disabled={sending || !identifier.trim()}
+              >
                 {sending ? 'Sending…' : 'Send Invite'}
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -477,10 +580,16 @@ function TeamSection() {
             >
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarFallback className="text-sm">{String((member?.username || member?.email || 'U')).slice(0,2).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="text-sm">
+                    {String(member?.username || member?.email || 'U')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="text-slate-900 dark:text-white">{member?.username || member?.email}</div>
+                  <div className="text-slate-900 dark:text-white">
+                    {member?.username || member?.email}
+                  </div>
                   {member?.email && (
                     <div className="text-slate-600 dark:text-slate-400 text-xs">{member.email}</div>
                   )}
@@ -499,7 +608,7 @@ function AccountSection() {
   const [changingEmail, setChangingEmail] = useState(false);
   const [changeMsg, setChangeMsg] = useState<string | null>(null);
   const [changeErr, setChangeErr] = useState<string | null>(null);
-  
+
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -507,14 +616,16 @@ function AccountSection() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<string | null>(null);
   const [passwordErr, setPasswordErr] = useState<string | null>(null);
-  
+
   // Account deletion state
   const [deletePassword, setDeletePassword] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   async function handleChangeEmail() {
-    setChangingEmail(true); setChangeErr(null); setChangeMsg(null);
+    setChangingEmail(true);
+    setChangeErr(null);
+    setChangeMsg(null);
     try {
       const res = await changeEmail(newEmail.trim());
       setChangeMsg('Email updated. Verification code sent.');
@@ -522,17 +633,27 @@ function AccountSection() {
         setChangeMsg(`Email updated. Code (dev): ${res.devCode}`);
       }
       toast.success('Email updated. Check your inbox for the code.');
-      try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email: newEmail.trim().toLowerCase() } })); } catch {}
+      try {
+        window.dispatchEvent(
+          new CustomEvent('auth:needs_verification', {
+            detail: { email: newEmail.trim().toLowerCase() },
+          })
+        );
+      } catch {}
       setNewEmail('');
     } catch (e: any) {
       setChangeErr(e?.message || 'Failed to change email');
       toast.error(e?.message || 'Failed to change email');
-    } finally { setChangingEmail(false); }
+    } finally {
+      setChangingEmail(false);
+    }
   }
 
   async function handleChangePassword() {
-    setChangingPassword(true); setPasswordErr(null); setPasswordMsg(null);
-    
+    setChangingPassword(true);
+    setPasswordErr(null);
+    setPasswordMsg(null);
+
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
       setPasswordErr('All password fields are required');
@@ -560,7 +681,9 @@ function AccountSection() {
     } catch (e: any) {
       setPasswordErr(e?.message || 'Failed to change password');
       toast.error(e?.message || 'Failed to change password');
-    } finally { setChangingPassword(false); }
+    } finally {
+      setChangingPassword(false);
+    }
   }
 
   async function handleDeleteAccount() {
@@ -591,14 +714,29 @@ function AccountSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label className="mb-2 block">New email</Label>
-            <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="new@example.com" />
+            <Input
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder="new@example.com"
+            />
           </div>
         </div>
         <Separator className="my-6" />
         <div className="flex items-center gap-2">
-          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleChangeEmail} disabled={changingEmail || !newEmail.trim()}>Change email & send code</Button>
-          {!changingEmail && changeMsg && (<span className="text-xs text-slate-600 dark:text-slate-400">{changeMsg}</span>)}
-          {!changingEmail && changeErr && (<span className="text-xs text-red-600 dark:text-red-400">{changeErr}</span>)}
+          <Button
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            onClick={handleChangeEmail}
+            disabled={changingEmail || !newEmail.trim()}
+          >
+            Change email & send code
+          </Button>
+          {!changingEmail && changeMsg && (
+            <span className="text-xs text-slate-600 dark:text-slate-400">{changeMsg}</span>
+          )}
+          {!changingEmail && changeErr && (
+            <span className="text-xs text-red-600 dark:text-red-400">{changeErr}</span>
+          )}
         </div>
       </Card>
 
@@ -606,30 +744,36 @@ function AccountSection() {
         <h3 className="text-slate-900 dark:text-white mb-6">Password</h3>
         <div className="space-y-4">
           <div>
-            <Label htmlFor="current-password" className="mb-2 block">Current password</Label>
-            <Input 
-              id="current-password" 
-              type="password" 
+            <Label htmlFor="current-password" className="mb-2 block">
+              Current password
+            </Label>
+            <Input
+              id="current-password"
+              type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder="Enter current password"
             />
           </div>
           <div>
-            <Label htmlFor="new-password" className="mb-2 block">New password</Label>
-            <Input 
-              id="new-password" 
-              type="password" 
+            <Label htmlFor="new-password" className="mb-2 block">
+              New password
+            </Label>
+            <Input
+              id="new-password"
+              type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Enter new password (min 6 characters)"
             />
           </div>
           <div>
-            <Label htmlFor="confirm-password" className="mb-2 block">Confirm password</Label>
-            <Input 
-              id="confirm-password" 
-              type="password" 
+            <Label htmlFor="confirm-password" className="mb-2 block">
+              Confirm password
+            </Label>
+            <Input
+              id="confirm-password"
+              type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm new password"
@@ -638,15 +782,19 @@ function AccountSection() {
         </div>
         <Separator className="my-6" />
         <div className="flex items-center gap-2">
-          <Button 
-            className="bg-indigo-600 hover:bg-indigo-700 text-white" 
+          <Button
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
             onClick={handleChangePassword}
             disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
           >
             {changingPassword ? 'Updating...' : 'Update password'}
           </Button>
-          {!changingPassword && passwordMsg && (<span className="text-xs text-green-600 dark:text-green-400">{passwordMsg}</span>)}
-          {!changingPassword && passwordErr && (<span className="text-xs text-red-600 dark:text-red-400">{passwordErr}</span>)}
+          {!changingPassword && passwordMsg && (
+            <span className="text-xs text-green-600 dark:text-green-400">{passwordMsg}</span>
+          )}
+          {!changingPassword && passwordErr && (
+            <span className="text-xs text-red-600 dark:text-red-400">{passwordErr}</span>
+          )}
         </div>
       </Card>
 
@@ -662,7 +810,11 @@ function AccountSection() {
             </div>
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950"
+                >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete
                 </Button>
@@ -671,7 +823,8 @@ function AccountSection() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Account</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+                    This action cannot be undone. This will permanently delete your account and
+                    remove all your data from our servers.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="py-4">
@@ -687,7 +840,9 @@ function AccountSection() {
                   />
                 </div>
                 <AlertDialogFooter>
-                  <AlertDialogCancel onClick={() => setDeletePassword('')}>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel onClick={() => setDeletePassword('')}>
+                    Cancel
+                  </AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleDeleteAccount}
                     disabled={deletingAccount || !deletePassword.trim()}
@@ -759,8 +914,8 @@ function AdminSection() {
   const disabledReason = !adminToken
     ? 'Enter your Admin Token to enable actions.'
     : !targetEmail
-    ? 'Enter a Target Email to enable actions.'
-    : null;
+      ? 'Enter a Target Email to enable actions.'
+      : null;
 
   useEffect(() => {
     try {
@@ -769,22 +924,30 @@ function AdminSection() {
     } catch {}
   }, []);
   useEffect(() => {
-    try { if (adminToken) setAdminTokenSession(adminToken); } catch {}
+    try {
+      if (adminToken) setAdminTokenSession(adminToken);
+    } catch {}
   }, [adminToken]);
 
   async function fetchLockout() {
-    setLoading(true); setError(null); setMessage(null);
+    setLoading(true);
+    setError(null);
+    setMessage(null);
     try {
       const state = await getLockoutState(targetEmail.trim(), adminToken.trim());
       setLockoutState(state || null);
       setMessage('Fetched lockout state');
     } catch (e: any) {
       setError(e?.message || 'Failed to fetch lockout state');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function fetchEvents() {
-    setLoading(true); setError(null); setMessage(null);
+    setLoading(true);
+    setError(null);
+    setMessage(null);
     try {
       const list = await getSecurityEvents(targetEmail.trim(), adminToken.trim(), {
         type: typeFilter || undefined,
@@ -797,11 +960,15 @@ function AdminSection() {
       setMessage('Fetched recent events');
     } catch (e: any) {
       setError(e?.message || 'Failed to fetch events');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function fetchRotationHistory() {
-    setLoading(true); setError(null); setMessage(null);
+    setLoading(true);
+    setError(null);
+    setMessage(null);
     try {
       const list = await getRotationHistory(targetEmail.trim(), adminToken.trim(), {
         from: from || undefined,
@@ -812,26 +979,37 @@ function AdminSection() {
       setMessage('Fetched rotation history');
     } catch (e: any) {
       setError(e?.message || 'Failed to fetch rotation history');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function doUnlock() {
-    setLoading(true); setError(null); setMessage(null);
+    setLoading(true);
+    setError(null);
+    setMessage(null);
     try {
       await adminUnlock(targetEmail.trim(), adminToken.trim());
       setMessage('Account unlocked');
     } catch (e: any) {
       setError(e?.message || 'Failed to unlock');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function doBan() {
-    setLoading(true); setError(null); setMessage(null);
+    setLoading(true);
+    setError(null);
+    setMessage(null);
     try {
       const ok = window.confirm(
         `Ban this user and purge their account?\n\nTarget: ${targetEmail}\nReason: ${banReason || 'None provided'}\n\nThis action cannot be undone.`
       );
-      if (!ok) { setLoading(false); return; }
+      if (!ok) {
+        setLoading(false);
+        return;
+      }
       await adminBanUser(targetEmail.trim(), adminToken.trim(), banReason || undefined);
       setMessage('User banned and account purged (email remains banned)');
       setLockoutState(null);
@@ -839,28 +1017,39 @@ function AdminSection() {
       setRotations([]);
     } catch (e: any) {
       setError(e?.message || 'Failed to ban user');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function doChangeUsername() {
-    setLoading(true); setError(null); setMessage(null);
+    setLoading(true);
+    setError(null);
+    setMessage(null);
     try {
       if (!newUsername.trim()) throw new Error('New username required');
       const ok = window.confirm(
         `Change username for ${targetEmail}?\n\nNew username: ${newUsername.trim()}\n\nProceed?`
       );
-      if (!ok) { setLoading(false); return; }
+      if (!ok) {
+        setLoading(false);
+        return;
+      }
       await adminSetUsername(targetEmail.trim(), newUsername.trim(), adminToken.trim());
       setMessage('Username updated');
     } catch (e: any) {
       setError(e?.message || 'Failed to change username');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
       <h3 className="text-slate-900 dark:text-white mb-2">Admin Controls</h3>
-      <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">Restricted to planara account (hello@planara.org). Requires admin token.</p>
+      <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+        Restricted to planara account (hello@planara.org). Requires admin token.
+      </p>
 
       <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30 p-4 mb-6">
         <p className="text-sm font-medium mb-2">Quick Guide</p>
@@ -870,20 +1059,37 @@ function AdminSection() {
           <li>Step 3: Inspect events or lockout state.</li>
           <li>Step 4: Perform Account Actions (Unlock, Ban, Change Username).</li>
         </ol>
-        <p className="text-xs mt-2 text-slate-600 dark:text-slate-400">Banning removes the account and blocks future signups for that email. All actions are logged to security events.</p>
+        <p className="text-xs mt-2 text-slate-600 dark:text-slate-400">
+          Banning removes the account and blocks future signups for that email. All actions are
+          logged to security events.
+        </p>
       </div>
 
       <h4 className="text-sm text-slate-900 dark:text-white mb-2">Step 1 — Admin Token</h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label className="mb-1 block">Admin Token</Label>
-          <Input type="password" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} placeholder="Paste admin token here" />
-          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Ask a senior admin for the token. Keep it secret.</p>
+          <Input
+            type="password"
+            value={adminToken}
+            onChange={(e) => setAdminToken(e.target.value)}
+            placeholder="Paste admin token here"
+          />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">
+            Ask a senior admin for the token. Keep it secret.
+          </p>
         </div>
         <div>
           <Label className="mb-1 block">Target Email</Label>
-          <Input type="email" value={targetEmail} onChange={(e) => setTargetEmail(e.target.value)} placeholder="user@example.com" />
-          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Enter the exact email of the user you want to manage.</p>
+          <Input
+            type="email"
+            value={targetEmail}
+            onChange={(e) => setTargetEmail(e.target.value)}
+            placeholder="user@example.com"
+          />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">
+            Enter the exact email of the user you want to manage.
+          </p>
         </div>
       </div>
 
@@ -893,18 +1099,38 @@ function AdminSection() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <Label className="mb-1 block">Event Type</Label>
-          <Input value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} placeholder="login_failed, verify_failed" />
-          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Leave empty to see all event types.</p>
+          <Input
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            placeholder="login_failed, verify_failed"
+          />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">
+            Leave empty to see all event types.
+          </p>
         </div>
         <div>
           <Label className="mb-1 block">IP Filter</Label>
-          <Input value={ipFilter} onChange={(e) => setIpFilter(e.target.value)} placeholder="203.0.113.5" />
-          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Limit results to a specific IP address.</p>
+          <Input
+            value={ipFilter}
+            onChange={(e) => setIpFilter(e.target.value)}
+            placeholder="203.0.113.5"
+          />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">
+            Limit results to a specific IP address.
+          </p>
         </div>
         <div>
           <Label className="mb-1 block">Limit</Label>
-          <Input type="number" min={1} max={500} value={limit} onChange={(e) => setLimit(Number(e.target.value || 50))} />
-          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">How many results to fetch (1–500).</p>
+          <Input
+            type="number"
+            min={1}
+            max={500}
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value || 50))}
+          />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">
+            How many results to fetch (1–500).
+          </p>
         </div>
         <div>
           <Label className="mb-1 block">From</Label>
@@ -917,10 +1143,22 @@ function AdminSection() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Button variant="outline" disabled={!hasPrereqs || loading} onClick={fetchLockout}>View Lockout State</Button>
-        <Button variant="outline" disabled={!hasPrereqs || loading} onClick={fetchEvents}>View Recent Events</Button>
-        <Button variant="outline" disabled={!hasPrereqs || loading} onClick={fetchRotationHistory}>View Rotation History</Button>
-        <Button className="bg-red-600 hover:bg-red-700 text-white" disabled={!hasPrereqs || loading} onClick={doUnlock}>Unlock Account</Button>
+        <Button variant="outline" disabled={!hasPrereqs || loading} onClick={fetchLockout}>
+          View Lockout State
+        </Button>
+        <Button variant="outline" disabled={!hasPrereqs || loading} onClick={fetchEvents}>
+          View Recent Events
+        </Button>
+        <Button variant="outline" disabled={!hasPrereqs || loading} onClick={fetchRotationHistory}>
+          View Rotation History
+        </Button>
+        <Button
+          className="bg-red-600 hover:bg-red-700 text-white"
+          disabled={!hasPrereqs || loading}
+          onClick={doUnlock}
+        >
+          Unlock Account
+        </Button>
       </div>
       {!hasPrereqs && (
         <p className="text-xs mt-2 text-slate-600 dark:text-slate-400">{disabledReason}</p>
@@ -932,27 +1170,53 @@ function AdminSection() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label className="mb-1 block">Ban Reason (optional)</Label>
-          <Input value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Why are you banning this user?" />
-          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Adds a note to the security log; useful for audits.</p>
+          <Input
+            value={banReason}
+            onChange={(e) => setBanReason(e.target.value)}
+            placeholder="Why are you banning this user?"
+          />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">
+            Adds a note to the security log; useful for audits.
+          </p>
         </div>
         <div>
           <Label className="mb-1 block">New Username</Label>
-          <Input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="new_username" />
-          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">Choose a simple, unique name. User can change later.</p>
+          <Input
+            value={newUsername}
+            onChange={(e) => setNewUsername(e.target.value)}
+            placeholder="new_username"
+          />
+          <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">
+            Choose a simple, unique name. User can change later.
+          </p>
         </div>
       </div>
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Button className="bg-red-600 hover:bg-red-700 text-white" disabled={!hasPrereqs || loading} onClick={doBan}>Ban user and purge account</Button>
-        <Button disabled={!hasPrereqs || loading || !newUsername.trim()} onClick={doChangeUsername}>Change account username</Button>
+        <Button
+          className="bg-red-600 hover:bg-red-700 text-white"
+          disabled={!hasPrereqs || loading}
+          onClick={doBan}
+        >
+          Ban user and purge account
+        </Button>
+        <Button disabled={!hasPrereqs || loading || !newUsername.trim()} onClick={doChangeUsername}>
+          Change account username
+        </Button>
       </div>
 
       {message && (
-        <div role="alert" className="mt-6 rounded-md border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-200 p-3 text-sm">
+        <div
+          role="alert"
+          className="mt-6 rounded-md border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-200 p-3 text-sm"
+        >
           {message}
         </div>
       )}
       {error && (
-        <div role="alert" className="mt-6 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200 p-3 text-sm">
+        <div
+          role="alert"
+          className="mt-6 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200 p-3 text-sm"
+        >
           {error}
         </div>
       )}
@@ -960,7 +1224,9 @@ function AdminSection() {
       {lockoutState && (
         <div className="mt-6 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
           <h4 className="text-sm text-slate-900 dark:text-white mb-2">Lockout State</h4>
-          <pre className="text-xs overflow-auto max-h-64 bg-slate-50 dark:bg-slate-900/30 p-3 rounded-md">{JSON.stringify(lockoutState, null, 2)}</pre>
+          <pre className="text-xs overflow-auto max-h-64 bg-slate-50 dark:bg-slate-900/30 p-3 rounded-md">
+            {JSON.stringify(lockoutState, null, 2)}
+          </pre>
         </div>
       )}
 
@@ -971,23 +1237,33 @@ function AdminSection() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-3">
                 <div className="text-xs text-slate-600 dark:text-slate-400">Uploaded</div>
-                <div className="text-lg text-slate-900 dark:text-white">{fileCounts.file_uploaded}</div>
+                <div className="text-lg text-slate-900 dark:text-white">
+                  {fileCounts.file_uploaded}
+                </div>
               </Card>
               <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-3">
                 <div className="text-xs text-slate-600 dark:text-slate-400">Deleted</div>
-                <div className="text-lg text-slate-900 dark:text-white">{fileCounts.file_deleted}</div>
+                <div className="text-lg text-slate-900 dark:text-white">
+                  {fileCounts.file_deleted}
+                </div>
               </Card>
               <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-3">
                 <div className="text-xs text-slate-600 dark:text-slate-400">Previewed</div>
-                <div className="text-lg text-slate-900 dark:text-white">{fileCounts.file_previewed}</div>
+                <div className="text-lg text-slate-900 dark:text-white">
+                  {fileCounts.file_previewed}
+                </div>
               </Card>
               <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-3">
                 <div className="text-xs text-slate-600 dark:text-slate-400">Upload Failed</div>
-                <div className="text-lg text-slate-900 dark:text-white">{fileCounts.file_upload_failed}</div>
+                <div className="text-lg text-slate-900 dark:text-white">
+                  {fileCounts.file_upload_failed}
+                </div>
               </Card>
               <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-3">
                 <div className="text-xs text-slate-600 dark:text-slate-400">Rolled Back</div>
-                <div className="text-lg text-slate-900 dark:text-white">{fileCounts.file_version_rolled_back}</div>
+                <div className="text-lg text-slate-900 dark:text-white">
+                  {fileCounts.file_version_rolled_back}
+                </div>
               </Card>
             </div>
           </div>
@@ -996,27 +1272,30 @@ function AdminSection() {
             <h4 className="text-sm text-slate-900 dark:text-white mb-2">Recent Security Events</h4>
             <div className="overflow-auto">
               <table className="w-full text-left text-xs">
-              <thead className="text-slate-600 dark:text-slate-400">
-                <tr>
-                  <th className="py-2">Type</th>
-                  <th className="py-2">Email</th>
-                  <th className="py-2">IP</th>
-                  <th className="py-2">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((ev: any, i: number) => (
-                  <tr key={ev?.id || i} className="border-t border-slate-100 dark:border-slate-800">
-                    <td className="py-2">{ev?.eventType}</td>
-                    <td className="py-2">{ev?.email || ''}</td>
-                    <td className="py-2">{ev?.ip || ''}</td>
-                    <td className="py-2">{new Date(ev?.createdAt).toLocaleString()}</td>
+                <thead className="text-slate-600 dark:text-slate-400">
+                  <tr>
+                    <th className="py-2">Type</th>
+                    <th className="py-2">Email</th>
+                    <th className="py-2">IP</th>
+                    <th className="py-2">Time</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {events.map((ev: any, i: number) => (
+                    <tr
+                      key={ev?.id || i}
+                      className="border-t border-slate-100 dark:border-slate-800"
+                    >
+                      <td className="py-2">{ev?.eventType}</td>
+                      <td className="py-2">{ev?.email || ''}</td>
+                      <td className="py-2">{ev?.ip || ''}</td>
+                      <td className="py-2">{new Date(ev?.createdAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
         </>
       )}
 
@@ -1055,16 +1334,21 @@ function SecuritySection() {
   const [error, setError] = useState<string | null>(null);
 
   async function loadSessions() {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
       const list = await getSessions();
       setSessions(Array.isArray(list) ? list : []);
     } catch (e: any) {
       setError(e?.message || 'Failed to load sessions');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
-  useEffect(() => { loadSessions(); }, []);
+  useEffect(() => {
+    loadSessions();
+  }, []);
 
   async function handleRename(id: number, currentName: string) {
     const deviceName = window.prompt('Rename device', currentName || '');
@@ -1105,7 +1389,9 @@ function SecuritySection() {
     try {
       const d = new Date(t);
       return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
-    } catch { return String(t); }
+    } catch {
+      return String(t);
+    }
   }
 
   return (
@@ -1114,11 +1400,18 @@ function SecuritySection() {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-slate-900 dark:text-white">Sessions</h3>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={loadSessions} disabled={loading}>Refresh</Button>
+            <Button variant="outline" onClick={loadSessions} disabled={loading}>
+              Refresh
+            </Button>
           </div>
         </div>
         {error && (
-          <div role="alert" className="mb-4 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200 p-3 text-sm">{error}</div>
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200 p-3 text-sm"
+          >
+            {error}
+          </div>
         )}
         {loading ? (
           <p className="text-sm text-slate-600 dark:text-slate-400">Loading sessions...</p>
@@ -1127,20 +1420,49 @@ function SecuritySection() {
         ) : (
           <div className="space-y-2">
             {sessions.map((s: any) => (
-              <div key={s?.id} className="flex items-start justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div
+                key={s?.id}
+                className="flex items-start justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700"
+              >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-900 dark:text-white font-medium">{s?.deviceName || 'Unnamed device'}</span>
-                    {s?.revokedAt && (<Badge variant="secondary">Revoked</Badge>)}
-                    {s?.isCurrent && (<Badge className="bg-indigo-600 text-white">Current</Badge>)}
+                    <span className="text-slate-900 dark:text-white font-medium">
+                      {s?.deviceName || 'Unnamed device'}
+                    </span>
+                    {s?.revokedAt && <Badge variant="secondary">Revoked</Badge>}
+                    {s?.isCurrent && <Badge className="bg-indigo-600 text-white">Current</Badge>}
                   </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400">IP: {s?.ip || 'unknown'} | UA: {String(s?.userAgent || '').slice(0, 80)}{String(s?.userAgent || '').length > 80 ? '…' : ''}</div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400">Created: {formatTime(s?.createdAt)} | Last used: {formatTime(s?.lastUsedAt)}</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    IP: {s?.ip || 'unknown'} | UA: {String(s?.userAgent || '').slice(0, 80)}
+                    {String(s?.userAgent || '').length > 80 ? '…' : ''}
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    Created: {formatTime(s?.createdAt)} | Last used: {formatTime(s?.lastUsedAt)}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleRename(Number(s?.id), String(s?.deviceName || ''))}>Rename</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleRevoke(Number(s?.id))} disabled={Boolean(s?.revokedAt)}>Revoke</Button>
-                  <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => handleRevokeOthers(Number(s?.id))}>Revoke others</Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRename(Number(s?.id), String(s?.deviceName || ''))}
+                  >
+                    Rename
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRevoke(Number(s?.id))}
+                    disabled={Boolean(s?.revokedAt)}
+                  >
+                    Revoke
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    onClick={() => handleRevokeOthers(Number(s?.id))}
+                  >
+                    Revoke others
+                  </Button>
                 </div>
               </div>
             ))}

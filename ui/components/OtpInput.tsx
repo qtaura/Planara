@@ -47,7 +47,9 @@ export function OtpInput({ length = 6, value, onChange, disabled, autoFocus }: O
         return (
           <input
             key={idx}
-            ref={(el) => { if (el) refs.current[idx] = el; }}
+            ref={(el) => {
+              if (el) refs.current[idx] = el;
+            }}
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"

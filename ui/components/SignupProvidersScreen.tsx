@@ -12,7 +12,11 @@ interface SignupProvidersScreenProps {
   onSkip: () => void;
 }
 
-export function SignupProvidersScreen({ onChooseEmail, onChooseProvider, onSkip }: SignupProvidersScreenProps) {
+export function SignupProvidersScreen({
+  onChooseEmail,
+  onChooseProvider,
+  onSkip,
+}: SignupProvidersScreenProps) {
   // Listen for OAuth completion messages from popup
   useEffect(() => {
     const handler = (e: MessageEvent) => {
@@ -23,7 +27,11 @@ export function SignupProvidersScreen({ onChooseEmail, onChooseProvider, onSkip 
           toast.message('Check your email for a verification code');
           const email = data.email || data.user?.email;
           const needsUsername = !!data.created;
-          window.dispatchEvent(new CustomEvent('auth:verification_required', { detail: { email, needsUsername, provider: data.provider } }));
+          window.dispatchEvent(
+            new CustomEvent('auth:verification_required', {
+              detail: { email, needsUsername, provider: data.provider },
+            })
+          );
         } catch {}
         return;
       }
@@ -38,7 +46,11 @@ export function SignupProvidersScreen({ onChooseEmail, onChooseProvider, onSkip 
         if (!userVerified) {
           toast.message('Verify your email to finish signing in');
           try {
-            window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email: userEmail, needsUsername: isNewUser } }));
+            window.dispatchEvent(
+              new CustomEvent('auth:needs_verification', {
+                detail: { email: userEmail, needsUsername: isNewUser },
+              })
+            );
           } catch {}
           return;
         }
@@ -87,7 +99,9 @@ export function SignupProvidersScreen({ onChooseEmail, onChooseProvider, onSkip 
           </div>
 
           <h1 className="text-xl font-semibold mb-2">Welcome to Planara</h1>
-          <p className="text-slate-600 dark:text-slate-400 mb-6">Choose how you'd like to sign up and get started</p>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
+            Choose how you'd like to sign up and get started
+          </p>
 
           <div className="space-y-3">
             <Button

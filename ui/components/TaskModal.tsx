@@ -1,10 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -27,7 +22,18 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { Task } from '../types';
-import { updateTaskStatus, deleteTask, listMembers, getCurrentUser, listAttachments, uploadAttachment, deleteAttachment, getAttachmentPreviewUrl, listAttachmentVersions, rollbackAttachmentVersion } from '@lib/api';
+import {
+  updateTaskStatus,
+  deleteTask,
+  listMembers,
+  getCurrentUser,
+  listAttachments,
+  uploadAttachment,
+  deleteAttachment,
+  getAttachmentPreviewUrl,
+  listAttachmentVersions,
+  rollbackAttachmentVersion,
+} from '@lib/api';
 import { toast } from 'sonner';
 import CommentsPanel from './CommentsPanel';
 
@@ -52,7 +58,10 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
     async function loadAttachments() {
       if (!task) return;
       try {
-        const items = await listAttachments({ taskId: Number(task.id), teamId: teamId || undefined });
+        const items = await listAttachments({
+          taskId: Number(task.id),
+          teamId: teamId || undefined,
+        });
         setAttachments(items || []);
       } catch {}
     }
@@ -63,7 +72,10 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
     let cancelled = false;
     async function loadRole() {
       try {
-        if (!teamId) { setUserRole(null); return; }
+        if (!teamId) {
+          setUserRole(null);
+          return;
+        }
         const members = await listMembers(Number(teamId));
         const cu = getCurrentUser();
         const my = (members || []).find((m: any) => Number(m?.user?.id) === Number(cu?.id));
@@ -73,17 +85,22 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
       }
     }
     loadRole();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [teamId, isOpen]);
 
   if (!task) return null;
 
   const ROLE_ORDER: Record<string, number> = { viewer: 0, member: 1, admin: 2, owner: 3 };
-  const canUpdate = !teamId || (userRole ? (ROLE_ORDER[userRole] >= ROLE_ORDER['member']) : false);
-  const canDelete = !teamId || (userRole ? (ROLE_ORDER[userRole] >= ROLE_ORDER['admin']) : false);
+  const canUpdate = !teamId || (userRole ? ROLE_ORDER[userRole] >= ROLE_ORDER['member'] : false);
+  const canDelete = !teamId || (userRole ? ROLE_ORDER[userRole] >= ROLE_ORDER['admin'] : false);
 
   async function handleMarkDone() {
-    if (!canUpdate) { toast.error('Insufficient role to update tasks'); return; }
+    if (!canUpdate) {
+      toast.error('Insufficient role to update tasks');
+      return;
+    }
     setUpdating(true);
     try {
       await updateTaskStatus(task.id, 'done', teamId ?? undefined);
@@ -98,7 +115,10 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
   }
 
   async function handleDelete() {
-    if (!canDelete) { toast.error('Insufficient role to delete tasks'); return; }
+    if (!canDelete) {
+      toast.error('Insufficient role to delete tasks');
+      return;
+    }
     if (!confirm('Delete this task?')) return;
     setDeleting(true);
     try {
@@ -146,7 +166,11 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
   async function handleUpload(file: File) {
     try {
       setUploading(true);
-      const saved = await uploadAttachment({ file, taskId: Number(task.id), teamId: teamId || undefined });
+      const saved = await uploadAttachment({
+        file,
+        taskId: Number(task.id),
+        teamId: teamId || undefined,
+      });
       setAttachments((prev) => [saved, ...prev]);
       toast.success('File uploaded');
     } catch (e: any) {
@@ -169,7 +193,9 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
   async function openVersions(id: number) {
     try {
       const vers = await listAttachmentVersions(id);
-      setAttachments((prev) => prev.map((a) => (Number(a.id) === Number(id) ? { ...a, _versions: vers } : a)));
+      setAttachments((prev) =>
+        prev.map((a) => (Number(a.id) === Number(id) ? { ...a, _versions: vers } : a))
+      );
       setVersionsFor(id);
     } catch {}
   }
@@ -199,10 +225,10 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
                     task.priority === 'critical'
                       ? 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400'
                       : task.priority === 'high'
-                      ? 'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400'
-                      : task.priority === 'medium'
-                      ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        ? 'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400'
+                        : task.priority === 'medium'
+                          ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                   } border-0 text-xs`}
                 >
                   {task.priority}
@@ -349,9 +375,7 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
                   <div className="flex-1">
                     <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm text-slate-900 dark:text-white">
-                          Alex Chen
-                        </span>
+                        <span className="text-sm text-slate-900 dark:text-white">Alex Chen</span>
                         <span className="text-xs text-slate-500 dark:text-slate-400">
                           2 hours ago
                         </span>
@@ -381,7 +405,10 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
                   <div key={activity.id} className="flex gap-3 text-sm">
                     <Avatar className="h-6 w-6">
                       <AvatarFallback className="text-[10px] bg-slate-200 dark:bg-slate-700">
-                        {activity.user.split(' ').map(n => n[0]).join('')}
+                        {activity.user
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
@@ -413,7 +440,10 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
                         <AvatarFallback className="text-xs bg-slate-200 dark:bg-slate-700">
-                          {task.assignee.split(' ').map(n => n[0]).join('')}
+                          {task.assignee
+                            .split(' ')
+                            .map((n) => n[0])
+                            .join('')}
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm text-slate-900 dark:text-white">
@@ -457,9 +487,7 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
                     <span>Estimate</span>
                   </div>
                   {task.timeEstimate ? (
-                    <p className="text-sm text-slate-900 dark:text-white">
-                      {task.timeEstimate}
-                    </p>
+                    <p className="text-sm text-slate-900 dark:text-white">{task.timeEstimate}</p>
                   ) : (
                     <Button variant="outline" size="sm" className="w-full justify-start">
                       Add estimate
@@ -490,7 +518,9 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
               </div>
               <div
                 className={`border-2 border-dashed rounded-md p-3 text-xs ${uploading ? 'opacity-50' : ''}`}
-                onDragOver={(e) => { e.preventDefault(); }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                }}
                 onDrop={(e) => {
                   e.preventDefault();
                   if (!canUpdate) return;
@@ -499,27 +529,45 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
                 }}
               >
                 Drag & drop a file here or use the picker.
-                <div className="text-slate-500 mt-1">Allowed: PNG, JPEG, GIF, PDF, TXT. Max 10MB.</div>
+                <div className="text-slate-500 mt-1">
+                  Allowed: PNG, JPEG, GIF, PDF, TXT. Max 10MB.
+                </div>
               </div>
               <div className="mt-3 space-y-2">
                 {attachments.length === 0 && (
                   <div className="text-xs text-slate-500">No attachments</div>
                 )}
                 {attachments.map((a) => (
-                  <div key={a.id} className="flex items-center justify-between gap-3 p-2 bg-white/50 dark:bg-slate-900/40 rounded border border-slate-200 dark:border-slate-700">
+                  <div
+                    key={a.id}
+                    className="flex items-center justify-between gap-3 p-2 bg-white/50 dark:bg-slate-900/40 rounded border border-slate-200 dark:border-slate-700"
+                  >
                     <div className="flex items-center gap-2">
                       <ImageIcon className="w-4 h-4 text-slate-500" />
                       <div>
                         <div className="text-sm text-slate-900 dark:text-white">{a.filename}</div>
-                        <div className="text-xs text-slate-500">{(a.size/1024).toFixed(1)} KB • v{a.latestVersionNumber}</div>
+                        <div className="text-xs text-slate-500">
+                          {(a.size / 1024).toFixed(1)} KB • v{a.latestVersionNumber}
+                        </div>
                         {String(a.mimeType).startsWith('image/') && (
-                          <img src={getAttachmentPreviewUrl(Number(a.id), teamId || undefined)} alt={a.filename} className="mt-2 h-24 rounded" />
+                          <img
+                            src={getAttachmentPreviewUrl(Number(a.id), teamId || undefined)}
+                            alt={a.filename}
+                            className="mt-2 h-24 rounded"
+                          />
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => openVersions(Number(a.id))}>Versions</Button>
-                      <Button variant="ghost" size="sm" disabled={!canDelete} onClick={() => handleDeleteAttachment(Number(a.id))}>
+                      <Button variant="ghost" size="sm" onClick={() => openVersions(Number(a.id))}>
+                        Versions
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={!canDelete}
+                        onClick={() => handleDeleteAttachment(Number(a.id))}
+                      >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -529,14 +577,30 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
               {versionsFor && (
                 <div className="mt-3 p-2 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
                   <div className="flex items-center justify-between">
-                    <div className="text-xs text-slate-600 dark:text-slate-400">Version history</div>
-                    <Button variant="ghost" size="sm" onClick={() => setVersionsFor(null)}>Close</Button>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                      Version history
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setVersionsFor(null)}>
+                      Close
+                    </Button>
                   </div>
                   <div className="mt-2 space-y-2">
-                    {(attachments.find((x) => Number(x.id) === Number(versionsFor))?._versions || []).map((v: any) => (
+                    {(
+                      attachments.find((x) => Number(x.id) === Number(versionsFor))?._versions || []
+                    ).map((v: any) => (
                       <div key={v.id} className="flex items-center justify-between text-xs">
-                        <div>v{v.versionNumber} • {(v.size/1024).toFixed(1)} KB • {new Date(v.createdAt).toLocaleString()}</div>
-                        <Button variant="ghost" size="sm" disabled={!canDelete} onClick={() => handleRollback(Number(versionsFor), Number(v.versionNumber))}>
+                        <div>
+                          v{v.versionNumber} • {(v.size / 1024).toFixed(1)} KB •{' '}
+                          {new Date(v.createdAt).toLocaleString()}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={!canDelete}
+                          onClick={() =>
+                            handleRollback(Number(versionsFor), Number(v.versionNumber))
+                          }
+                        >
                           <RotateCcw className="w-3 h-3 mr-1" /> Roll back
                         </Button>
                       </div>

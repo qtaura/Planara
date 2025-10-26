@@ -44,8 +44,12 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         {/* Progress */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-3">
-            <span className="text-sm text-slate-600 dark:text-slate-400">Step {step} of {totalSteps}</span>
-            <span className="text-sm text-slate-600 dark:text-slate-400">{Math.round(progress)}%</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">
+              Step {step} of {totalSteps}
+            </span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">
+              {Math.round(progress)}%
+            </span>
           </div>
           <Progress value={progress} className="h-1.5" />
         </div>
@@ -107,7 +111,10 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
               <div className="space-y-5">
                 <div>
-                  <Label htmlFor="name" className="text-slate-700 dark:text-slate-300 mb-2 block text-sm">
+                  <Label
+                    htmlFor="name"
+                    className="text-slate-700 dark:text-slate-300 mb-2 block text-sm"
+                  >
                     Full name
                   </Label>
                   <Input
@@ -120,7 +127,10 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                 </div>
 
                 <div>
-                  <Label htmlFor="email" className="text-slate-700 dark:text-slate-300 mb-2 block text-sm">
+                  <Label
+                    htmlFor="email"
+                    className="text-slate-700 dark:text-slate-300 mb-2 block text-sm"
+                  >
                     Email address
                   </Label>
                   <Input
@@ -155,7 +165,9 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                 <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                   <div>
                     <Label className="text-slate-900 dark:text-white text-sm">Dark mode</Label>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Use dark theme by default</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Use dark theme by default
+                    </p>
                   </div>
                   <Switch
                     checked={formData.theme === 'dark'}
@@ -166,7 +178,9 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                 </div>
 
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <Label className="text-slate-900 dark:text-white mb-3 block text-sm">Default task view</Label>
+                  <Label className="text-slate-900 dark:text-white mb-3 block text-sm">
+                    Default task view
+                  </Label>
                   <div className="grid grid-cols-3 gap-2">
                     {['kanban', 'gantt', 'timeline'].map((view) => (
                       <button
@@ -179,9 +193,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                         }`}
                       >
                         <div className="flex items-center justify-center mb-2">
-                          {formData.defaultView === view && (
-                            <Check className="h-3 w-3" />
-                          )}
+                          {formData.defaultView === view && <Check className="h-3 w-3" />}
                         </div>
                         <p className="capitalize">{view}</p>
                       </button>
@@ -210,8 +222,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                 i === step
                   ? 'w-8 bg-indigo-600'
                   : i < step
-                  ? 'w-1.5 bg-indigo-600/50'
-                  : 'w-1.5 bg-slate-300 dark:bg-slate-700'
+                    ? 'w-1.5 bg-indigo-600/50'
+                    : 'w-1.5 bg-slate-300 dark:bg-slate-700'
               }`}
             />
           ))}

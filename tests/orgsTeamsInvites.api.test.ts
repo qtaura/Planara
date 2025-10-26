@@ -79,7 +79,9 @@ describe('Organizations, Teams, Invites and RBAC API', () => {
     const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     owner = await createUser(`owner${suffix}`, `owner${suffix}@example.com`, { verified: true });
     member = await createUser(`member${suffix}`, `member${suffix}@example.com`, { verified: true });
-    outsider = await createUser(`outsider${suffix}`, `outsider${suffix}@example.com`, { verified: true });
+    outsider = await createUser(`outsider${suffix}`, `outsider${suffix}@example.com`, {
+      verified: true,
+    });
     ownerToken = issueToken(owner.id);
     memberToken = issueToken(member.id);
     outsiderToken = issueToken(outsider.id);
@@ -188,7 +190,9 @@ describe('Organizations, Teams, Invites and RBAC API', () => {
       .set('Authorization', `Bearer ${memberToken}`) // now admin
       .send({ userId: owner.id, role: 'member' });
     expect([400, 403]).toContain(failDemote.status);
-    expect(String(failDemote.body?.error || '')).toMatch(/cannot demote the last owner|insufficient role/i);
+    expect(String(failDemote.body?.error || '')).toMatch(
+      /cannot demote the last owner|insufficient role/i
+    );
   });
 
   it('owner can transfer ownership; previous owner becomes admin', async () => {

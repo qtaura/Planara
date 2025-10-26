@@ -13,6 +13,7 @@
     "test:run": "npm run build:server && vitest run",
     "lint": "eslint . --ext .ts,.tsx,.js",
     "format:check": "prettier -c \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "gen:openapi": "openapi-typescript openapi/openapi.yaml -o ui/lib/openapi-types.ts",
     "seed": "tsx scripts/seed.ts"
   },

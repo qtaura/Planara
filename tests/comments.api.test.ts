@@ -76,7 +76,9 @@ describe('Comments API: mentions, replies, reactions', () => {
 
     const suffix = Date.now();
     owner = await createUser(`owner${suffix}`, `owner${suffix}@example.com`, { verified: true });
-    commenter = await createUser(`commenter${suffix}`, `commenter${suffix}@example.com`, { verified: true });
+    commenter = await createUser(`commenter${suffix}`, `commenter${suffix}@example.com`, {
+      verified: true,
+    });
     ownerToken = issueToken(owner.id);
     commenterToken = issueToken(commenter.id);
 

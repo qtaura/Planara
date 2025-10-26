@@ -3,14 +3,13 @@
  * Do not make direct changes to the file.
  */
 
-
 export interface paths {
-  "/api/users/signup": {
+  '/api/users/signup': {
     /** Signup */
     post: {
       requestBody: {
         content: {
-          "application/json": {
+          'application/json': {
             username: string;
             /** Format: email */
             email: string;
@@ -22,7 +21,7 @@ export interface paths {
         /** @description User created */
         200: {
           content: {
-            "application/json": {
+            'application/json': {
               id?: number;
               username?: string;
               email?: string;
@@ -36,12 +35,12 @@ export interface paths {
       };
     };
   };
-  "/api/users/login": {
+  '/api/users/login': {
     /** Login */
     post: {
       requestBody: {
         content: {
-          "application/json": {
+          'application/json': {
             usernameOrEmail: string;
             password: string;
           };
@@ -51,7 +50,7 @@ export interface paths {
         /** @description Tokens issued */
         200: {
           content: {
-            "application/json": {
+            'application/json': {
               token?: string;
               refreshToken?: string;
             };
@@ -64,12 +63,12 @@ export interface paths {
       };
     };
   };
-  "/api/users/auth/send-code": {
+  '/api/users/auth/send-code': {
     /** Send verification code */
     post: {
       requestBody: {
         content: {
-          "application/json": {
+          'application/json': {
             /** Format: email */
             email: string;
           };
@@ -83,12 +82,12 @@ export interface paths {
       };
     };
   };
-  "/api/users/auth/verify-code": {
+  '/api/users/auth/verify-code': {
     /** Verify code */
     post: {
       requestBody: {
         content: {
-          "application/json": {
+          'application/json': {
             /** Format: email */
             email: string;
             code: string;
@@ -107,12 +106,12 @@ export interface paths {
       };
     };
   };
-  "/api/users/auth/team/invite": {
+  '/api/users/auth/team/invite': {
     /** Invite user to team */
     post: {
       requestBody: {
         content: {
-          "application/json": {
+          'application/json': {
             /** @description Username or email */
             identifier: string;
           };
@@ -126,12 +125,12 @@ export interface paths {
       };
     };
   };
-  "/api/users/auth/team/accept": {
+  '/api/users/auth/team/accept': {
     /** Accept team invite */
     post: {
       requestBody: {
         content: {
-          "application/json": {
+          'application/json': {
             /** @description Inviter user id */
             from?: number | null;
             /** @description Team id */

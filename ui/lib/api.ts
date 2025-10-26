@@ -16,7 +16,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     const token = getToken();
     const headers = new Headers(init?.headers || {});
     if (token) headers.set('Authorization', `Bearer ${token}`);
-    
+
     let res: Response;
     try {
       res = await fetch(`${API_BASE}${path}`, { ...init, headers });
@@ -26,7 +26,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       }
       throw err;
     }
-    
+
     if (res.status === 401) {
       const refreshed = await refreshAccessToken().catch(() => null);
       if (refreshed) {
@@ -46,7 +46,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       }
       return res;
     }
-    
+
     if (res.status === 403) {
       try {
         const cloned = res.clone();
@@ -55,11 +55,15 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
         const errMsg = String(data?.error || '');
         if (errMsg.toLowerCase().includes('verification')) {
           const cu = getCurrentUser();
-          try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email: cu?.email } })); } catch {}
+          try {
+            window.dispatchEvent(
+              new CustomEvent('auth:needs_verification', { detail: { email: cu?.email } })
+            );
+          } catch {}
         }
       } catch {}
     }
-    
+
     return res;
   };
 
@@ -68,7 +72,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     const toastId = toast.loading('You appear to be offline. Waiting for connection...', {
       duration: Infinity,
     });
-    
+
     try {
       const result = await retryWhenOnline(makeRequest, { delayMs: 30000 });
       toast.dismiss(toastId);
@@ -86,14 +90,18 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     return await makeRequest();
   } catch (err: any) {
     // Handle transient network errors with retry
-    if (err.message?.includes('fetch') || err.message?.includes('network') || err.name === 'TypeError') {
+    if (
+      err.message?.includes('fetch') ||
+      err.message?.includes('network') ||
+      err.name === 'TypeError'
+    ) {
       const toastId = toast.loading('Network error detected. Retrying...', {
         duration: 3000,
       });
-      
+
       try {
         // Wait a bit and retry once
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         const result = await makeRequest();
         toast.dismiss(toastId);
         toast.success('Request completed after retry.');
@@ -104,50 +112,83 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
         throw retryError;
       }
     }
-    
+
     throw err;
   }
 }
 
 export function setToken(token: string) {
-  try { localStorage.setItem(TOKEN_KEY, token); } catch {}
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {}
 }
 export function getToken(): string | null {
-  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 export function clearToken() {
-  try { localStorage.removeItem(TOKEN_KEY); } catch {}
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {}
 }
 
 export function setRefreshToken(token: string) {
-  try { localStorage.setItem(REFRESH_TOKEN_KEY, token); } catch {}
+  try {
+    localStorage.setItem(REFRESH_TOKEN_KEY, token);
+  } catch {}
 }
 export function getRefreshToken(): string | null {
-  try { return localStorage.getItem(REFRESH_TOKEN_KEY); } catch { return null; }
+  try {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 export function clearRefreshToken() {
-  try { localStorage.removeItem(REFRESH_TOKEN_KEY); } catch {}
+  try {
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  } catch {}
 }
 
 export function setCurrentUser(user: any) {
-  try { localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user)); } catch {}
+  try {
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  } catch {}
 }
 export function getCurrentUser(): any | null {
-  try { const raw = localStorage.getItem(CURRENT_USER_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  try {
+    const raw = localStorage.getItem(CURRENT_USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }
 export function clearCurrentUser() {
-  try { localStorage.removeItem(CURRENT_USER_KEY); } catch {}
+  try {
+    localStorage.removeItem(CURRENT_USER_KEY);
+  } catch {}
 }
 
 // Admin token persistence for a session
 export function setAdminTokenSession(token: string) {
-  try { sessionStorage.setItem(ADMIN_TOKEN_KEY, token); } catch {}
+  try {
+    sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+  } catch {}
 }
 export function getAdminTokenSession(): string {
-  try { return sessionStorage.getItem(ADMIN_TOKEN_KEY) || ''; } catch { return ''; }
+  try {
+    return sessionStorage.getItem(ADMIN_TOKEN_KEY) || '';
+  } catch {
+    return '';
+  }
 }
 export function clearAdminTokenSession() {
-  try { sessionStorage.removeItem(ADMIN_TOKEN_KEY); } catch {}
+  try {
+    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  } catch {}
 }
 
 export function signOut() {
@@ -172,7 +213,6 @@ function decodeUserIdFromToken(token: string | null): number | null {
   }
 }
 
-
 export async function getUserById(id: number): Promise<any | null> {
   const res = await apiFetch(`/users`);
   if (!res.ok) throw new Error(`Failed to fetch users: ${res.status}`);
@@ -188,7 +228,16 @@ export async function getCurrentUserFromAPI(): Promise<any | null> {
   return user;
 }
 
-export async function updateUser(id: number, payload: Partial<{ username: string; email: string; password: string; teamId: number; avatar: string }>): Promise<any> {
+export async function updateUser(
+  id: number,
+  payload: Partial<{
+    username: string;
+    email: string;
+    password: string;
+    teamId: number;
+    avatar: string;
+  }>
+): Promise<any> {
   const res = await apiFetch(`/users/${encodeURIComponent(String(id))}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -295,7 +344,11 @@ export async function updateTask(taskId: string, payload: any): Promise<any> {
   return res.json();
 }
 
-export async function updateTaskStatus(taskId: string | number, status: string, teamId?: number): Promise<any> {
+export async function updateTaskStatus(
+  taskId: string | number,
+  status: string,
+  teamId?: number
+): Promise<any> {
   const payload = teamId ? { status, teamId } : { status };
   return updateTask(String(taskId), payload);
 }
@@ -310,7 +363,10 @@ export async function deleteTask(taskId: string, teamId?: number): Promise<boole
   return !!data?.ok;
 }
 
-export async function login(usernameOrEmail: string, password: string): Promise<{ token: string; user: any; refreshToken?: string }>{
+export async function login(
+  usernameOrEmail: string,
+  password: string
+): Promise<{ token: string; user: any; refreshToken?: string }> {
   // Improved error handling: normalize invalid credentials and network errors
   try {
     const res = await fetch(`${API_BASE}/users/login`, {
@@ -325,7 +381,9 @@ export async function login(usernameOrEmail: string, password: string): Promise<
         if (text) {
           const data = JSON.parse(text);
           if (typeof data?.error === 'string' && data.error) {
-            message = data.error.toLowerCase().includes('invalid') ? 'Incorrect username or password' : data.error;
+            message = data.error.toLowerCase().includes('invalid')
+              ? 'Incorrect username or password'
+              : data.error;
           }
         }
       } catch {}
@@ -342,7 +400,11 @@ export async function login(usernameOrEmail: string, password: string): Promise<
   }
 }
 
-export async function signup(payload: { username: string; email: string; password: string }): Promise<any> {
+export async function signup(payload: {
+  username: string;
+  email: string;
+  password: string;
+}): Promise<any> {
   try {
     const res = await fetch(`${API_BASE}/users/signup`, {
       method: 'POST',
@@ -390,7 +452,11 @@ export async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-export async function adminSetUsername(email: string, newUsername: string, adminToken: string): Promise<any> {
+export async function adminSetUsername(
+  email: string,
+  newUsername: string,
+  adminToken: string
+): Promise<any> {
   const res = await apiFetch('/users/admin/set-username', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
@@ -402,13 +468,28 @@ export async function adminSetUsername(email: string, newUsername: string, admin
 }
 
 // Notification API functions
-export async function getNotifications(filters?: { type?: string; channel?: string; read?: boolean; from?: string | Date; to?: string | Date; limit?: number }): Promise<any[]> {
+export async function getNotifications(filters?: {
+  type?: string;
+  channel?: string;
+  read?: boolean;
+  from?: string | Date;
+  to?: string | Date;
+  limit?: number;
+}): Promise<any[]> {
   const params = new URLSearchParams();
   if (filters?.type) params.set('type', filters.type);
   if (filters?.channel) params.set('channel', filters.channel);
   if (typeof filters?.read === 'boolean') params.set('read', String(filters.read));
-  if (filters?.from) params.set('from', typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString());
-  if (filters?.to) params.set('to', typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString());
+  if (filters?.from)
+    params.set(
+      'from',
+      typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString()
+    );
+  if (filters?.to)
+    params.set(
+      'to',
+      typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString()
+    );
   if (filters?.limit) params.set('limit', String(filters.limit));
   const query = params.toString();
   const res = await apiFetch(`/notifications${query ? `?${query}` : ''}`);
@@ -474,7 +555,6 @@ export async function deleteNotification(notificationId: number): Promise<boolea
   return !!data?.success;
 }
 
-
 export async function getProjectWithRelations(projectId: string): Promise<any | null> {
   const res = await apiFetch('/projects');
   if (!res.ok) throw new Error(`Failed to fetch project: ${res.status}`);
@@ -483,7 +563,9 @@ export async function getProjectWithRelations(projectId: string): Promise<any | 
 }
 
 export async function sendVerificationCode(email: string): Promise<any> {
-  const normalized = String(email || '').trim().toLowerCase();
+  const normalized = String(email || '')
+    .trim()
+    .toLowerCase();
   const res = await apiFetch('/users/auth/send-code', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -497,7 +579,9 @@ export async function sendVerificationCode(email: string): Promise<any> {
 }
 
 export async function verifyEmailCode(email: string, code: string): Promise<any> {
-  const normalized = String(email || '').trim().toLowerCase();
+  const normalized = String(email || '')
+    .trim()
+    .toLowerCase();
   const res = await apiFetch('/users/auth/verify-code', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -511,7 +595,9 @@ export async function verifyEmailCode(email: string, code: string): Promise<any>
 }
 
 export async function getVerificationStatus(email: string): Promise<any> {
-  const normalized = String(email || '').trim().toLowerCase();
+  const normalized = String(email || '')
+    .trim()
+    .toLowerCase();
   const res = await apiFetch(`/users/auth/verification-status/${encodeURIComponent(normalized)}`);
   if (!res.ok) {
     const text = await res.text();
@@ -520,8 +606,12 @@ export async function getVerificationStatus(email: string): Promise<any> {
   return res.json();
 }
 
-export async function changeEmail(newEmail: string): Promise<{ success: boolean; expiresAt?: string; devCode?: string }> {
-  const normalized = String(newEmail || '').trim().toLowerCase();
+export async function changeEmail(
+  newEmail: string
+): Promise<{ success: boolean; expiresAt?: string; devCode?: string }> {
+  const normalized = String(newEmail || '')
+    .trim()
+    .toLowerCase();
   const res = await apiFetch('/users/change-email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -538,7 +628,10 @@ export async function changeEmail(newEmail: string): Promise<{ success: boolean;
   return data;
 }
 
-export async function changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message?: string }> {
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<{ success: boolean; message?: string }> {
   const res = await apiFetch('/users/change-password', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -551,7 +644,9 @@ export async function changePassword(currentPassword: string, newPassword: strin
   return res.json();
 }
 
-export async function deleteAccount(password: string): Promise<{ success: boolean; message?: string }> {
+export async function deleteAccount(
+  password: string
+): Promise<{ success: boolean; message?: string }> {
   const res = await apiFetch('/users/delete-account', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -565,7 +660,9 @@ export async function deleteAccount(password: string): Promise<{ success: boolea
 }
 
 export async function adminUnlock(email: string, adminToken: string): Promise<any> {
-  const normalized = String(email || '').trim().toLowerCase();
+  const normalized = String(email || '')
+    .trim()
+    .toLowerCase();
   const res = await apiFetch('/users/auth/admin/unlock', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
@@ -579,7 +676,9 @@ export async function adminUnlock(email: string, adminToken: string): Promise<an
 }
 
 export async function getLockoutState(email: string, adminToken: string): Promise<any> {
-  const normalized = String(email || '').trim().toLowerCase();
+  const normalized = String(email || '')
+    .trim()
+    .toLowerCase();
   const res = await apiFetch(`/users/auth/admin/lockout-state/${encodeURIComponent(normalized)}`, {
     headers: { 'x-admin-token': adminToken },
   });
@@ -590,40 +689,80 @@ export async function getLockoutState(email: string, adminToken: string): Promis
   return res.json();
 }
 
-export type AdminEventFilters = { type?: string; ip?: string; from?: Date | string; to?: Date | string; limit?: number };
-export async function getSecurityEvents(email: string, adminToken: string, filters?: AdminEventFilters): Promise<any> {
+export type AdminEventFilters = {
+  type?: string;
+  ip?: string;
+  from?: Date | string;
+  to?: Date | string;
+  limit?: number;
+};
+export async function getSecurityEvents(
+  email: string,
+  adminToken: string,
+  filters?: AdminEventFilters
+): Promise<any> {
   const params = new URLSearchParams();
   if (filters?.type) params.set('type', filters.type);
   if (filters?.ip) params.set('ip', filters.ip);
-  if (filters?.from) params.set('from', typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString());
-  if (filters?.to) params.set('to', typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString());
+  if (filters?.from)
+    params.set(
+      'from',
+      typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString()
+    );
+  if (filters?.to)
+    params.set(
+      'to',
+      typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString()
+    );
   if (filters?.limit) params.set('limit', String(filters.limit));
   const qs = params.toString();
-  const res = await apiFetch(`/users/auth/admin/events/${encodeURIComponent(email)}${qs ? `?${qs}` : ''}`, {
-    headers: { 'x-admin-token': adminToken },
-  });
+  const res = await apiFetch(
+    `/users/auth/admin/events/${encodeURIComponent(email)}${qs ? `?${qs}` : ''}`,
+    {
+      headers: { 'x-admin-token': adminToken },
+    }
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Failed to fetch events: ${res.status}`);
   }
   return res.json();
 }
-export async function getRotationHistory(email: string, adminToken: string, filters?: { from?: Date | string; to?: Date | string; limit?: number }): Promise<any> {
+export async function getRotationHistory(
+  email: string,
+  adminToken: string,
+  filters?: { from?: Date | string; to?: Date | string; limit?: number }
+): Promise<any> {
   const params = new URLSearchParams();
-  if (filters?.from) params.set('from', typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString());
-  if (filters?.to) params.set('to', typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString());
+  if (filters?.from)
+    params.set(
+      'from',
+      typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString()
+    );
+  if (filters?.to)
+    params.set(
+      'to',
+      typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString()
+    );
   if (filters?.limit) params.set('limit', String(filters.limit));
   const qs = params.toString();
-  const res = await apiFetch(`/users/auth/admin/rotations/${encodeURIComponent(email)}${qs ? `?${qs}` : ''}`, {
-    headers: { 'x-admin-token': adminToken },
-  });
+  const res = await apiFetch(
+    `/users/auth/admin/rotations/${encodeURIComponent(email)}${qs ? `?${qs}` : ''}`,
+    {
+      headers: { 'x-admin-token': adminToken },
+    }
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Failed to fetch rotations: ${res.status}`);
   }
   return res.json();
 }
-export async function adminBanUser(email: string, adminToken: string, reason?: string): Promise<any> {
+export async function adminBanUser(
+  email: string,
+  adminToken: string,
+  reason?: string
+): Promise<any> {
   const res = await apiFetch('/users/admin/ban', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
@@ -750,7 +889,11 @@ export async function listMembers(teamId: number): Promise<any[]> {
   return res.json();
 }
 
-export async function changeRole(teamId: number, userId: number, role: 'member' | 'admin' | 'owner'): Promise<any> {
+export async function changeRole(
+  teamId: number,
+  userId: number,
+  role: 'member' | 'admin' | 'owner'
+): Promise<any> {
   const res = await apiFetch(`/teams/members/${teamId}/change-role`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -793,7 +936,11 @@ export async function listComments(taskId: number): Promise<any[]> {
   if (!res.ok) throw new Error(`Failed to fetch comments: ${res.status}`);
   return res.json();
 }
-export async function createComment(payload: { taskId: number; content: string; authorId?: number }): Promise<any> {
+export async function createComment(payload: {
+  taskId: number;
+  content: string;
+  authorId?: number;
+}): Promise<any> {
   const res = await apiFetch('/comments', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -804,10 +951,18 @@ export async function createComment(payload: { taskId: number; content: string; 
     throw new Error(text || `Failed to create comment: ${res.status}`);
   }
   const data = await res.json();
-  try { window.dispatchEvent(new CustomEvent('comments:changed', { detail: { taskId: payload.taskId, comment: data } })); } catch {}
+  try {
+    window.dispatchEvent(
+      new CustomEvent('comments:changed', { detail: { taskId: payload.taskId, comment: data } })
+    );
+  } catch {}
   return data;
 }
-export async function createReply(parentCommentId: number, content: string, authorId?: number): Promise<any> {
+export async function createReply(
+  parentCommentId: number,
+  content: string,
+  authorId?: number
+): Promise<any> {
   const res = await apiFetch(`/comments/${encodeURIComponent(String(parentCommentId))}/replies`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -818,7 +973,11 @@ export async function createReply(parentCommentId: number, content: string, auth
     throw new Error(text || `Failed to create reply: ${res.status}`);
   }
   const data = await res.json();
-  try { window.dispatchEvent(new CustomEvent('comments:changed', { detail: { parentCommentId, comment: data } })); } catch {}
+  try {
+    window.dispatchEvent(
+      new CustomEvent('comments:changed', { detail: { parentCommentId, comment: data } })
+    );
+  } catch {}
   return data;
 }
 export async function getThreadComments(threadId: number): Promise<any[]> {
@@ -826,7 +985,11 @@ export async function getThreadComments(threadId: number): Promise<any[]> {
   if (!res.ok) throw new Error(`Failed to fetch thread: ${res.status}`);
   return res.json();
 }
-export async function reactToComment(commentId: number, type: 'thumbs_up' | 'heart' | 'laugh' | 'hooray' | 'rocket' | 'eyes', op: 'add' | 'remove' = 'add'): Promise<{ ok: boolean; reactions: Record<string, number> }> {
+export async function reactToComment(
+  commentId: number,
+  type: 'thumbs_up' | 'heart' | 'laugh' | 'hooray' | 'rocket' | 'eyes',
+  op: 'add' | 'remove' = 'add'
+): Promise<{ ok: boolean; reactions: Record<string, number> }> {
   const res = await apiFetch(`/comments/${encodeURIComponent(String(commentId))}/reactions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -837,12 +1000,21 @@ export async function reactToComment(commentId: number, type: 'thumbs_up' | 'hea
     throw new Error(text || `Failed to react to comment: ${res.status}`);
   }
   const data = await res.json();
-  try { window.dispatchEvent(new CustomEvent('comments:changed', { detail: { commentId, reactions: data?.reactions || {} } })); } catch {}
+  try {
+    window.dispatchEvent(
+      new CustomEvent('comments:changed', {
+        detail: { commentId, reactions: data?.reactions || {} },
+      })
+    );
+  } catch {}
   return data;
 }
 
-
-export async function listAttachments(params: { taskId?: number; projectId?: number; teamId?: number }): Promise<any[]> {
+export async function listAttachments(params: {
+  taskId?: number;
+  projectId?: number;
+  teamId?: number;
+}): Promise<any[]> {
   const q = new URLSearchParams();
   if (params.taskId) q.set('taskId', String(params.taskId));
   if (params.projectId) q.set('projectId', String(params.projectId));
@@ -865,21 +1037,30 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export async function uploadAttachment(opts: { file: File; taskId?: number; projectId?: number; teamId?: number; attachmentId?: number }): Promise<any> {
+export async function uploadAttachment(opts: {
+  file: File;
+  taskId?: number;
+  projectId?: number;
+  teamId?: number;
+  attachmentId?: number;
+}): Promise<any> {
   const base64 = await fileToBase64(opts.file);
-  const res = await apiFetch(`/attachments/upload${opts.teamId ? `?teamId=${encodeURIComponent(String(opts.teamId))}` : ''}` , {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      fileName: opts.file.name,
-      mimeType: opts.file.type || 'application/octet-stream',
-      size: opts.file.size,
-      contentBase64: base64,
-      taskId: opts.taskId,
-      projectId: opts.projectId,
-      attachmentId: opts.attachmentId,
-    }),
-  });
+  const res = await apiFetch(
+    `/attachments/upload${opts.teamId ? `?teamId=${encodeURIComponent(String(opts.teamId))}` : ''}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: opts.file.name,
+        mimeType: opts.file.type || 'application/octet-stream',
+        size: opts.file.size,
+        contentBase64: base64,
+        taskId: opts.taskId,
+        projectId: opts.projectId,
+        attachmentId: opts.attachmentId,
+      }),
+    }
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Failed to upload: ${res.status}`);
@@ -893,7 +1074,10 @@ export function getAttachmentPreviewUrl(id: number, teamId?: number): string {
 }
 
 export async function deleteAttachment(id: number, teamId?: number): Promise<void> {
-  const res = await apiFetch(`/attachments/${encodeURIComponent(String(id))}${teamId ? `?teamId=${encodeURIComponent(String(teamId))}` : ''}`, { method: 'DELETE' });
+  const res = await apiFetch(
+    `/attachments/${encodeURIComponent(String(id))}${teamId ? `?teamId=${encodeURIComponent(String(teamId))}` : ''}`,
+    { method: 'DELETE' }
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Failed to delete: ${res.status}`);
@@ -906,19 +1090,25 @@ export async function listAttachmentVersions(id: number): Promise<any[]> {
   return res.json();
 }
 
-export async function rollbackAttachmentVersion(id: number, versionNumber: number, teamId?: number): Promise<any> {
-  const res = await apiFetch(`/attachments/${encodeURIComponent(String(id))}/rollback${teamId ? `?teamId=${encodeURIComponent(String(teamId))}` : ''}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ versionNumber }),
-  });
+export async function rollbackAttachmentVersion(
+  id: number,
+  versionNumber: number,
+  teamId?: number
+): Promise<any> {
+  const res = await apiFetch(
+    `/attachments/${encodeURIComponent(String(id))}/rollback${teamId ? `?teamId=${encodeURIComponent(String(teamId))}` : ''}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ versionNumber }),
+    }
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Failed to rollback: ${res.status}`);
   }
   return res.json();
 }
-
 
 export type SearchTaskFilters = {
   q?: string;
@@ -931,7 +1121,9 @@ export type SearchTaskFilters = {
   offset?: number;
 };
 
-export async function searchTasks(filters: SearchTaskFilters): Promise<{ items: any[]; count: number; limit: number; offset: number }> {
+export async function searchTasks(
+  filters: SearchTaskFilters
+): Promise<{ items: any[]; count: number; limit: number; offset: number }> {
   const params = new URLSearchParams();
   if (filters.q) params.set('q', filters.q);
   if (filters.status) params.set('status', filters.status);
@@ -958,12 +1150,22 @@ export type SearchProjectFilters = {
   offset?: number;
 };
 
-export async function searchProjects(filters: SearchProjectFilters): Promise<{ items: any[]; count: number; limit: number; offset: number }> {
+export async function searchProjects(
+  filters: SearchProjectFilters
+): Promise<{ items: any[]; count: number; limit: number; offset: number }> {
   const params = new URLSearchParams();
   if (filters.q) params.set('q', filters.q);
   if (filters.teamId) params.set('teamId', String(filters.teamId));
-  if (filters.from) params.set('from', typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString());
-  if (filters.to) params.set('to', typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString());
+  if (filters.from)
+    params.set(
+      'from',
+      typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString()
+    );
+  if (filters.to)
+    params.set(
+      'to',
+      typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString()
+    );
   if (filters.limit) params.set('limit', String(filters.limit));
   if (filters.offset) params.set('offset', String(filters.offset));
   const res = await apiFetch(`/search/projects?${params.toString()}`);
@@ -981,13 +1183,23 @@ export type SearchCommentFilters = {
   offset?: number;
 };
 
-export async function searchComments(filters: SearchCommentFilters): Promise<{ items: any[]; count: number; limit: number; offset: number }> {
+export async function searchComments(
+  filters: SearchCommentFilters
+): Promise<{ items: any[]; count: number; limit: number; offset: number }> {
   const params = new URLSearchParams();
   if (filters.q) params.set('q', filters.q);
   if (filters.teamId) params.set('teamId', String(filters.teamId));
   if (filters.projectId) params.set('projectId', String(filters.projectId));
-  if (filters.from) params.set('from', typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString());
-  if (filters.to) params.set('to', typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString());
+  if (filters.from)
+    params.set(
+      'from',
+      typeof filters.from === 'string' ? filters.from : (filters.from as Date).toISOString()
+    );
+  if (filters.to)
+    params.set(
+      'to',
+      typeof filters.to === 'string' ? filters.to : (filters.to as Date).toISOString()
+    );
   if (filters.limit) params.set('limit', String(filters.limit));
   if (filters.offset) params.set('offset', String(filters.offset));
   const res = await apiFetch(`/search/comments?${params.toString()}`);
@@ -999,7 +1211,12 @@ export async function getNotificationPreferences(): Promise<any[]> {
   if (!res.ok) throw new Error(`Failed to fetch preferences: ${res.status}`);
   return res.json();
 }
-export async function upsertNotificationPreference(payload: { type: string; channel: 'in_app' | 'email' | 'push'; enabled?: boolean; frequency?: 'instant' | 'daily' | 'weekly' }): Promise<any> {
+export async function upsertNotificationPreference(payload: {
+  type: string;
+  channel: 'in_app' | 'email' | 'push';
+  enabled?: boolean;
+  frequency?: 'instant' | 'daily' | 'weekly';
+}): Promise<any> {
   const res = await apiFetch('/notifications/preferences', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1008,7 +1225,10 @@ export async function upsertNotificationPreference(payload: { type: string; chan
   if (!res.ok) throw new Error(`Failed to upsert preference: ${res.status}`);
   return res.json();
 }
-export async function updateNotificationPreference(id: number, payload: { enabled?: boolean; frequency?: 'instant' | 'daily' | 'weekly' }): Promise<any> {
+export async function updateNotificationPreference(
+  id: number,
+  payload: { enabled?: boolean; frequency?: 'instant' | 'daily' | 'weekly' }
+): Promise<any> {
   const res = await apiFetch(`/notifications/preferences/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -1052,8 +1272,9 @@ export async function renameSession(id: number, deviceName: string): Promise<{ s
   return res.json();
 }
 
-export async function revokeOtherSessions(keepId: number): Promise<{ success: boolean; revokedCount: number }>
-{
+export async function revokeOtherSessions(
+  keepId: number
+): Promise<{ success: boolean; revokedCount: number }> {
   const res = await apiFetch('/users/sessions/revoke-others', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Check, CheckCheck, Trash2, AlertCircle, Info, CheckCircle, Clock, EyeOff, Filter } from 'lucide-react';
-import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, acceptTeamInvite, markNotificationAsUnread } from '@lib/api';
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  Trash2,
+  AlertCircle,
+  Info,
+  CheckCircle,
+  Clock,
+  EyeOff,
+  Filter,
+} from 'lucide-react';
+import {
+  getNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
+  acceptTeamInvite,
+  markNotificationAsUnread,
+} from '@lib/api';
 import { toast } from 'sonner';
 
 interface Notification {
@@ -28,7 +46,12 @@ export default function NotificationScreen() {
   async function fetchNotifications() {
     try {
       setLoading(true);
-      const data = await getNotifications({ read: showUnreadOnly ? false : undefined, type: filterType || undefined, channel: filterChannel || undefined, limit: 200 });
+      const data = await getNotifications({
+        read: showUnreadOnly ? false : undefined,
+        type: filterType || undefined,
+        channel: filterChannel || undefined,
+        limit: 200,
+      });
       setNotifications(data);
       setError(null);
     } catch (err) {
@@ -42,8 +65,8 @@ export default function NotificationScreen() {
   async function handleMarkAsRead(notificationId: number) {
     try {
       await markNotificationAsRead(notificationId);
-      setNotifications(prev => 
-        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
       );
       // Dispatch event to update sidebar count
       window.dispatchEvent(new CustomEvent('notifications:changed'));
@@ -55,7 +78,7 @@ export default function NotificationScreen() {
   async function handleMarkAllAsRead() {
     try {
       await markAllNotificationsAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       // Dispatch event to update sidebar count
       window.dispatchEvent(new CustomEvent('notifications:changed'));
     } catch (err) {
@@ -66,7 +89,7 @@ export default function NotificationScreen() {
   async function handleDelete(notificationId: number) {
     try {
       await deleteNotification(notificationId);
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
       // Dispatch event to update sidebar count
       window.dispatchEvent(new CustomEvent('notifications:changed'));
     } catch (err) {
@@ -109,7 +132,7 @@ export default function NotificationScreen() {
       await acceptTeamInvite(inviterId, teamId || undefined);
       toast.success('Joined the team successfully');
       // Mark as read and remove from list
-      setNotifications(prev => prev.filter(n => n.id !== notification.id));
+      setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
       window.dispatchEvent(new CustomEvent('notifications:changed'));
     } catch (err: any) {
       const msg = err?.message || 'Failed to accept invite';
@@ -146,7 +169,7 @@ export default function NotificationScreen() {
     }
   }
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   if (loading) {
     return (
@@ -164,7 +187,7 @@ export default function NotificationScreen() {
         <div className="text-center text-red-500">
           <AlertCircle className="w-12 h-12 mx-auto mb-4" />
           <p>{error}</p>
-          <button 
+          <button
             onClick={fetchNotifications}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
@@ -244,18 +267,23 @@ export default function NotificationScreen() {
       ) : (
         <div className="space-y-4">
           {notifications.map((notification) => (
-            <div key={notification.id} className={`p-4 rounded-lg border transition-colors ${notification.read ? 'bg-gray-50 border-gray-200' : 'bg-white border-blue-200 shadow-sm'}`}>
+            <div
+              key={notification.id}
+              className={`p-4 rounded-lg border transition-colors ${notification.read ? 'bg-gray-50 border-gray-200' : 'bg-white border-blue-200 shadow-sm'}`}
+            >
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 mt-1">
-                  {getNotificationIcon(notification.type)}
-                </div>
+                <div className="flex-shrink-0 mt-1">{getNotificationIcon(notification.type)}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <h3 className={`font-medium ${notification.read ? 'text-gray-600' : 'text-gray-900'}`}>
+                      <h3
+                        className={`font-medium ${notification.read ? 'text-gray-600' : 'text-gray-900'}`}
+                      >
                         {notification.title}
                       </h3>
-                      <p className={`mt-1 text-sm ${notification.read ? 'text-gray-500' : 'text-gray-700'}`}>
+                      <p
+                        className={`mt-1 text-sm ${notification.read ? 'text-gray-500' : 'text-gray-700'}`}
+                      >
                         {notification.message}
                       </p>
                       <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
@@ -265,16 +293,28 @@ export default function NotificationScreen() {
                     </div>
                     <div className="flex items-center gap-1">
                       {!notification.read && (
-                        <button onClick={() => handleMarkAsRead(notification.id)} className="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded" title="Mark as read">
+                        <button
+                          onClick={() => handleMarkAsRead(notification.id)}
+                          className="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded"
+                          title="Mark as read"
+                        >
                           <Check className="w-4 h-4" />
                         </button>
                       )}
                       {notification.read && (
-                        <button onClick={() => handleMarkAsUnread(notification.id)} className="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded" title="Mark as unread">
+                        <button
+                          onClick={() => handleMarkAsUnread(notification.id)}
+                          className="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded"
+                          title="Mark as unread"
+                        >
                           <EyeOff className="w-4 h-4" />
                         </button>
                       )}
-                      <button onClick={() => handleDelete(notification.id)} className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded" title="Delete notification">
+                      <button
+                        onClick={() => handleDelete(notification.id)}
+                        className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                        title="Delete notification"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

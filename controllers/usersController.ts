@@ -1,21 +1,30 @@
-import { Request, Response } from "express";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { AppDataSource } from "../db/data-source.js";
-import { User } from "../models/User.js";
-import { EmailVerificationCode } from "../models/EmailVerificationCode.js";
-import { EmailService } from "../services/emailService.js";
+import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { AppDataSource } from '../db/data-source.js';
+import { User } from '../models/User.js';
+import { EmailVerificationCode } from '../models/EmailVerificationCode.js';
+import { EmailService } from '../services/emailService.js';
 import crypto from 'crypto';
-import { BannedEmail } from "../models/BannedEmail.js";
-import { RefreshToken } from "../models/RefreshToken.js";
-import { isUsernameDisallowed, disallowedReason, isUsernameFormatValid, sanitizeUsernameToAllowed } from "../services/usernamePolicy.js";
-import { recordUsernameRejected, recordSessionEvent, recordTokenAnomaly } from "../services/securityTelemetry.js";
-import { Notification } from "../models/Notification.js";
-import { SecurityEvent } from "../models/SecurityEvent.js";
-import { authenticate } from "../middlewares/auth.js";
+import { BannedEmail } from '../models/BannedEmail.js';
+import { RefreshToken } from '../models/RefreshToken.js';
+import {
+  isUsernameDisallowed,
+  disallowedReason,
+  isUsernameFormatValid,
+  sanitizeUsernameToAllowed,
+} from '../services/usernamePolicy.js';
+import {
+  recordUsernameRejected,
+  recordSessionEvent,
+  recordTokenAnomaly,
+} from '../services/securityTelemetry.js';
+import { Notification } from '../models/Notification.js';
+import { SecurityEvent } from '../models/SecurityEvent.js';
+import { authenticate } from '../middlewares/auth.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
-const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "dev_refresh_secret";
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
+const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || 'dev_refresh_secret';
 const REFRESH_TTL_DAYS = Number(process.env.REFRESH_TOKEN_TTL_DAYS || 30);
 const MAX_CONCURRENT_SESSIONS = Number(process.env.MAX_CONCURRENT_SESSIONS || 5);
 
@@ -30,13 +39,17 @@ function daysFromNow(days: number) {
   return d;
 }
 
-async function issueRefreshTokenWithMeta(req: Request, userId: number, opts?: { rotatedFromId?: number; deviceName?: string | null; }) {
+async function issueRefreshTokenWithMeta(
+  req: Request,
+  userId: number,
+  opts?: { rotatedFromId?: number; deviceName?: string | null }
+) {
   const repo = AppDataSource.getRepository(RefreshToken);
   const jti = crypto.randomUUID();
   const expiresAt = daysFromNow(REFRESH_TTL_DAYS);
-  const ua = (req?.headers['user-agent'] || null);
-  const ip = (req?.ip || null);
-  const deviceName = (opts?.deviceName ?? null);
+  const ua = req?.headers['user-agent'] || null;
+  const ip = req?.ip || null;
+  const deviceName = opts?.deviceName ?? null;
   const record = repo.create({
     userId,
     jti,
@@ -61,12 +74,28 @@ async function issueRefreshTokenWithMeta(req: Request, userId: number, opts?: { 
     const toRevoke = active.slice(0, active.length - MAX_CONCURRENT_SESSIONS);
     for (const old of toRevoke) {
       await repo.update({ id: old.id }, { isRevoked: true, revokedAt: new Date() } as any);
-      await recordSessionEvent({ req, userId, eventType: 'session_limit_enforced', refreshTokenId: old.id, jti: old.jti, deviceName: old.deviceName ?? null });
+      await recordSessionEvent({
+        req,
+        userId,
+        eventType: 'session_limit_enforced',
+        refreshTokenId: old.id,
+        jti: old.jti,
+        deviceName: old.deviceName ?? null,
+      });
     }
   }
 
-  const token = jwt.sign({ userId, jti, type: 'refresh' }, REFRESH_SECRET, { expiresIn: `${REFRESH_TTL_DAYS}d` });
-  await recordSessionEvent({ req, userId, eventType: 'session_created', refreshTokenId: (record as any).id, jti, deviceName });
+  const token = jwt.sign({ userId, jti, type: 'refresh' }, REFRESH_SECRET, {
+    expiresIn: `${REFRESH_TTL_DAYS}d`,
+  });
+  await recordSessionEvent({
+    req,
+    userId,
+    eventType: 'session_created',
+    refreshTokenId: (record as any).id,
+    jti,
+    deviceName,
+  });
   return { refreshToken: token, jti, expiresAt, record };
 }
 
@@ -74,43 +103,55 @@ export async function getUsers(req: Request, res: Response) {
   const repo = AppDataSource.getRepository(User);
   const limit = Math.min(Math.max(Number(req.query.limit || 25), 1), 100);
   const offset = Math.max(Number(req.query.offset || 0), 0);
-  
+
   const [users, total] = await repo.findAndCount({
     take: limit,
     skip: offset,
-    order: { id: 'DESC' }
+    order: { id: 'DESC' },
   });
-  
+
   res.json({
     items: users.map(sanitize),
     total,
     limit,
     offset,
-    hasMore: offset + limit < total
+    hasMore: offset + limit < total,
   });
 }
 
 export async function signup(req: Request, res: Response) {
   const { username, email, password } = req.body;
   if (!username || !email || !password) {
-    return res.status(400).json({ error: "username, email and password are required" });
+    return res.status(400).json({ error: 'username, email and password are required' });
   }
   // Enforce allowed characters and length before blacklist/conflicts
-  if (typeof username === "string" && !isUsernameFormatValid(username)) {
-    await recordUsernameRejected({ req, email, username, source: 'signup', reason: 'format_invalid' });
-    return res.status(400).json({ error: "Usernames can only include letters, numbers, and underscores — no spaces or special symbols." });
+  if (typeof username === 'string' && !isUsernameFormatValid(username)) {
+    await recordUsernameRejected({
+      req,
+      email,
+      username,
+      source: 'signup',
+      reason: 'format_invalid',
+    });
+    return res
+      .status(400)
+      .json({
+        error:
+          'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.',
+      });
   }
-  if (typeof username === "string" && isUsernameDisallowed(username)) {
+  if (typeof username === 'string' && isUsernameDisallowed(username)) {
     await recordUsernameRejected({ req, email, username, source: 'signup' });
-    return res.status(400).json({ error: "This username isn’t allowed" });
+    return res.status(400).json({ error: 'This username isn’t allowed' });
   }
   // Block signups for banned emails
   const bannedRepo = AppDataSource.getRepository(BannedEmail);
-  const banned = await bannedRepo.createQueryBuilder('b')
+  const banned = await bannedRepo
+    .createQueryBuilder('b')
     .where('LOWER(b.email) = :email', { email: String(email).toLowerCase() })
     .getOne();
   if (banned) {
-    return res.status(403).json({ error: "This email is banned from signing up" });
+    return res.status(403).json({ error: 'This email is banned from signing up' });
   }
   const repo = AppDataSource.getRepository(User);
   // Case-insensitive checks and set usernameLower
@@ -121,7 +162,7 @@ export async function signup(req: Request, res: Response) {
     .where('LOWER(user.email) = :email', { email: String(email).toLowerCase() })
     .getOne();
   if (usernameConflict || emailConflict) {
-    return res.status(409).json({ error: "username or email already exists" });
+    return res.status(409).json({ error: 'username or email already exists' });
   }
   const hashedPassword = await bcrypt.hash(password, 10);
   const user = repo.create({ username, usernameLower, email, hashedPassword });
@@ -132,14 +173,17 @@ export async function signup(req: Request, res: Response) {
 export async function login(req: Request, res: Response) {
   const { usernameOrEmail, password } = req.body;
   if (!usernameOrEmail || !password) {
-    return res.status(400).json({ error: "usernameOrEmail and password are required" });
+    return res.status(400).json({ error: 'usernameOrEmail and password are required' });
   }
   const candidate = String(usernameOrEmail);
   // Disallow logins for banned emails
   const bannedRepo = AppDataSource.getRepository(BannedEmail);
   if (candidate.includes('@')) {
-    const banned = await bannedRepo.createQueryBuilder('b').where('LOWER(b.email) = :email', { email: candidate.toLowerCase() }).getOne();
-    if (banned) return res.status(403).json({ error: "This account is banned" });
+    const banned = await bannedRepo
+      .createQueryBuilder('b')
+      .where('LOWER(b.email) = :email', { email: candidate.toLowerCase() })
+      .getOne();
+    if (banned) return res.status(403).json({ error: 'This account is banned' });
   }
   const repo = AppDataSource.getRepository(User);
   // Case-insensitive lookup by email or username
@@ -153,13 +197,13 @@ export async function login(req: Request, res: Response) {
     user = await repo.findOne({ where: { usernameLower: candidate.toLowerCase() } });
   }
   if (!user) {
-    return res.status(401).json({ error: "invalid credentials" });
+    return res.status(401).json({ error: 'invalid credentials' });
   }
   const ok = await bcrypt.compare(password, (user as any).hashedPassword);
   if (!ok) {
-    return res.status(401).json({ error: "invalid credentials" });
+    return res.status(401).json({ error: 'invalid credentials' });
   }
-  const token = jwt.sign({ userId: (user as any).id }, JWT_SECRET, { expiresIn: "15m" });
+  const token = jwt.sign({ userId: (user as any).id }, JWT_SECRET, { expiresIn: '15m' });
   const { refreshToken } = await issueRefreshTokenWithMeta(req, (user as any).id);
   res.json({ token, refreshToken, user: sanitize(user) });
 }
@@ -173,28 +217,51 @@ export async function refresh(req: Request, res: Response) {
       return res.status(401).json({ error: 'invalid refresh token' });
     }
     const repo = AppDataSource.getRepository(RefreshToken);
-    const rec = await repo.findOne({ where: { jti: String(payload.jti), userId: Number(payload.userId) } });
+    const rec = await repo.findOne({
+      where: { jti: String(payload.jti), userId: Number(payload.userId) },
+    });
     if (!rec) {
-      await recordTokenAnomaly({ req, userId: Number(payload.userId), jti: String(payload.jti), reason: 'unknown_jti' });
+      await recordTokenAnomaly({
+        req,
+        userId: Number(payload.userId),
+        jti: String(payload.jti),
+        reason: 'unknown_jti',
+      });
       return res.status(401).json({ error: 'invalid refresh token' });
     }
     if (rec.isRevoked) {
-      await recordTokenAnomaly({ req, userId: Number(payload.userId), refreshTokenId: rec.id, jti: rec.jti, reason: 'revoked_reuse' });
+      await recordTokenAnomaly({
+        req,
+        userId: Number(payload.userId),
+        refreshTokenId: rec.id,
+        jti: rec.jti,
+        reason: 'revoked_reuse',
+      });
       return res.status(401).json({ error: 'refresh token expired or revoked' });
     }
     if (rec.expiresAt < new Date()) {
-      await recordTokenAnomaly({ req, userId: Number(payload.userId), refreshTokenId: rec.id, jti: rec.jti, reason: 'expired_use' });
+      await recordTokenAnomaly({
+        req,
+        userId: Number(payload.userId),
+        refreshTokenId: rec.id,
+        jti: rec.jti,
+        reason: 'expired_use',
+      });
       return res.status(401).json({ error: 'refresh token expired or revoked' });
     }
     // Update last used
     await repo.update({ id: rec.id }, { lastUsedAt: new Date() } as any);
     // Rotate refresh token
     await repo.update({ id: rec.id }, { isRevoked: true, revokedAt: new Date() } as any);
-    const { refreshToken: newRefreshToken, record: newRec } = await issueRefreshTokenWithMeta(req, Number(payload.userId), { rotatedFromId: rec.id, deviceName: rec.deviceName ?? null });
+    const { refreshToken: newRefreshToken, record: newRec } = await issueRefreshTokenWithMeta(
+      req,
+      Number(payload.userId),
+      { rotatedFromId: rec.id, deviceName: rec.deviceName ?? null }
+    );
     // Link replacement
     await repo.update({ id: rec.id }, { replacedById: (newRec as any).id } as any);
     // Issue new access token reflecting current verification
-    const token = jwt.sign({ userId: Number(payload.userId) }, JWT_SECRET, { expiresIn: "15m" });
+    const token = jwt.sign({ userId: Number(payload.userId) }, JWT_SECRET, { expiresIn: '15m' });
     return res.json({ token, refreshToken: newRefreshToken });
   } catch (e) {
     return res.status(401).json({ error: 'invalid or expired refresh token' });
@@ -227,7 +294,14 @@ export async function revokeSession(req: Request, res: Response) {
     const rec = await repo.findOne({ where: { id } });
     if (!rec || rec.userId !== userId) return res.status(404).json({ error: 'not found' });
     await repo.update({ id }, { isRevoked: true, revokedAt: new Date() } as any);
-    await recordSessionEvent({ req, userId, eventType: 'session_revoked', refreshTokenId: rec.id, jti: rec.jti, deviceName: rec.deviceName ?? null });
+    await recordSessionEvent({
+      req,
+      userId,
+      eventType: 'session_revoked',
+      refreshTokenId: rec.id,
+      jti: rec.jti,
+      deviceName: rec.deviceName ?? null,
+    });
     return res.status(200).json({ success: true });
   } catch (e) {
     return res.status(500).json({ success: false, error: 'failed to revoke session' });
@@ -245,7 +319,14 @@ export async function renameSession(req: Request, res: Response) {
     const rec = await repo.findOne({ where: { id } });
     if (!rec || rec.userId !== userId) return res.status(404).json({ error: 'not found' });
     await repo.update({ id }, { deviceName } as any);
-    await recordSessionEvent({ req, userId, eventType: 'session_renamed', refreshTokenId: rec.id, jti: rec.jti, deviceName });
+    await recordSessionEvent({
+      req,
+      userId,
+      eventType: 'session_renamed',
+      refreshTokenId: rec.id,
+      jti: rec.jti,
+      deviceName,
+    });
     return res.status(200).json({ success: true });
   } catch (e) {
     return res.status(500).json({ success: false, error: 'failed to rename session' });
@@ -258,11 +339,22 @@ export async function revokeOtherSessions(req: Request, res: Response) {
     const keepId = Number(req.body?.keepId || 0);
     if (!userId) return res.status(401).json({ error: 'unauthorized' });
     const repo = AppDataSource.getRepository(RefreshToken);
-    const all = await repo.createQueryBuilder('rt').where('rt.userId = :userId', { userId }).andWhere('rt.isRevoked = false').getMany();
+    const all = await repo
+      .createQueryBuilder('rt')
+      .where('rt.userId = :userId', { userId })
+      .andWhere('rt.isRevoked = false')
+      .getMany();
     const toRevoke = all.filter((rt) => rt.id !== keepId);
     for (const rec of toRevoke) {
       await repo.update({ id: rec.id }, { isRevoked: true, revokedAt: new Date() } as any);
-      await recordSessionEvent({ req, userId, eventType: 'session_revoked', refreshTokenId: rec.id, jti: rec.jti, deviceName: rec.deviceName ?? null });
+      await recordSessionEvent({
+        req,
+        userId,
+        eventType: 'session_revoked',
+        refreshTokenId: rec.id,
+        jti: rec.jti,
+        deviceName: rec.deviceName ?? null,
+      });
     }
     return res.status(200).json({ success: true, revokedCount: toRevoke.length });
   } catch (e) {
@@ -274,13 +366,20 @@ export async function revokeOtherSessions(req: Request, res: Response) {
 export async function adminBanUser(req: Request, res: Response) {
   try {
     const email = String(req.body?.email || '');
-    const reason = (req.body?.reason ? String(req.body.reason) : null);
-    if (!email || !email.includes('@')) return res.status(400).json({ success: false, error: 'Invalid email' });
+    const reason = req.body?.reason ? String(req.body.reason) : null;
+    if (!email || !email.includes('@'))
+      return res.status(400).json({ success: false, error: 'Invalid email' });
     const userRepo = AppDataSource.getRepository(User);
     const bannedRepo = AppDataSource.getRepository(BannedEmail);
-    const user = await userRepo.createQueryBuilder('user').where('LOWER(user.email) = :email', { email: email.toLowerCase() }).getOne();
+    const user = await userRepo
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: email.toLowerCase() })
+      .getOne();
     // Insert ban record
-    const bexists = await bannedRepo.createQueryBuilder('b').where('LOWER(b.email) = :email', { email: email.toLowerCase() }).getOne();
+    const bexists = await bannedRepo
+      .createQueryBuilder('b')
+      .where('LOWER(b.email) = :email', { email: email.toLowerCase() })
+      .getOne();
     if (!bexists) {
       await bannedRepo.save(bannedRepo.create({ email, reason, createdAt: new Date() }));
     }
@@ -291,14 +390,16 @@ export async function adminBanUser(req: Request, res: Response) {
     // Telemetry: admin_user_banned
     try {
       const evRepo = AppDataSource.getRepository(SecurityEvent);
-      await evRepo.save(evRepo.create({
-        email,
-        userId: (req as any).userId,
-        eventType: 'admin_user_banned',
-        ip: req.ip,
-        metadata: { reason, deletedUser: Boolean(user) },
-        createdAt: new Date(),
-      } as any));
+      await evRepo.save(
+        evRepo.create({
+          email,
+          userId: (req as any).userId,
+          eventType: 'admin_user_banned',
+          ip: req.ip,
+          metadata: { reason, deletedUser: Boolean(user) },
+          createdAt: new Date(),
+        } as any)
+      );
     } catch {}
     return res.status(200).json({ success: true });
   } catch (e) {
@@ -311,36 +412,64 @@ export async function adminSetUsername(req: Request, res: Response) {
   try {
     const email = String(req.body?.email || '');
     const newUsername = String(req.body?.newUsername || '');
-    if (!email || !email.includes('@') || !newUsername) return res.status(400).json({ success: false, error: 'Invalid input' });
+    if (!email || !email.includes('@') || !newUsername)
+      return res.status(400).json({ success: false, error: 'Invalid input' });
     // Enforce format before blacklist
     if (!isUsernameFormatValid(String(newUsername))) {
-      await recordUsernameRejected({ req, email, username: newUsername, source: 'admin_set_username', reason: 'format_invalid' });
-      return res.status(400).json({ success: false, error: 'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.' });
+      await recordUsernameRejected({
+        req,
+        email,
+        username: newUsername,
+        source: 'admin_set_username',
+        reason: 'format_invalid',
+      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error:
+            'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.',
+        });
     }
     if (isUsernameDisallowed(String(newUsername))) {
-      await recordUsernameRejected({ req, email, username: newUsername, source: 'admin_set_username' });
+      await recordUsernameRejected({
+        req,
+        email,
+        username: newUsername,
+        source: 'admin_set_username',
+      });
       return res.status(400).json({ success: false, error: 'This username isn’t allowed' });
     }
     const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.createQueryBuilder('user').where('LOWER(user.email) = :email', { email: email.toLowerCase() }).getOne();
+    const user = await userRepo
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: email.toLowerCase() })
+      .getOne();
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
     const unameLower = newUsername.toLowerCase();
     // Ensure new username is available
     const conflict = await userRepo.findOne({ where: { usernameLower: unameLower } });
-    if (conflict && conflict.id !== (user as any).id) return res.status(409).json({ success: false, error: 'Username already taken' });
+    if (conflict && conflict.id !== (user as any).id)
+      return res.status(409).json({ success: false, error: 'Username already taken' });
     const prevUsername = (user as any).username;
-    await userRepo.update({ id: (user as any).id }, { username: newUsername, usernameLower: unameLower, usernameChangeCount: ((user as any).usernameChangeCount || 0) + 1 } as any);
+    await userRepo.update({ id: (user as any).id }, {
+      username: newUsername,
+      usernameLower: unameLower,
+      usernameChangeCount: ((user as any).usernameChangeCount || 0) + 1,
+    } as any);
     // Telemetry: admin_username_changed
     try {
       const evRepo = AppDataSource.getRepository(SecurityEvent);
-      await evRepo.save(evRepo.create({
-        email,
-        userId: (req as any).userId,
-        eventType: 'admin_username_changed',
-        ip: req.ip,
-        metadata: { targetUserId: (user as any).id, oldUsername: prevUsername, newUsername },
-        createdAt: new Date(),
-      } as any));
+      await evRepo.save(
+        evRepo.create({
+          email,
+          userId: (req as any).userId,
+          eventType: 'admin_username_changed',
+          ip: req.ip,
+          metadata: { targetUserId: (user as any).id, oldUsername: prevUsername, newUsername },
+          createdAt: new Date(),
+        } as any)
+      );
     } catch {}
     return res.status(200).json({ success: true });
   } catch (e) {
@@ -370,7 +499,8 @@ export async function inviteToTeam(req: Request, res: Response) {
       target = await userRepo.findOne({ where: { usernameLower: identifier.toLowerCase() } });
     }
     if (!target) return res.status(404).json({ error: 'user not found' });
-    if ((target as any).id === inviterId) return res.status(400).json({ error: 'cannot invite yourself' });
+    if ((target as any).id === inviterId)
+      return res.status(400).json({ error: 'cannot invite yourself' });
 
     // Ensure there is a real Organization and Team for inviter
     const { Organization } = await import('../models/Organization.js');
@@ -381,17 +511,30 @@ export async function inviteToTeam(req: Request, res: Response) {
     const memRepo = AppDataSource.getRepository(Membership);
 
     // Try to find an existing membership for inviter to derive org/team
-    let myMembership = (await memRepo.find({ relations: { user: true, team: true, org: true } }))
-      .find(m => (m.user as any)?.id === inviterId);
+    let myMembership = (
+      await memRepo.find({ relations: { user: true, team: true, org: true } })
+    ).find((m) => (m.user as any)?.id === inviterId);
 
     if (!myMembership) {
       // Create a simple org/team for inviter
       const orgName = `${(inviter as any).username || 'org'} Team`;
-      const orgSlug = String(orgName).toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const org = orgRepo.create({ name: orgName, slug: orgSlug, nameLower: orgName.toLowerCase(), ownerUserId: inviterId });
+      const orgSlug = String(orgName)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-');
+      const org = orgRepo.create({
+        name: orgName,
+        slug: orgSlug,
+        nameLower: orgName.toLowerCase(),
+        ownerUserId: inviterId,
+      });
       await orgRepo.save(org);
 
-      const team = teamRepo.create({ name: 'Default Team', slug: 'default', nameLower: 'default', org });
+      const team = teamRepo.create({
+        name: 'Default Team',
+        slug: 'default',
+        nameLower: 'default',
+        org,
+      });
       await teamRepo.save(team);
 
       myMembership = memRepo.create({ user: inviter as any, org, team, role: 'owner' });
@@ -401,8 +544,9 @@ export async function inviteToTeam(req: Request, res: Response) {
     const teamId = (myMembership.team as any).id as number;
 
     // If already in same team, short-circuit
-    const existingTargetMembership = (await memRepo.find({ relations: { user: true, team: true } }))
-      .find(m => (m.team as any)?.id === teamId && (m.user as any)?.id === (target as any).id);
+    const existingTargetMembership = (
+      await memRepo.find({ relations: { user: true, team: true } })
+    ).find((m) => (m.team as any)?.id === teamId && (m.user as any)?.id === (target as any).id);
     if (existingTargetMembership) {
       return res.status(409).json({ error: 'user already in your team' });
     }
@@ -444,14 +588,17 @@ export async function acceptTeamInvite(req: Request, res: Response) {
 
     let team: any = null;
     if (teamIdParam) {
-      team = await teamRepo.findOne({ where: { id: teamIdParam }, relations: { org: true } as any });
+      team = await teamRepo.findOne({
+        where: { id: teamIdParam },
+        relations: { org: true } as any,
+      });
     }
 
     if (!team && inviterId) {
       const inviter = await userRepo.findOne({ where: { id: inviterId } });
       if (!inviter) return res.status(404).json({ error: 'inviter not found' });
       const memberships = await memRepo.find({ relations: { user: true, team: true, org: true } });
-      const inviterMem = memberships.find(m => (m.user as any)?.id === inviterId);
+      const inviterMem = memberships.find((m) => (m.user as any)?.id === inviterId);
       if (inviterMem) {
         team = inviterMem.team;
         (team as any).org = inviterMem.org;
@@ -461,13 +608,20 @@ export async function acceptTeamInvite(req: Request, res: Response) {
     if (!team) return res.status(400).json({ error: 'missing team context' });
 
     // Prevent duplicate membership
-    const existing = (await memRepo.find({ relations: { user: true, team: true } }))
-      .find(m => (m.team as any)?.id === (team as any).id && (m.user as any)?.id === userId);
+    const existing = (await memRepo.find({ relations: { user: true, team: true } })).find(
+      (m) => (m.team as any)?.id === (team as any).id && (m.user as any)?.id === userId
+    );
     if (existing) return res.status(409).json({ error: 'already a member' });
 
     // Create membership and maintain legacy teamId for backward compatibility
-    const org = (team as any).org || (await orgRepo.findOne({ where: { id: (team as any)?.org?.id } }));
-    const membership = memRepo.create({ user: user as any, org: org as any, team: team as any, role: 'member' });
+    const org =
+      (team as any).org || (await orgRepo.findOne({ where: { id: (team as any)?.org?.id } }));
+    const membership = memRepo.create({
+      user: user as any,
+      org: org as any,
+      team: team as any,
+      role: 'member',
+    });
     await memRepo.save(membership);
 
     (user as any).teamId = (team as any).id;
@@ -496,7 +650,12 @@ export async function updateProfile(req: Request, res: Response) {
     if (typeof username === 'string' && username.trim()) {
       const uname = username.trim();
       if (!isUsernameFormatValid(uname)) {
-        return res.status(400).json({ error: 'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.' });
+        return res
+          .status(400)
+          .json({
+            error:
+              'Usernames can only include letters, numbers, and underscores — no spaces or special symbols.',
+          });
       }
       if (isUsernameDisallowed(uname)) {
         return res.status(400).json({ error: 'This username isn’t allowed' });
@@ -554,7 +713,9 @@ export async function startOAuth(req: Request, res: Response) {
     const provider = String(req.params?.provider || '').toLowerCase();
     const origin = String(req.query?.origin || '');
     // Redirect immediately to callback with placeholder data in dev
-    const url = new URL(`${req.protocol}://${req.get('host')}/api/users/oauth/${encodeURIComponent(provider)}/callback`);
+    const url = new URL(
+      `${req.protocol}://${req.get('host')}/api/users/oauth/${encodeURIComponent(provider)}/callback`
+    );
     if (origin) url.searchParams.set('origin', origin);
     url.searchParams.set('provider', provider);
     res.redirect(url.toString());
@@ -565,7 +726,7 @@ export async function startOAuth(req: Request, res: Response) {
 
 export async function oauthCallback(req: Request, res: Response) {
   try {
-    const provider = String((req.query?.provider || req.params?.provider || '')).toLowerCase();
+    const provider = String(req.query?.provider || req.params?.provider || '').toLowerCase();
     const origin = String(req.query?.origin || '');
 
     // In dev, simply return a small page that posts a message back
@@ -601,7 +762,8 @@ export async function changeEmail(req: Request, res: Response) {
     const userId = (req as any).userId as number | undefined;
     const newEmailRaw = String(req.body?.newEmail || '').trim();
     if (!userId) return res.status(401).json({ success: false, error: 'unauthorized' });
-    if (!newEmailRaw || !newEmailRaw.includes('@')) return res.status(400).json({ success: false, error: 'invalid email' });
+    if (!newEmailRaw || !newEmailRaw.includes('@'))
+      return res.status(400).json({ success: false, error: 'invalid email' });
     const newEmail = newEmailRaw.toLowerCase();
     const userRepo = AppDataSource.getRepository(User);
     const user = await userRepo.findOne({ where: { id: userId } });
@@ -630,7 +792,8 @@ export async function changeEmail(req: Request, res: Response) {
 
     // Purge existing codes for user
     const codeRepo = AppDataSource.getRepository(EmailVerificationCode);
-    await codeRepo.createQueryBuilder()
+    await codeRepo
+      .createQueryBuilder()
       .delete()
       .from(EmailVerificationCode)
       .where('userId = :uid', { uid: (user as any).id })
@@ -642,16 +805,45 @@ export async function changeEmail(req: Request, res: Response) {
     const expiresAt = new Date(Date.now() + 10 * 60_000);
     const rec = codeRepo.create({ userId: (user as any).id, code, codeHash, expiresAt });
     await codeRepo.save(rec);
-    await EmailService.sendVerificationCode({ email: newEmail, username: (user as any).username, code });
+    await EmailService.sendVerificationCode({
+      email: newEmail,
+      username: (user as any).username,
+      code,
+    });
 
     // Telemetry: email_changed
     try {
       const evRepo = AppDataSource.getRepository(SecurityEvent);
-      await evRepo.save(evRepo.create({ email: newEmail, userId: (user as any).id, eventType: 'email_changed', ip: req.ip, metadata: { oldEmail, newEmail }, createdAt: new Date() } as any));
-      await evRepo.save(evRepo.create({ email: newEmail, userId: (user as any).id, eventType: 'code_sent', ip: req.ip, metadata: { expiresAt: expiresAt.toISOString(), reason: 'email_change' }, createdAt: new Date() } as any));
+      await evRepo.save(
+        evRepo.create({
+          email: newEmail,
+          userId: (user as any).id,
+          eventType: 'email_changed',
+          ip: req.ip,
+          metadata: { oldEmail, newEmail },
+          createdAt: new Date(),
+        } as any)
+      );
+      await evRepo.save(
+        evRepo.create({
+          email: newEmail,
+          userId: (user as any).id,
+          eventType: 'code_sent',
+          ip: req.ip,
+          metadata: { expiresAt: expiresAt.toISOString(), reason: 'email_change' },
+          createdAt: new Date(),
+        } as any)
+      );
     } catch {}
 
-    return res.status(200).json({ success: true, message: 'Email updated. Verification code sent.', expiresAt: expiresAt.toISOString(), devCode: process.env.RESEND_API_KEY ? undefined : code });
+    return res
+      .status(200)
+      .json({
+        success: true,
+        message: 'Email updated. Verification code sent.',
+        expiresAt: expiresAt.toISOString(),
+        devCode: process.env.RESEND_API_KEY ? undefined : code,
+      });
   } catch (e) {
     return res.status(500).json({ success: false, error: 'failed to change email' });
   }
@@ -662,13 +854,17 @@ export async function changePassword(req: Request, res: Response) {
   try {
     const userId = (req as any).userId as number | undefined;
     const { currentPassword, newPassword } = req.body;
-    
+
     if (!userId) return res.status(401).json({ success: false, error: 'unauthorized' });
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ success: false, error: 'currentPassword and newPassword are required' });
+      return res
+        .status(400)
+        .json({ success: false, error: 'currentPassword and newPassword are required' });
     }
     if (typeof newPassword !== 'string' || newPassword.length < 6) {
-      return res.status(400).json({ success: false, error: 'newPassword must be at least 6 characters' });
+      return res
+        .status(400)
+        .json({ success: false, error: 'newPassword must be at least 6 characters' });
     }
 
     const userRepo = AppDataSource.getRepository(User);
@@ -676,7 +872,10 @@ export async function changePassword(req: Request, res: Response) {
     if (!user) return res.status(404).json({ success: false, error: 'user not found' });
 
     // Verify current password
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, (user as any).hashedPassword);
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      (user as any).hashedPassword
+    );
     if (!isCurrentPasswordValid) {
       return res.status(400).json({ success: false, error: 'current password is incorrect' });
     }
@@ -688,14 +887,16 @@ export async function changePassword(req: Request, res: Response) {
     // Telemetry: password_changed
     try {
       const evRepo = AppDataSource.getRepository(SecurityEvent);
-      await evRepo.save(evRepo.create({ 
-        email: (user as any).email, 
-        userId, 
-        eventType: 'password_changed', 
-        ip: req.ip, 
-        metadata: { timestamp: new Date().toISOString() }, 
-        createdAt: new Date() 
-      } as any));
+      await evRepo.save(
+        evRepo.create({
+          email: (user as any).email,
+          userId,
+          eventType: 'password_changed',
+          ip: req.ip,
+          metadata: { timestamp: new Date().toISOString() },
+          createdAt: new Date(),
+        } as any)
+      );
     } catch {}
 
     return res.status(200).json({ success: true, message: 'Password updated successfully' });
@@ -709,10 +910,12 @@ export async function deleteAccount(req: Request, res: Response) {
   try {
     const userId = (req as any).userId as number | undefined;
     const { password } = req.body;
-    
+
     if (!userId) return res.status(401).json({ success: false, error: 'unauthorized' });
     if (!password) {
-      return res.status(400).json({ success: false, error: 'password is required to delete account' });
+      return res
+        .status(400)
+        .json({ success: false, error: 'password is required to delete account' });
     }
 
     const userRepo = AppDataSource.getRepository(User);
@@ -730,14 +933,16 @@ export async function deleteAccount(req: Request, res: Response) {
     // Telemetry: account_deleted (before deletion)
     try {
       const evRepo = AppDataSource.getRepository(SecurityEvent);
-      await evRepo.save(evRepo.create({ 
-        email: userEmail, 
-        userId, 
-        eventType: 'account_deleted', 
-        ip: req.ip, 
-        metadata: { timestamp: new Date().toISOString() }, 
-        createdAt: new Date() 
-      } as any));
+      await evRepo.save(
+        evRepo.create({
+          email: userEmail,
+          userId,
+          eventType: 'account_deleted',
+          ip: req.ip,
+          metadata: { timestamp: new Date().toISOString() },
+          createdAt: new Date(),
+        } as any)
+      );
     } catch {}
 
     // Revoke all refresh tokens
@@ -746,7 +951,8 @@ export async function deleteAccount(req: Request, res: Response) {
 
     // Delete verification codes
     const codeRepo = AppDataSource.getRepository(EmailVerificationCode);
-    await codeRepo.createQueryBuilder()
+    await codeRepo
+      .createQueryBuilder()
       .delete()
       .from(EmailVerificationCode)
       .where('userId = :uid', { uid: userId })

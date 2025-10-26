@@ -23,16 +23,16 @@ const getEnvInt = (key: string, def: number): number => {
   return Number.isFinite(n) && n > 0 ? n : def;
 };
 
-const AUTH_WINDOW_MS = parseDuration(process.env.AUTH_LIMIT_WINDOW) ?? (10 * 60 * 1000);
+const AUTH_WINDOW_MS = parseDuration(process.env.AUTH_LIMIT_WINDOW) ?? 10 * 60 * 1000;
 const AUTH_MAX = getEnvInt('AUTH_LIMIT_MAX', 25);
-const STRICT_WINDOW_MS = parseDuration(process.env.STRICT_LIMIT_WINDOW) ?? (60 * 60 * 1000);
+const STRICT_WINDOW_MS = parseDuration(process.env.STRICT_LIMIT_WINDOW) ?? 60 * 60 * 1000;
 const STRICT_MAX = getEnvInt('STRICT_LIMIT_MAX', 3);
 
 // Repeat-hit sampling to aid abuse profiling
 type HitEntry = { count: number; lastSample: number };
 const hitMap: Map<string, HitEntry> = new Map();
 const SAMPLE_THRESHOLD = getEnvInt('RL_SAMPLE_THRESHOLD', 3);
-const SAMPLE_INTERVAL_MS = parseDuration(process.env.RL_SAMPLE_INTERVAL) ?? (5 * 60 * 1000);
+const SAMPLE_INTERVAL_MS = parseDuration(process.env.RL_SAMPLE_INTERVAL) ?? 5 * 60 * 1000;
 const makeKey = (req: Request, limiter: string) => {
   const ip = req.ip || '';
   const ua = String(req.headers['user-agent'] || '');
@@ -51,7 +51,7 @@ const sampleBody = (body: any): Record<string, any> => {
       continue;
     }
     if (typeof v === 'string') {
-      out[k] = v.length > 100 ? (v.slice(0, 100) + '…') : v;
+      out[k] = v.length > 100 ? v.slice(0, 100) + '…' : v;
     } else if (typeof v === 'number' || typeof v === 'boolean') {
       out[k] = v;
     } else if (v == null) {
@@ -68,7 +68,7 @@ const computeExtra = (req: Request, limiter: string): Record<string, any> => {
   const entry = hitMap.get(key) || { count: 0, lastSample: 0 };
   entry.count += 1;
   const extra: Record<string, any> = { hits: entry.count };
-  if (entry.count >= SAMPLE_THRESHOLD && (now - entry.lastSample) > SAMPLE_INTERVAL_MS) {
+  if (entry.count >= SAMPLE_THRESHOLD && now - entry.lastSample > SAMPLE_INTERVAL_MS) {
     extra.sampledPayload = sampleBody(req.body);
     extra.sampleReason = 'repeat_hits';
     entry.lastSample = now;
@@ -98,8 +98,15 @@ export const emailVerificationLimiter = rateLimit({
     return process.env.NODE_ENV === 'test';
   },
   handler: async (req, res, _next, options) => {
-    try { await recordRateLimitHit({ req, limiter: 'emailVerificationLimiter' }); } catch {}
-    res.status(options.statusCode).json({ success: false, error: 'Too many verification code requests. Please try again in 15 minutes.' });
+    try {
+      await recordRateLimitHit({ req, limiter: 'emailVerificationLimiter' });
+    } catch {}
+    res
+      .status(options.statusCode)
+      .json({
+        success: false,
+        error: 'Too many verification code requests. Please try again in 15 minutes.',
+      });
   },
 });
 
@@ -118,8 +125,15 @@ export const emailVerificationAttemptLimiter = rateLimit({
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful verifications
   handler: async (req, res, _next, options) => {
-    try { await recordRateLimitHit({ req, limiter: 'emailVerificationAttemptLimiter' }); } catch {}
-    res.status(options.statusCode).json({ success: false, error: 'Too many verification attempts. Please try again in 15 minutes.' });
+    try {
+      await recordRateLimitHit({ req, limiter: 'emailVerificationAttemptLimiter' });
+    } catch {}
+    res
+      .status(options.statusCode)
+      .json({
+        success: false,
+        error: 'Too many verification attempts. Please try again in 15 minutes.',
+      });
   },
 });
 
@@ -138,8 +152,12 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
   handler: async (req, res, _next, options) => {
     const extra = computeExtra(req, 'authLimiter');
-    try { await recordRateLimitHit({ req, limiter: 'authLimiter', extra }); } catch {}
-    res.status(options.statusCode).json({ success: false, error: 'Too many authentication requests. Please try again later.' });
+    try {
+      await recordRateLimitHit({ req, limiter: 'authLimiter', extra });
+    } catch {}
+    res
+      .status(options.statusCode)
+      .json({ success: false, error: 'Too many authentication requests. Please try again later.' });
   },
 });
 
@@ -158,8 +176,12 @@ export const strictLimiter = rateLimit({
   legacyHeaders: false,
   handler: async (req, res, _next, options) => {
     const extra = computeExtra(req, 'strictLimiter');
-    try { await recordRateLimitHit({ req, limiter: 'strictLimiter', extra }); } catch {}
-    res.status(options.statusCode).json({ success: false, error: 'Rate limit exceeded. Please try again later.' });
+    try {
+      await recordRateLimitHit({ req, limiter: 'strictLimiter', extra });
+    } catch {}
+    res
+      .status(options.statusCode)
+      .json({ success: false, error: 'Rate limit exceeded. Please try again later.' });
   },
 });
 
@@ -179,8 +201,12 @@ export const perEmailSendLimiter = rateLimit({
     error: 'Please wait before requesting another code.',
   },
   handler: async (req, res, _next, options) => {
-    try { await recordRateLimitHit({ req, limiter: 'perEmailSendLimiter' }); } catch {}
-    res.status(options.statusCode).json({ success: false, error: 'Please wait before requesting another code.' });
+    try {
+      await recordRateLimitHit({ req, limiter: 'perEmailSendLimiter' });
+    } catch {}
+    res
+      .status(options.statusCode)
+      .json({ success: false, error: 'Please wait before requesting another code.' });
   },
 });
 
@@ -201,7 +227,11 @@ export const perEmailVerifyLimiter = rateLimit({
     error: 'Too many verification attempts. Please try again later.',
   },
   handler: async (req, res, _next, options) => {
-    try { await recordRateLimitHit({ req, limiter: 'perEmailVerifyLimiter' }); } catch {}
-    res.status(options.statusCode).json({ success: false, error: 'Too many verification attempts. Please try again later.' });
+    try {
+      await recordRateLimitHit({ req, limiter: 'perEmailVerifyLimiter' });
+    } catch {}
+    res
+      .status(options.statusCode)
+      .json({ success: false, error: 'Too many verification attempts. Please try again later.' });
   },
 });

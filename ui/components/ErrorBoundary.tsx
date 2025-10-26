@@ -25,13 +25,13 @@ class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log error details
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     // Update state with error info
     this.setState({ error, errorInfo });
-    
+
     // Show user-friendly toast notification
     toast.error('Something went wrong. Please refresh the page or try again.');
-    
+
     // Optional: Send to Sentry if available (commented out since @sentry/react is not installed)
     // if (import.meta.env.VITE_SENTRY_DSN) {
     //   try {
@@ -79,15 +79,13 @@ class ErrorBoundary extends Component<Props, State> {
                   />
                 </svg>
               </div>
-              
-              <h2 className="text-xl font-semibold text-foreground mb-2">
-                Something went wrong
-              </h2>
-              
+
+              <h2 className="text-xl font-semibold text-foreground mb-2">Something went wrong</h2>
+
               <p className="text-muted-foreground mb-6">
                 We encountered an unexpected error. This has been logged and we'll look into it.
               </p>
-              
+
               <div className="space-y-3">
                 <button
                   onClick={this.handleRetry}
@@ -95,7 +93,7 @@ class ErrorBoundary extends Component<Props, State> {
                 >
                   Try Again
                 </button>
-                
+
                 <button
                   onClick={() => window.location.reload()}
                   className="w-full px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors"
@@ -103,7 +101,7 @@ class ErrorBoundary extends Component<Props, State> {
                   Refresh Page
                 </button>
               </div>
-              
+
               {process.env.NODE_ENV === 'development' && this.state.error && (
                 <details className="mt-6 text-left">
                   <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">

@@ -37,7 +37,12 @@ describe('RBAC unit: matrix and authorize basics', () => {
   it('authorize allows fallback when no teamId is provided', async () => {
     // create a user to have a valid id
     const userRepo = AppDataSource.getRepository(Models.User);
-    const user = userRepo.create({ username: `ut_${Date.now()}`, email: `u_${Date.now()}@example.com`, hashedPassword: 'x', isVerified: true } as any);
+    const user = userRepo.create({
+      username: `ut_${Date.now()}`,
+      email: `u_${Date.now()}@example.com`,
+      hashedPassword: 'x',
+      isVerified: true,
+    } as any);
     await userRepo.save(user);
 
     const res = await authorize({ userId: user.id, resource: 'task', action: 'update' });
@@ -50,16 +55,36 @@ describe('RBAC unit: matrix and authorize basics', () => {
     const teamRepo = AppDataSource.getRepository(Models.Team);
     const orgRepo = AppDataSource.getRepository(Models.Organization);
 
-    const user = userRepo.create({ username: `nonmem_${Date.now()}`, email: `nm_${Date.now()}@example.com`, hashedPassword: 'x', isVerified: true } as any);
+    const user = userRepo.create({
+      username: `nonmem_${Date.now()}`,
+      email: `nm_${Date.now()}@example.com`,
+      hashedPassword: 'x',
+      isVerified: true,
+    } as any);
     await userRepo.save(user);
 
-    const org = orgRepo.create({ name: `Org ${Date.now()}`, slug: `org-${Date.now()}`, nameLower: `org-${Date.now()}`, ownerUserId: user.id } as any);
+    const org = orgRepo.create({
+      name: `Org ${Date.now()}`,
+      slug: `org-${Date.now()}`,
+      nameLower: `org-${Date.now()}`,
+      ownerUserId: user.id,
+    } as any);
     await orgRepo.save(org);
 
-    const team = teamRepo.create({ name: `Team ${Date.now()}`, slug: `team-${Date.now()}`, nameLower: `team-${Date.now()}`, organization: org } as any);
+    const team = teamRepo.create({
+      name: `Team ${Date.now()}`,
+      slug: `team-${Date.now()}`,
+      nameLower: `team-${Date.now()}`,
+      organization: org,
+    } as any);
     await teamRepo.save(team);
 
-    const res = await authorize({ userId: user.id, teamId: team.id, resource: 'task', action: 'update' });
+    const res = await authorize({
+      userId: user.id,
+      teamId: team.id,
+      resource: 'task',
+      action: 'update',
+    });
     expect(res.allowed).toBe(false);
     expect(res.reason).toBe('not_a_member');
   });
@@ -70,29 +95,59 @@ describe('RBAC unit: matrix and authorize basics', () => {
     const orgRepo = AppDataSource.getRepository(Models.Organization);
     const memRepo = AppDataSource.getRepository(Models.Membership);
 
-    const user = userRepo.create({ username: `mem_${Date.now()}`, email: `m_${Date.now()}@example.com`, hashedPassword: 'x', isVerified: true } as any);
+    const user = userRepo.create({
+      username: `mem_${Date.now()}`,
+      email: `m_${Date.now()}@example.com`,
+      hashedPassword: 'x',
+      isVerified: true,
+    } as any);
     await userRepo.save(user);
 
-    const org = orgRepo.create({ name: `Org ${Date.now()}`, slug: `org-${Date.now()}`, nameLower: `org-${Date.now()}`, ownerUserId: user.id } as any);
+    const org = orgRepo.create({
+      name: `Org ${Date.now()}`,
+      slug: `org-${Date.now()}`,
+      nameLower: `org-${Date.now()}`,
+      ownerUserId: user.id,
+    } as any);
     await orgRepo.save(org);
 
-    const team = teamRepo.create({ name: `Team ${Date.now()}`, slug: `team-${Date.now()}`, nameLower: `team-${Date.now()}`, organization: org } as any);
+    const team = teamRepo.create({
+      name: `Team ${Date.now()}`,
+      slug: `team-${Date.now()}`,
+      nameLower: `team-${Date.now()}`,
+      organization: org,
+    } as any);
     await teamRepo.save(team);
 
     const mem = memRepo.create({ user, org, team, role: 'member' } as any);
     await memRepo.save(mem);
 
-    const upd = await authorize({ userId: user.id, teamId: team.id, resource: 'task', action: 'update' });
+    const upd = await authorize({
+      userId: user.id,
+      teamId: team.id,
+      resource: 'task',
+      action: 'update',
+    });
     expect(upd.allowed).toBe(true);
     expect(upd.role).toBe('member');
 
-    const delDenied = await authorize({ userId: user.id, teamId: team.id, resource: 'task', action: 'delete' });
+    const delDenied = await authorize({
+      userId: user.id,
+      teamId: team.id,
+      resource: 'task',
+      action: 'delete',
+    });
     expect(delDenied.allowed).toBe(false);
     expect(delDenied.reason).toBe('insufficient_role');
 
     mem.role = 'admin';
     await memRepo.save(mem);
-    const delOk = await authorize({ userId: user.id, teamId: team.id, resource: 'task', action: 'delete' });
+    const delOk = await authorize({
+      userId: user.id,
+      teamId: team.id,
+      resource: 'task',
+      action: 'delete',
+    });
     expect(delOk.allowed).toBe(true);
     expect(delOk.role).toBe('admin');
   });

@@ -3,8 +3,22 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import NotificationScreen from '../NotificationScreen';
 
 const notifications = [
-  { id: 1, title: 'Welcome', message: 'Hello there', type: 'info', read: false, createdAt: new Date().toISOString() },
-  { id: 2, title: 'Task assigned', message: 'You have a task', type: 'task', read: true, createdAt: new Date().toISOString() },
+  {
+    id: 1,
+    title: 'Welcome',
+    message: 'Hello there',
+    type: 'info',
+    read: false,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 2,
+    title: 'Task assigned',
+    message: 'You have a task',
+    type: 'task',
+    read: true,
+    createdAt: new Date().toISOString(),
+  },
 ];
 
 vi.mock('@lib/api', () => ({

@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { sendVerificationCode, verifyEmailCode, getVerificationStatus, adminUnlock, getLockoutState } from '../../lib/api';
+import {
+  sendVerificationCode,
+  verifyEmailCode,
+  getVerificationStatus,
+  adminUnlock,
+  getLockoutState,
+} from '../../lib/api';
 
 function okJson(data: any) {
   return Promise.resolve({
