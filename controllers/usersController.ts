@@ -554,3 +554,169 @@ export async function oauthCallback(req: Request, res: Response) {
     res.status(500).send('OAuth callback failed');
   }
 }
+
+// Add: Change email and trigger re-verification
+export async function changeEmail(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number | undefined;
+    const newEmailRaw = String(req.body?.newEmail || '').trim();
+    if (!userId) return res.status(401).json({ success: false, error: 'unauthorized' });
+    if (!newEmailRaw || !newEmailRaw.includes('@')) return res.status(400).json({ success: false, error: 'invalid email' });
+    const newEmail = newEmailRaw.toLowerCase();
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, error: 'user not found' });
+    // Uniqueness check
+    const conflict = await userRepo
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: newEmail })
+      .getOne();
+    if (conflict && conflict.id !== (user as any).id) {
+      return res.status(409).json({ success: false, error: 'email already exists' });
+    }
+
+    const oldEmail = (user as any).email;
+    // Reset verification state and update email
+    const verificationSecret = crypto.randomBytes(16).toString('hex');
+    await userRepo.update({ id: (user as any).id }, {
+      email: newEmail,
+      isVerified: false,
+      verifyInvalidCount: 0,
+      verifyBackoffUntil: null as any,
+      verifyLockedUntil: null as any,
+      sendBackoffUntil: null as any,
+      verificationSecret,
+    } as any);
+
+    // Purge existing codes for user
+    const codeRepo = AppDataSource.getRepository(EmailVerificationCode);
+    await codeRepo.createQueryBuilder()
+      .delete()
+      .from(EmailVerificationCode)
+      .where('userId = :uid', { uid: (user as any).id })
+      .execute();
+
+    // Issue new verification code
+    const code = crypto.randomInt(100000, 999999).toString();
+    const codeHash = crypto.createHmac('sha256', verificationSecret).update(code).digest('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60_000);
+    const rec = codeRepo.create({ userId: (user as any).id, code, codeHash, expiresAt });
+    await codeRepo.save(rec);
+    await EmailService.sendVerificationCode({ email: newEmail, username: (user as any).username, code });
+
+    // Telemetry: email_changed
+    try {
+      const evRepo = AppDataSource.getRepository(SecurityEvent);
+      await evRepo.save(evRepo.create({ email: newEmail, userId: (user as any).id, eventType: 'email_changed', ip: req.ip, metadata: { oldEmail, newEmail }, createdAt: new Date() } as any));
+      await evRepo.save(evRepo.create({ email: newEmail, userId: (user as any).id, eventType: 'code_sent', ip: req.ip, metadata: { expiresAt: expiresAt.toISOString(), reason: 'email_change' }, createdAt: new Date() } as any));
+    } catch {}
+
+    return res.status(200).json({ success: true, message: 'Email updated. Verification code sent.', expiresAt: expiresAt.toISOString(), devCode: process.env.RESEND_API_KEY ? undefined : code });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: 'failed to change email' });
+  }
+}
+
+// Add: Change password with current password verification
+export async function changePassword(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number | undefined;
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!userId) return res.status(401).json({ success: false, error: 'unauthorized' });
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: 'currentPassword and newPassword are required' });
+    }
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: 'newPassword must be at least 6 characters' });
+    }
+
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, error: 'user not found' });
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, (user as any).hashedPassword);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ success: false, error: 'current password is incorrect' });
+    }
+
+    // Hash new password and update
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    await userRepo.update({ id: userId }, { hashedPassword: hashedNewPassword } as any);
+
+    // Telemetry: password_changed
+    try {
+      const evRepo = AppDataSource.getRepository(SecurityEvent);
+      await evRepo.save(evRepo.create({ 
+        email: (user as any).email, 
+        userId, 
+        eventType: 'password_changed', 
+        ip: req.ip, 
+        metadata: { timestamp: new Date().toISOString() }, 
+        createdAt: new Date() 
+      } as any));
+    } catch {}
+
+    return res.status(200).json({ success: true, message: 'Password updated successfully' });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: 'failed to change password' });
+  }
+}
+
+// Add: Delete account securely with password verification
+export async function deleteAccount(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number | undefined;
+    const { password } = req.body;
+    
+    if (!userId) return res.status(401).json({ success: false, error: 'unauthorized' });
+    if (!password) {
+      return res.status(400).json({ success: false, error: 'password is required to delete account' });
+    }
+
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, error: 'user not found' });
+
+    // Verify password before deletion
+    const isPasswordValid = await bcrypt.compare(password, (user as any).hashedPassword);
+    if (!isPasswordValid) {
+      return res.status(400).json({ success: false, error: 'incorrect password' });
+    }
+
+    const userEmail = (user as any).email;
+
+    // Telemetry: account_deleted (before deletion)
+    try {
+      const evRepo = AppDataSource.getRepository(SecurityEvent);
+      await evRepo.save(evRepo.create({ 
+        email: userEmail, 
+        userId, 
+        eventType: 'account_deleted', 
+        ip: req.ip, 
+        metadata: { timestamp: new Date().toISOString() }, 
+        createdAt: new Date() 
+      } as any));
+    } catch {}
+
+    // Revoke all refresh tokens
+    const refreshRepo = AppDataSource.getRepository(RefreshToken);
+    await refreshRepo.update({ userId }, { isRevoked: true, revokedAt: new Date() } as any);
+
+    // Delete verification codes
+    const codeRepo = AppDataSource.getRepository(EmailVerificationCode);
+    await codeRepo.createQueryBuilder()
+      .delete()
+      .from(EmailVerificationCode)
+      .where('userId = :uid', { uid: userId })
+      .execute();
+
+    // Delete the user account
+    await userRepo.remove(user);
+
+    return res.status(200).json({ success: true, message: 'Account deleted successfully' });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: 'failed to delete account' });
+  }
+}

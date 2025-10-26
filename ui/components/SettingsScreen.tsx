@@ -20,7 +20,7 @@ import {
 import { useTheme } from '../lib/theme-context';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from './ui/alert-dialog';
-import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents, getRotationHistory, adminBanUser, adminSetUsername, setAdminTokenSession, getAdminTokenSession, inviteToTeam, getOrganizations, createOrganization, updateOrganization, deleteOrganization, transferOrgOwnership, listTeams, createTeam, listMembers, changeRole, transferTeamOwnership, leaveTeam, getSessions, revokeSession, renameSession, revokeOtherSessions } from '../lib/api';
+import { getCurrentUser, getCurrentUserFromAPI, updateUser, getNotifications, getUnreadNotificationCount, adminUnlock, getLockoutState, getSecurityEvents, getRotationHistory, adminBanUser, adminSetUsername, setAdminTokenSession, getAdminTokenSession, inviteToTeam, getOrganizations, createOrganization, updateOrganization, deleteOrganization, transferOrgOwnership, listTeams, createTeam, listMembers, changeRole, transferTeamOwnership, leaveTeam, getSessions, revokeSession, renameSession, revokeOtherSessions, changeEmail, changePassword, deleteAccount } from '../lib/api';
 
 export function SettingsScreen() {
   const [activeSection, setActiveSection] = useState('profile');
@@ -155,7 +155,17 @@ function ProfileSection({ user, onUserUpdated }: { user: any | null; onUserUpdat
     <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-slate-900 dark:text-white">Profile</h3>
-        <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">Save changes</Button>
+        <div className="flex items-center gap-2">
+          {user?.isVerified ? (
+            <Badge className="bg-green-600 text-white">Verified</Badge>
+          ) : (
+            <Badge variant="secondary">Unverified</Badge>
+          )}
+          {!user?.isVerified && (
+            <Button variant="outline" size="sm" onClick={() => { try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email: user?.email } })); } catch {} }}>Verify email</Button>
+          )}
+          <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">Save changes</Button>
+        </div>
       </div>
       <div className="flex items-center gap-4">
         <Avatar className="h-16 w-16">
@@ -485,28 +495,159 @@ function TeamSection() {
 }
 
 function AccountSection() {
+  const [newEmail, setNewEmail] = useState('');
+  const [changingEmail, setChangingEmail] = useState(false);
+  const [changeMsg, setChangeMsg] = useState<string | null>(null);
+  const [changeErr, setChangeErr] = useState<string | null>(null);
+  
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<string | null>(null);
+  const [passwordErr, setPasswordErr] = useState<string | null>(null);
+  
+  // Account deletion state
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  async function handleChangeEmail() {
+    setChangingEmail(true); setChangeErr(null); setChangeMsg(null);
+    try {
+      const res = await changeEmail(newEmail.trim());
+      setChangeMsg('Email updated. Verification code sent.');
+      if (res?.devCode) {
+        setChangeMsg(`Email updated. Code (dev): ${res.devCode}`);
+      }
+      toast.success('Email updated. Check your inbox for the code.');
+      try { window.dispatchEvent(new CustomEvent('auth:needs_verification', { detail: { email: newEmail.trim().toLowerCase() } })); } catch {}
+      setNewEmail('');
+    } catch (e: any) {
+      setChangeErr(e?.message || 'Failed to change email');
+      toast.error(e?.message || 'Failed to change email');
+    } finally { setChangingEmail(false); }
+  }
+
+  async function handleChangePassword() {
+    setChangingPassword(true); setPasswordErr(null); setPasswordMsg(null);
+    
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordErr('All password fields are required');
+      setChangingPassword(false);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordErr('New passwords do not match');
+      setChangingPassword(false);
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordErr('New password must be at least 6 characters');
+      setChangingPassword(false);
+      return;
+    }
+
+    try {
+      await changePassword(currentPassword, newPassword);
+      setPasswordMsg('Password updated successfully');
+      toast.success('Password updated successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (e: any) {
+      setPasswordErr(e?.message || 'Failed to change password');
+      toast.error(e?.message || 'Failed to change password');
+    } finally { setChangingPassword(false); }
+  }
+
+  async function handleDeleteAccount() {
+    if (!deletePassword.trim()) {
+      toast.error('Please enter your password to confirm account deletion');
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      await deleteAccount(deletePassword);
+      toast.success('Account deleted successfully');
+      // Redirect to login or home page
+      window.location.href = '/';
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to delete account');
+    } finally {
+      setDeletingAccount(false);
+      setShowDeleteDialog(false);
+      setDeletePassword('');
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
-        <h3 className="text-slate-900 dark:text-white mb-6">Security</h3>
-        <div className="space-y-4">
+        <h3 className="text-slate-900 dark:text-white mb-6">Email</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="current-password" className="mb-2 block">Current password</Label>
-            <Input id="current-password" type="password" />
-          </div>
-          <div>
-            <Label htmlFor="new-password" className="mb-2 block">New password</Label>
-            <Input id="new-password" type="password" />
-          </div>
-          <div>
-            <Label htmlFor="confirm-password" className="mb-2 block">Confirm password</Label>
-            <Input id="confirm-password" type="password" />
+            <Label className="mb-2 block">New email</Label>
+            <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="new@example.com" />
           </div>
         </div>
         <Separator className="my-6" />
-        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
-          Update password
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleChangeEmail} disabled={changingEmail || !newEmail.trim()}>Change email & send code</Button>
+          {!changingEmail && changeMsg && (<span className="text-xs text-slate-600 dark:text-slate-400">{changeMsg}</span>)}
+          {!changingEmail && changeErr && (<span className="text-xs text-red-600 dark:text-red-400">{changeErr}</span>)}
+        </div>
+      </Card>
+
+      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
+        <h3 className="text-slate-900 dark:text-white mb-6">Password</h3>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="current-password" className="mb-2 block">Current password</Label>
+            <Input 
+              id="current-password" 
+              type="password" 
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter current password"
+            />
+          </div>
+          <div>
+            <Label htmlFor="new-password" className="mb-2 block">New password</Label>
+            <Input 
+              id="new-password" 
+              type="password" 
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Enter new password (min 6 characters)"
+            />
+          </div>
+          <div>
+            <Label htmlFor="confirm-password" className="mb-2 block">Confirm password</Label>
+            <Input 
+              id="confirm-password" 
+              type="password" 
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm new password"
+            />
+          </div>
+        </div>
+        <Separator className="my-6" />
+        <div className="flex items-center gap-2">
+          <Button 
+            className="bg-indigo-600 hover:bg-indigo-700 text-white" 
+            onClick={handleChangePassword}
+            disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+          >
+            {changingPassword ? 'Updating...' : 'Update password'}
+          </Button>
+          {!changingPassword && passwordMsg && (<span className="text-xs text-green-600 dark:text-green-400">{passwordMsg}</span>)}
+          {!changingPassword && passwordErr && (<span className="text-xs text-red-600 dark:text-red-400">{passwordErr}</span>)}
+        </div>
       </Card>
 
       <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
@@ -519,10 +660,44 @@ function AccountSection() {
                 Permanently delete your account and all data. This action cannot be undone.
               </p>
             </div>
-            <Button variant="outline" size="sm" className="border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950">
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </Button>
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Account</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-4">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Enter your password to confirm
+                  </label>
+                  <Input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Current password"
+                    className="w-full"
+                  />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setDeletePassword('')}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAccount}
+                    disabled={deletingAccount || !deletePassword.trim()}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    {deletingAccount ? 'Deleting...' : 'Delete Account'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </Card>

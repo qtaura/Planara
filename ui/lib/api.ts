@@ -469,6 +469,50 @@ export async function getVerificationStatus(email: string): Promise<any> {
   return res.json();
 }
 
+export async function changeEmail(newEmail: string): Promise<{ success: boolean; expiresAt?: string; devCode?: string }> {
+  const normalized = String(newEmail || '').trim().toLowerCase();
+  const res = await apiFetch('/users/change-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ newEmail: normalized }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to change email: ${res.status}`);
+  }
+  const data = await res.json();
+  // Update local user cache
+  const cu = getCurrentUser();
+  if (cu) setCurrentUser({ ...cu, email: normalized, isVerified: false });
+  return data;
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message?: string }> {
+  const res = await apiFetch('/users/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to change password: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteAccount(password: string): Promise<{ success: boolean; message?: string }> {
+  const res = await apiFetch('/users/delete-account', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to delete account: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function adminUnlock(email: string, adminToken: string): Promise<any> {
   const normalized = String(email || '').trim().toLowerCase();
   const res = await apiFetch('/users/auth/admin/unlock', {
