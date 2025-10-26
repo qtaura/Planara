@@ -274,6 +274,18 @@ export async function adminBanUser(req: Request, res: Response) {
     if (user) {
       await userRepo.delete({ id: (user as any).id });
     }
+    // Telemetry: admin_user_banned
+    try {
+      const evRepo = AppDataSource.getRepository(SecurityEvent);
+      await evRepo.save(evRepo.create({
+        email,
+        userId: (req as any).userId,
+        eventType: 'admin_user_banned',
+        ip: req.ip,
+        metadata: { reason, deletedUser: Boolean(user) },
+        createdAt: new Date(),
+      } as any));
+    } catch {}
     return res.status(200).json({ success: true });
   } catch (e) {
     return res.status(500).json({ success: false, error: 'Failed to ban user' });
@@ -302,7 +314,20 @@ export async function adminSetUsername(req: Request, res: Response) {
     // Ensure new username is available
     const conflict = await userRepo.findOne({ where: { usernameLower: unameLower } });
     if (conflict && conflict.id !== (user as any).id) return res.status(409).json({ success: false, error: 'Username already taken' });
+    const prevUsername = (user as any).username;
     await userRepo.update({ id: (user as any).id }, { username: newUsername, usernameLower: unameLower, usernameChangeCount: ((user as any).usernameChangeCount || 0) + 1 } as any);
+    // Telemetry: admin_username_changed
+    try {
+      const evRepo = AppDataSource.getRepository(SecurityEvent);
+      await evRepo.save(evRepo.create({
+        email,
+        userId: (req as any).userId,
+        eventType: 'admin_username_changed',
+        ip: req.ip,
+        metadata: { targetUserId: (user as any).id, oldUsername: prevUsername, newUsername },
+        createdAt: new Date(),
+      } as any));
+    } catch {}
     return res.status(200).json({ success: true });
   } catch (e) {
     return res.status(500).json({ success: false, error: 'Failed to change username' });

@@ -98,3 +98,22 @@ export function requireTeamRole(minRole: "viewer" | "member" | "admin" | "owner"
     }
   };
 }
+
+export function requireOrgOwner() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = (req as any).userId as number | undefined;
+      if (!userId) return res.status(401).json({ error: "unauthorized" });
+      const orgId = Number((req.params as any).id || (req.query as any)?.orgId || (req.body as any)?.orgId || 0);
+      if (!orgId) return res.status(400).json({ error: "organization id required" });
+
+      const orgRepo = AppDataSource.getRepository(require("../models/Organization.js").Organization);
+      const org = await orgRepo.findOne({ where: { id: orgId } });
+      if (!org) return res.status(404).json({ error: "organization not found" });
+      if ((org as any).ownerUserId !== userId) return res.status(403).json({ error: "owner required" });
+      return next();
+    } catch (e) {
+      return res.status(500).json({ error: "authorization failed" });
+    }
+  };
+}
