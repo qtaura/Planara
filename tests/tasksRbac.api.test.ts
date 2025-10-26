@@ -83,7 +83,7 @@ describe('RBAC API: task update/delete with team roles', () => {
 
     app = createTestApp();
 
-    const suffix = Date.now();
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     owner = await createUser(`owner${suffix}`, `owner${suffix}@example.com`, { verified: true });
     member = await createUser(`member${suffix}`, `member${suffix}@example.com`, { verified: true });
     outsider = await createUser(`outsider${suffix}`, `outsider${suffix}@example.com`, {

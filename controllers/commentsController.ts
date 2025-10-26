@@ -8,7 +8,7 @@ import { Notification } from '../models/Notification.js';
 import { recordCommentEvent } from '../services/securityTelemetry.js';
 
 function extractMentions(content: string): string[] {
-  const matches = content.match(/@([a-z0-9_]+)/gi) || [];
+  const matches = content.match(/@([a-z0-9_-]+)/gi) || [];
   return matches.map((m) => m.replace(/^@/, '').toLowerCase());
 }
 

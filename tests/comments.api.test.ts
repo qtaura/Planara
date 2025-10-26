@@ -74,7 +74,7 @@ describe('Comments API: mentions, replies, reactions', () => {
 
     app = createTestApp();
 
-    const suffix = Date.now();
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     owner = await createUser(`owner${suffix}`, `owner${suffix}@example.com`, { verified: true });
     commenter = await createUser(`commenter${suffix}`, `commenter${suffix}@example.com`, {
       verified: true,

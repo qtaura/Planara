@@ -11,7 +11,7 @@ const ALLOWED_REACTIONS = ['thumbs_up', 'heart', 'laugh', 'hooray', 'rocket', 'e
 type ReactionType = (typeof ALLOWED_REACTIONS)[number];
 
 function extractMentions(content: string): string[] {
-  const matches = content.match(/@([a-z0-9_]+)/gi) || [];
+  const matches = content.match(/@([a-z0-9_-]+)/gi) || [];
   return matches.map((m) => m.replace(/^@/, '').toLowerCase());
 }
 

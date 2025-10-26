@@ -62,7 +62,7 @@ describe('Search API: filters and RBAC enforcement', () => {
   let taskB: any;
   let commentA: any;
 
-  const suffix = Date.now();
+  const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const uniqueQ = `searchq_${suffix}`;
 
   beforeAll(async () => {

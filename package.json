@@ -14,7 +14,7 @@
     "build:ui": "npm --prefix ui ci --include=dev && npm --prefix ui run build",
     "start": "node dist/index.js",
     "test": "vitest",
-    "test:run": "npm run build:server && concurrently -k -s first -n server,test -c green,cyan \"cross-env NODE_ENV=test REALTIME_ENABLED=false node dist/index.js\" \"wait-on http://localhost:3001/metrics && cross-env NODE_ENV=test vitest run\"",
+    "test:run": "npm run build:server && concurrently -k -s first -n server,test -c green,cyan \"cross-env NODE_ENV=test REALTIME_ENABLED=false PORT=3001 node dist/index.js\" \"wait-on http://localhost:3001/metrics && cross-env NODE_ENV=test vitest run\"",
     "lint": "eslint . --ext .ts,.tsx,.js",
     "format:check": "prettier -c \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
