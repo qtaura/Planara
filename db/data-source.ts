@@ -89,6 +89,7 @@ export const AppDataSource = new DataSource(
           FileVersion,
           ExternalLink,
           IntegrationSettings,
+          RetentionPolicy,
         ],
         synchronize: true,
         logging: false,

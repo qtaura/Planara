@@ -122,3 +122,24 @@ export function sanitizePolicy(p: RetentionPolicy) {
     createdAt: p.createdAt,
   };
 }
+
+// Batch-apply retention policies across all attachments.
+// Intended for periodic scheduling; safe to run idempotently.
+export async function applyRetentionPoliciesBatch(): Promise<{ processed: number }> {
+  const attRepo = AppDataSource.getRepository(Attachment);
+
+  // Load attachments with enough relations to resolve project/team context
+  const attachments = await attRepo.find({
+    relations: { project: { team: true }, task: { project: { team: true } } },
+    order: { id: 'ASC' },
+  } as any);
+
+  let processed = 0;
+  for (const att of attachments) {
+    try {
+      await applyRetentionPolicyForAttachment(att);
+      processed++;
+    } catch {}
+  }
+  return { processed };
+}

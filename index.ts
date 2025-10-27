@@ -25,6 +25,7 @@ import { cacheMiddleware, getCacheStats } from './middlewares/cache.js';
 import { flags } from './config/flags.js';
 import exportsRouter from './routes/exports.js';
 import retentionRouter from './routes/retention.js';
+import { applyRetentionPoliciesBatch } from './services/retentionService.js';
 
 // ===== OBSERVABILITY SETUP =====
 
@@ -77,6 +78,7 @@ function structuredLog(level: string, message: string, meta: Record<string, any>
 
 // SQLite backup functionality
 let backupInterval: NodeJS.Timeout | null = null;
+let retentionInterval: NodeJS.Timeout | null = null;
 
 async function createSQLiteBackup(): Promise<string> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -137,6 +139,24 @@ function startBackupScheduler() {
   }, intervalMs);
 
   structuredLog('info', 'SQLite backup scheduler started', { intervalMinutes });
+}
+
+function startRetentionScheduler() {
+  const intervalMinutes = Number(process.env.RETENTION_INTERVAL_MINUTES || 30);
+  const intervalMs = intervalMinutes * 60 * 1000;
+
+  retentionInterval = setInterval(async () => {
+    try {
+      const { processed } = await applyRetentionPoliciesBatch();
+      structuredLog('info', 'Scheduled retention batch ran', { processed });
+    } catch (error) {
+      structuredLog('error', 'Scheduled retention batch failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, intervalMs);
+
+  structuredLog('info', 'Retention scheduler started', { intervalMinutes });
 }
 
 // Optional Sentry monitoring (error tracking) using runtime-only import to avoid TS/module resolution
@@ -430,6 +450,7 @@ server.listen(port, host as any, () => {
   // Start backup scheduler only outside of test environment
   if (process.env.NODE_ENV !== 'test') {
     startBackupScheduler();
+    startRetentionScheduler();
   }
 
   // Structured startup logging
@@ -441,6 +462,7 @@ server.listen(port, host as any, () => {
     nodeEnv: process.env.NODE_ENV || 'development',
     sloLatencyMs: SLO_LATENCY_MS,
     backupIntervalMinutes: Number(process.env.DB_BACKUP_INTERVAL_MINUTES || 60),
+    retentionIntervalMinutes: Number(process.env.RETENTION_INTERVAL_MINUTES || 30),
     adminTokenConfigured: !!ADMIN_TOKEN,
     sentryEnabled: !!process.env.SENTRY_DSN,
   });

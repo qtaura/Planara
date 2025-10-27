@@ -44,16 +44,28 @@ export async function createPolicy(req: Request, res: Response) {
       if (!project) return res.status(404).json({ error: 'project not found' });
     }
 
-    // Enforce uniqueness per scope/target
-    const existing = await repo.findOne({
-      where:
-        scope === 'global'
-          ? ({ scope: 'global' } as any)
-          : scope === 'team'
-            ? ({ scope: 'team', team: { id: (team as any).id } } as any)
-            : ({ scope: 'project', project: { id: (project as any).id } } as any),
-      relations: { team: true, project: true },
-    });
+    // Enforce uniqueness per scope/target using query builder to avoid nested where issues
+    let existing: RetentionPolicy | null = null;
+    if (scope === 'global') {
+      existing = await repo
+        .createQueryBuilder('policy')
+        .where('policy.scope = :scope', { scope: 'global' })
+        .getOne();
+    } else if (scope === 'team') {
+      existing = await repo
+        .createQueryBuilder('policy')
+        .leftJoin('policy.team', 'team')
+        .where('policy.scope = :scope', { scope: 'team' })
+        .andWhere('team.id = :tid', { tid: (team as any).id })
+        .getOne();
+    } else {
+      existing = await repo
+        .createQueryBuilder('policy')
+        .leftJoin('policy.project', 'project')
+        .where('policy.scope = :scope', { scope: 'project' })
+        .andWhere('project.id = :pid', { pid: (project as any).id })
+        .getOne();
+    }
     if (existing) return res.status(409).json({ error: 'policy already exists for target' });
 
     const policy = repo.create({
@@ -66,7 +78,9 @@ export async function createPolicy(req: Request, res: Response) {
     await repo.save(policy);
     res.status(201).json(sanitizePolicy(policy));
   } catch (e) {
-    res.status(500).json({ error: 'failed to create policy' });
+    const msg = (e as any)?.message || String(e);
+    // Surface error details to aid debugging in tests
+    res.status(500).json({ error: 'failed to create policy', details: msg });
   }
 }
 

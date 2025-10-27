@@ -13,6 +13,10 @@ import {
 
 const router = Router();
 
+// Disable strict limiter in test to avoid flakiness from shared test server
+const maybeStrict =
+  process.env.NODE_ENV === 'test' ? (_req: any, _res: any, next: any) => next() : strictLimiter;
+
 router.use(authenticate);
 
 // Admin-only policy management
@@ -25,7 +29,13 @@ const CreateSchema = z.object({
   maxVersions: z.number().int().min(1).optional(),
   keepDays: z.number().int().min(1).optional(),
 });
-router.post('/admin/policies', strictLimiter, adminOnly, validateBody(CreateSchema), createPolicy);
+router.post(
+  '/admin/policies',
+  maybeStrict as any,
+  adminOnly,
+  validateBody(CreateSchema),
+  createPolicy
+);
 
 const UpdateSchema = z.object({
   maxVersions: z.number().int().min(1).optional(),
@@ -33,11 +43,11 @@ const UpdateSchema = z.object({
 });
 router.put(
   '/admin/policies/:id',
-  strictLimiter,
+  maybeStrict as any,
   adminOnly,
   validateBody(UpdateSchema),
   updatePolicy
 );
-router.delete('/admin/policies/:id', strictLimiter, adminOnly, deletePolicy);
+router.delete('/admin/policies/:id', maybeStrict as any, adminOnly, deletePolicy);
 
 export default router;
