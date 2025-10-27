@@ -4,6 +4,11 @@ import { RetentionPolicy } from '../models/RetentionPolicy.js';
 import { Team } from '../models/Team.js';
 import { Project } from '../models/Project.js';
 import { sanitizePolicy, applyRetentionPoliciesBatch } from '../services/retentionService.js';
+import {
+  recordRetentionSuccess,
+  recordRetentionFailure,
+  getRetentionStatus,
+} from '../services/retentionMetrics.js';
 
 export async function listPolicies(_req: Request, res: Response) {
   try {
@@ -131,6 +136,9 @@ export async function runBatch(req: Request, res: Response) {
       // eslint-disable-next-line no-console
       console.log(JSON.stringify(logEntry));
     } catch {}
+    try {
+      recordRetentionSuccess(processed);
+    } catch {}
     res.json({ success: true, processed });
   } catch (e) {
     const msg = (e as any)?.message || String(e);
@@ -146,6 +154,18 @@ export async function runBatch(req: Request, res: Response) {
       // eslint-disable-next-line no-console
       console.log(JSON.stringify(logEntry));
     } catch {}
+    try {
+      recordRetentionFailure(msg);
+    } catch {}
     res.status(500).json({ error: 'failed to run retention batch', details: msg });
+  }
+}
+
+export async function retentionStatus(_req: Request, res: Response) {
+  try {
+    const status = getRetentionStatus();
+    res.json({ success: true, status });
+  } catch (e) {
+    res.status(500).json({ error: 'failed to get retention status' });
   }
 }

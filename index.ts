@@ -26,6 +26,7 @@ import { flags } from './config/flags.js';
 import exportsRouter from './routes/exports.js';
 import retentionRouter from './routes/retention.js';
 import { applyRetentionPoliciesBatch } from './services/retentionService.js';
+import { recordRetentionSuccess, recordRetentionFailure } from './services/retentionMetrics.js';
 
 // ===== OBSERVABILITY SETUP =====
 
@@ -149,10 +150,12 @@ function startRetentionScheduler() {
     try {
       const { processed } = await applyRetentionPoliciesBatch();
       structuredLog('info', 'Scheduled retention batch ran', { processed });
+      recordRetentionSuccess(processed);
     } catch (error) {
       structuredLog('error', 'Scheduled retention batch failed', {
         error: error instanceof Error ? error.message : String(error),
       });
+      recordRetentionFailure(error instanceof Error ? error.message : String(error));
     }
   }, intervalMs);
 
