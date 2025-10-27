@@ -98,7 +98,6 @@ export function useKeyboardNavigation(
       ) {
         event.preventDefault();
 
-        const isVertical = event.key === 'ArrowDown' || event.key === 'ArrowUp';
         const isForward = event.key === 'ArrowDown' || event.key === 'ArrowRight';
 
         const nextIndex = isForward ? currentFocusIndex.current + 1 : currentFocusIndex.current - 1;

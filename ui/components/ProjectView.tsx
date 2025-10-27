@@ -85,6 +85,12 @@ export function ProjectView({ projectId, onContext, onTaskContext }: ProjectView
     return () => window.removeEventListener('presence:update', onPresence as EventListener);
   }, [projectId]);
 
+  // Propagate selected task id to parent for assistant context
+  useEffect(() => {
+    const tid = selectedTask ? Number(selectedTask.id) : null;
+    onTaskContext?.({ activeTaskId: tid });
+  }, [selectedTask]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-white dark:bg-[#0A0A0A]">
@@ -101,11 +107,6 @@ export function ProjectView({ projectId, onContext, onTaskContext }: ProjectView
     );
   }
 
-  // Propagate selected task id to parent for assistant context
-  useEffect(() => {
-    const tid = selectedTask ? Number(selectedTask.id) : null;
-    onTaskContext?.({ activeTaskId: tid });
-  }, [selectedTask]);
 
   return (
     <div className="flex-1 h-screen overflow-y-auto bg-white dark:bg-[#0A0A0A]">
