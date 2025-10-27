@@ -44,9 +44,10 @@ interface TaskModalProps {
   onClose: () => void;
   // Optional team context: when present, gate actions by role
   teamId?: number | null;
+  onActiveThreadChange?: (threadId: number | null) => void;
 }
 
-export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
+export function TaskModal({ task, isOpen, onClose, teamId, onActiveThreadChange }: TaskModalProps) {
   const [showAiSuggestions, setShowAiSuggestions] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [userRole, setUserRole] = useState<'viewer' | 'member' | 'admin' | 'owner' | null>(null);
@@ -620,7 +621,10 @@ export function TaskModal({ task, isOpen, onClose, teamId }: TaskModalProps) {
 
             {task && (
               <div className="mt-4">
-                <CommentsPanel task={{ id: Number(task.id), projectId: task.projectId as any }} />
+                <CommentsPanel
+                  task={{ id: Number(task.id), projectId: task.projectId as any }}
+                  onActiveThreadChange={onActiveThreadChange}
+                />
               </div>
             )}
           </div>

@@ -1,9 +1,20 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from '@lib/motion-shim';
 import { Card } from './ui/card';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Sparkles, X, Send, Zap, Target, Calendar, BarChart3, MessageSquare } from 'lucide-react';
+import {
+  Sparkles,
+  X,
+  Send,
+  Zap,
+  Target,
+  Calendar,
+  BarChart3,
+  MessageSquare,
+  Loader2,
+} from 'lucide-react';
 import { aiAuthoringSuggest, aiSummarizeThread, aiTriageEvaluate, aiTeamInsights } from '@lib/api';
 
 export function AIAssistant(
@@ -215,9 +226,22 @@ Recommendations: ${recommendations.join(' | ')}`;
                   </div>
                   <div>
                     <h3 className="text-sm text-slate-900 dark:text-white">AI Assistant</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Always here to help
+                    <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                      {loading ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Working on “{loading}”…
+                        </>
+                      ) : (
+                        'Always here to help'
+                      )}
                     </p>
+                    <div className="mt-1">
+                      <Badge variant="outline" className="text-[10px] font-normal">
+                        Context: P:{String(projectId ?? '-')} Tm:{String(teamId ?? '-')} Tk:
+                        {String(activeTaskId ?? '-')} Th:{String(activeThreadId ?? '-')}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
                 <Button
@@ -241,7 +265,7 @@ Recommendations: ${recommendations.join(' | ')}`;
                       variant="outline"
                       className="text-xs h-7"
                       onClick={() => runQuickAction(action.label)}
-                      loading={loading === action.label}
+                      disabled={!!loading}
                     >
                       {action.icon}
                       <span className="ml-1">{action.label}</span>
@@ -289,14 +313,25 @@ Recommendations: ${recommendations.join(' | ')}`;
                     className="flex-1 text-sm"
                     value={inputValue}
                     onChange={(e) => setInputValue(e.currentTarget.value)}
+                    disabled={!!loading}
                     onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === 'Enter' && !loading) {
                         handleSendMessage(inputValue);
                         setInputValue('');
                       }
                     }}
                   />
-                  <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white px-3">
+                  <Button
+                    size="sm"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-3"
+                    disabled={!!loading}
+                    onClick={() => {
+                      if (!loading) {
+                        handleSendMessage(inputValue);
+                        setInputValue('');
+                      }
+                    }}
+                  >
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>

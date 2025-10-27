@@ -26,9 +26,11 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 
 interface ProjectViewProps {
   projectId: string;
+  onContext?: (ctx: { teamId?: number | null }) => void;
+  onTaskContext?: (ctx: { activeTaskId?: number | null; activeThreadId?: number | null }) => void;
 }
 
-export function ProjectView({ projectId }: ProjectViewProps) {
+export function ProjectView({ projectId, onContext, onTaskContext }: ProjectViewProps) {
   const [activeTab, setActiveTab] = useState('roadmap');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -42,6 +44,8 @@ export function ProjectView({ projectId }: ProjectViewProps) {
     try {
       const p = await getProjectWithRelations(projectId);
       setProject(p || null);
+      const teamId = p?.team?.id ?? null;
+      onContext?.({ teamId });
     } catch (e: any) {
       setError(e?.message || 'Failed to load project');
       toast.error(error || 'Failed to load project');
@@ -96,6 +100,12 @@ export function ProjectView({ projectId }: ProjectViewProps) {
       </div>
     );
   }
+
+  // Propagate selected task id to parent for assistant context
+  useEffect(() => {
+    const tid = selectedTask ? Number(selectedTask.id) : null;
+    onTaskContext?.({ activeTaskId: tid });
+  }, [selectedTask]);
 
   return (
     <div className="flex-1 h-screen overflow-y-auto bg-white dark:bg-[#0A0A0A]">
@@ -222,7 +232,14 @@ export function ProjectView({ projectId }: ProjectViewProps) {
         </Tabs>
       </div>
 
-      {selectedTask && <TaskModal task={selectedTask} onClose={() => setSelectedTask(null)} />}
+      {selectedTask && (
+        <TaskModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          teamId={project?.team?.id ?? null}
+          onActiveThreadChange={(threadId) => onTaskContext?.({ activeThreadId: threadId })}
+        />
+      )}
     </div>
   );
 }

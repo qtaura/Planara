@@ -58,17 +58,29 @@ function CommentItem({
   children,
   onReply,
   onReact,
+  onSelectThread,
 }: {
   comment: CommentType;
   depth: number;
   children: React.ReactNode;
   onReply: (parentId: number, content: string) => void;
   onReact: (commentId: number, type: string, op?: 'add' | 'remove') => void;
+  onSelectThread?: (threadId: number | null) => void;
 }) {
   const [replyText, setReplyText] = useState('');
   const canReply = depth < 3; // respect max thread depth
   return (
-    <div style={{ marginLeft: depth * 16, padding: 8, borderLeft: '2px solid #eee' }}>
+    <div
+      style={{
+        marginLeft: depth * 16,
+        padding: 8,
+        borderLeft: '2px solid #eee',
+        cursor: depth === 0 ? 'pointer' : 'default',
+      }}
+      onClick={() => {
+        if (depth === 0) onSelectThread?.(comment.threadId || null);
+      }}
+    >
       <div style={{ whiteSpace: 'pre-wrap' }}>{comment.content}</div>
       <ReactionBar comment={comment} onReact={(type, op) => onReact(comment.id, type, op)} />
       {canReply && (
@@ -102,10 +114,31 @@ function CommentItem({
   );
 }
 
-export default function CommentsPanel({ task }: { task: TaskRef }) {
+export default function CommentsPanel({
+  task,
+  onActiveThreadChange,
+}: {
+  task: TaskRef;
+  onActiveThreadChange?: (threadId: number | null) => void;
+}) {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newText, setNewText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeThreadId, setActiveThreadId] = useState<number | null>(null);
+
+  // Restore last-selected thread for this task if available
+  useEffect(() => {
+    const key = `lastThread_task_${task.id}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      const tid = Number(saved);
+      if (!Number.isNaN(tid)) {
+        setActiveThreadId(tid);
+        onActiveThreadChange?.(tid);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.id]);
 
   async function load() {
     setLoading(true);
@@ -144,6 +177,12 @@ export default function CommentsPanel({ task }: { task: TaskRef }) {
         children.set(pid, arr);
       }
     }
+    // Initialize active thread to first root if none selected
+    if (activeThreadId == null && roots.length > 0) {
+      const tid = roots[0].threadId || null;
+      setActiveThreadId(tid);
+      onActiveThreadChange?.(tid);
+    }
     function renderNode(node: CommentType, depth: number): React.ReactNode {
       const ch = children.get(node.id) || [];
       return (
@@ -159,13 +198,23 @@ export default function CommentsPanel({ task }: { task: TaskRef }) {
               .then(load)
               .catch(console.error);
           }}
+          onSelectThread={(threadId) => {
+            setActiveThreadId(threadId);
+            onActiveThreadChange?.(threadId);
+            const key = `lastThread_task_${task.id}`;
+            if (threadId == null) {
+              localStorage.removeItem(key);
+            } else {
+              localStorage.setItem(key, String(threadId));
+            }
+          }}
         >
           {ch.map((kid) => renderNode(kid, Math.min(depth + 1, 3)))}
         </CommentItem>
       );
     }
     return roots.map((r) => renderNode(r, 0));
-  }, [comments]);
+  }, [comments, activeThreadId]);
 
   return (
     <div style={{ marginTop: 16 }}>

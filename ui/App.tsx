@@ -26,6 +26,10 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('landing');
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  // Assistant contextual props
+  const [assistantTeamId, setAssistantTeamId] = useState<number | null>(null);
+  const [assistantTaskId, setAssistantTaskId] = useState<number | null>(null);
+  const [assistantThreadId, setAssistantThreadId] = useState<number | null>(null);
   // signup flow state
   const [signupEmail, setSignupEmail] = useState<string>('');
   const [signupPassword, setSignupPassword] = useState<string>('');
@@ -291,7 +295,15 @@ function AppContent() {
         {currentView === 'settings' && <SettingsScreen />}
         {currentView === 'notifications' && <NotificationScreen />}
         {currentView === 'project' && selectedProject && (
-          <ProjectView projectId={selectedProject} />
+          <ProjectView
+            projectId={selectedProject}
+            onContext={({ teamId }) => setAssistantTeamId(teamId ?? null)}
+            onTaskContext={({ activeTaskId, activeThreadId }) => {
+              if (typeof activeTaskId !== 'undefined') setAssistantTaskId(activeTaskId ?? null);
+              if (typeof activeThreadId !== 'undefined')
+                setAssistantThreadId(activeThreadId ?? null);
+            }}
+          />
         )}
         {currentView === 'search' && <SearchView />}
         {currentView === 'verify' && (
@@ -302,7 +314,14 @@ function AppContent() {
           />
         )}
 
-        <AIAssistant />
+        <AIAssistant
+          projectId={
+            currentView === 'project' && selectedProject ? Number(selectedProject) : undefined
+          }
+          teamId={assistantTeamId ?? undefined}
+          activeTaskId={assistantTaskId ?? undefined}
+          activeThreadId={assistantThreadId ?? undefined}
+        />
       </div>
 
       <CreateProjectModal
