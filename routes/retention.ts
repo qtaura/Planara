@@ -9,6 +9,7 @@ import {
   createPolicy,
   updatePolicy,
   deletePolicy,
+  runBatch,
 } from '../controllers/retentionController.js';
 
 const router = Router();
@@ -49,5 +50,8 @@ router.put(
   updatePolicy
 );
 router.delete('/admin/policies/:id', maybeStrict as any, adminOnly, deletePolicy);
+
+// Manual batch trigger for ops (admin-only)
+router.post('/admin/run-batch', maybeStrict as any, adminOnly, runBatch as any);
 
 export default router;

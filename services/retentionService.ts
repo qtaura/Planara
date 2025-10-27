@@ -109,6 +109,31 @@ export async function applyRetentionPolicyForAttachment(att: Attachment): Promis
   // Update attachment counts
   const newCount = versions.length - toDelete.length;
   await attRepo.update({ id: att.id }, { versionCount: newCount } as any);
+
+  // Structured trimming log for production monitoring
+  try {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      level: 'info',
+      message: 'Retention trimming applied',
+      attachmentId: att.id,
+      projectId: (att.project as any)?.id ?? null,
+      teamId: (att.project as any)?.team?.id ?? null,
+      deletedVersions: toDelete.map((v) => v.versionNumber),
+      deletedCount: toDelete.length,
+      latestVersionNumber: latest.versionNumber,
+      newVersionCount: newCount,
+      policy: {
+        scope: policy.scope,
+        projectId: (policy.project as any)?.id ?? null,
+        teamId: (policy.team as any)?.id ?? null,
+        maxVersions: policy.maxVersions ?? null,
+        keepDays: policy.keepDays ?? null,
+      },
+    };
+    // eslint-disable-next-line no-console
+    console.log(JSON.stringify(logEntry));
+  } catch {}
 }
 
 export function sanitizePolicy(p: RetentionPolicy) {

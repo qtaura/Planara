@@ -3,7 +3,7 @@ import { AppDataSource } from '../db/data-source.js';
 import { RetentionPolicy } from '../models/RetentionPolicy.js';
 import { Team } from '../models/Team.js';
 import { Project } from '../models/Project.js';
-import { sanitizePolicy } from '../services/retentionService.js';
+import { sanitizePolicy, applyRetentionPoliciesBatch } from '../services/retentionService.js';
 
 export async function listPolicies(_req: Request, res: Response) {
   try {
@@ -112,5 +112,40 @@ export async function deletePolicy(req: Request, res: Response) {
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: 'failed to delete policy' });
+  }
+}
+
+export async function runBatch(req: Request, res: Response) {
+  try {
+    const { processed } = await applyRetentionPoliciesBatch();
+    // Lightweight structured log for ops visibility
+    try {
+      const logEntry = {
+        timestamp: new Date().toISOString(),
+        level: 'info',
+        message: 'Manual retention batch triggered',
+        processed,
+        correlationId: (req as any)?.correlationId,
+        triggeredBy: 'admin',
+      };
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify(logEntry));
+    } catch {}
+    res.json({ success: true, processed });
+  } catch (e) {
+    const msg = (e as any)?.message || String(e);
+    try {
+      const logEntry = {
+        timestamp: new Date().toISOString(),
+        level: 'error',
+        message: 'Manual retention batch failed',
+        error: msg,
+        correlationId: (req as any)?.correlationId,
+        triggeredBy: 'admin',
+      };
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify(logEntry));
+    } catch {}
+    res.status(500).json({ error: 'failed to run retention batch', details: msg });
   }
 }
