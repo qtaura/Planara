@@ -1206,6 +1206,67 @@ export async function searchComments(
   if (!res.ok) throw new Error(`Search comments failed: ${res.status}`);
   return res.json();
 }
+
+// ===== AI Assistant Client Endpoints =====
+export async function aiAuthoringSuggest(payload: {
+  projectId?: number;
+  teamId?: number;
+  prompt?: string;
+}): Promise<{ suggestions: { title: string; description: string }[]; rationale: string }> {
+  const res = await apiFetch('/ai/authoring/suggest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  });
+  if (!res.ok) throw new Error(`AI authoring suggest failed: ${res.status}`);
+  return res.json();
+}
+
+export async function aiSummarizeThread(
+  threadId: number
+): Promise<{ summary: string; participants: string[]; commentCount: number }> {
+  const res = await apiFetch(`/ai/authoring/threads/${threadId}/summary`);
+  if (!res.ok) throw new Error(`AI thread summary failed: ${res.status}`);
+  return res.json();
+}
+
+export async function aiTriageEvaluate(payload: {
+  taskId?: number;
+  taskSnapshot?: {
+    title?: string;
+    description?: string;
+    labels?: string[];
+    status?: string;
+    dueDate?: Date | string | null;
+  };
+}): Promise<{
+  suggestedPriority: 'low' | 'medium' | 'high' | 'critical';
+  dueDateSuggestion?: string | null;
+  blockers: string[];
+  signals: Record<string, any>;
+}> {
+  const res = await apiFetch('/ai/triage/evaluate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  });
+  if (!res.ok) throw new Error(`AI triage evaluate failed: ${res.status}`);
+  return res.json();
+}
+
+export async function aiTeamInsights(params: {
+  teamId?: number;
+  projectId?: number;
+  windowDays?: number;
+}): Promise<{ metrics: Record<string, any>; recommendations: string[] }> {
+  const qp = new URLSearchParams();
+  if (params.teamId) qp.set('teamId', String(params.teamId));
+  if (params.projectId) qp.set('projectId', String(params.projectId));
+  if (typeof params.windowDays === 'number') qp.set('windowDays', String(params.windowDays));
+  const res = await apiFetch(`/ai/analytics/team-insights?${qp.toString()}`);
+  if (!res.ok) throw new Error(`AI team insights failed: ${res.status}`);
+  return res.json();
+}
 export async function getNotificationPreferences(): Promise<any[]> {
   const res = await apiFetch('/notifications/preferences');
   if (!res.ok) throw new Error(`Failed to fetch preferences: ${res.status}`);

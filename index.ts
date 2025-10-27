@@ -24,6 +24,7 @@ import searchRouter from './routes/search.js';
 import { cacheMiddleware, getCacheStats } from './middlewares/cache.js';
 import { flags } from './config/flags.js';
 import exportsRouter from './routes/exports.js';
+import aiRouter from './routes/ai.js';
 import retentionRouter from './routes/retention.js';
 import { applyRetentionPoliciesBatch } from './services/retentionService.js';
 import { recordRetentionSuccess, recordRetentionFailure } from './services/retentionMetrics.js';
@@ -363,6 +364,7 @@ app.use('/api/attachments', cacheMiddleware({ ttl: 30 * 60 * 1000 }), attachment
 app.use('/api/integrations', cacheMiddleware({ skipCache: true }), integrationsRouter); // No cache — webhooks and commands
 app.use('/api/export', cacheMiddleware({ ttl: 10 * 60 * 1000 }), exportsRouter); // 10 minutes
 app.use('/api/retention', cacheMiddleware({ skipCache: true }), retentionRouter); // No cache — admin-only
+app.use('/api/ai', cacheMiddleware({ skipCache: true }), aiRouter); // No cache — interactive AI assist
 // Conditionally enable search based on feature flags
 if (flags.searchEnabled) {
   app.use('/api/search', cacheMiddleware({ ttl: 2 * 60 * 1000 }), searchRouter);

@@ -3,9 +3,18 @@ import { motion, AnimatePresence } from '@lib/motion-shim';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Sparkles, X, Send, Zap, Target, Calendar } from 'lucide-react';
+import { Sparkles, X, Send, Zap, Target, Calendar, BarChart3, MessageSquare } from 'lucide-react';
+import { aiAuthoringSuggest, aiSummarizeThread, aiTriageEvaluate, aiTeamInsights } from '@lib/api';
 
-export function AIAssistant() {
+export function AIAssistant(
+  props: {
+    projectId?: number;
+    teamId?: number;
+    activeThreadId?: number;
+    activeTaskId?: number;
+  } = {}
+) {
+  const { projectId, teamId, activeThreadId, activeTaskId } = props;
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -16,31 +25,159 @@ export function AIAssistant() {
       timestamp: new Date(),
     },
   ]);
+  const [inputValue, setInputValue] = useState('');
+  const [loading, setLoading] = useState<string | null>(null);
 
   const quickActions = [
     { icon: <Zap className="w-3 h-3" />, label: 'Suggest tasks' },
     { icon: <Target className="w-3 h-3" />, label: 'Set priorities' },
     { icon: <Calendar className="w-3 h-3" />, label: 'Estimate deadlines' },
+    { icon: <MessageSquare className="w-3 h-3" />, label: 'Summarize thread' },
+    { icon: <BarChart3 className="w-3 h-3" />, label: 'Team insights' },
   ];
 
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
-
-    setMessages([
-      ...messages,
-      {
-        id: Date.now().toString(),
-        type: 'user' as const,
-        content,
-        timestamp: new Date(),
-      },
-      {
-        id: (Date.now() + 1).toString(),
+    const now = Date.now();
+    const userMsg = {
+      id: now.toString(),
+      type: 'user' as const,
+      content,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setLoading('Suggest tasks');
+    try {
+      const res = await aiAuthoringSuggest({ projectId, teamId, prompt: content });
+      const formatted = res.suggestions
+        .map((s, i) => `${i + 1}. ${s.title} — ${s.description}`)
+        .join('\n');
+      const aiMsg = {
+        id: (now + 1).toString(),
         type: 'ai' as const,
-        content: `Based on your "Quantum Dashboard" project, I suggest breaking this into 3 subtasks with a recommended deadline of Oct 28.`,
+        content: formatted || 'No suggestions available right now.',
         timestamp: new Date(),
-      },
-    ]);
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch (e: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (now + 1).toString(),
+          type: 'ai' as const,
+          content: `Sorry, something went wrong fetching suggestions: ${e?.message || 'error'}`,
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const runQuickAction = async (label: string) => {
+    setLoading(label);
+    const now = Date.now();
+    try {
+      if (label === 'Suggest tasks') {
+        const res = await aiAuthoringSuggest({ projectId, teamId, prompt: inputValue });
+        const formatted = res.suggestions
+          .map((s, i) => `${i + 1}. ${s.title} — ${s.description}`)
+          .join('\n');
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (now + 1).toString(),
+            type: 'ai' as const,
+            content: formatted,
+            timestamp: new Date(),
+          },
+        ]);
+      } else if (label === 'Set priorities') {
+        if (!activeTaskId) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: (now + 1).toString(),
+              type: 'ai' as const,
+              content: 'No active task selected.',
+              timestamp: new Date(),
+            },
+          ]);
+        } else {
+          const res = await aiTriageEvaluate({ taskId: activeTaskId });
+          const content = `Suggested priority: ${res.suggestedPriority.toUpperCase()}.
+Blockers detected: ${res.blockers.length}${res.blockers.length ? ` — ${res.blockers.slice(0, 2).join('; ')}` : ''}`;
+          setMessages((prev) => [
+            ...prev,
+            { id: (now + 1).toString(), type: 'ai' as const, content, timestamp: new Date() },
+          ]);
+        }
+      } else if (label === 'Estimate deadlines') {
+        if (!activeTaskId) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: (now + 1).toString(),
+              type: 'ai' as const,
+              content: 'No active task selected.',
+              timestamp: new Date(),
+            },
+          ]);
+        } else {
+          const res = await aiTriageEvaluate({ taskId: activeTaskId });
+          const due = res.dueDateSuggestion
+            ? new Date(res.dueDateSuggestion).toLocaleDateString()
+            : 'n/a';
+          const content = `Suggested due date: ${due}. Priority: ${res.suggestedPriority.toUpperCase()}.`;
+          setMessages((prev) => [
+            ...prev,
+            { id: (now + 1).toString(), type: 'ai' as const, content, timestamp: new Date() },
+          ]);
+        }
+      } else if (label === 'Summarize thread') {
+        if (!activeThreadId) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: (now + 1).toString(),
+              type: 'ai' as const,
+              content: 'No active thread selected.',
+              timestamp: new Date(),
+            },
+          ]);
+        } else {
+          const res = await aiSummarizeThread(activeThreadId);
+          const content = `${res.summary}`;
+          setMessages((prev) => [
+            ...prev,
+            { id: (now + 1).toString(), type: 'ai' as const, content, timestamp: new Date() },
+          ]);
+        }
+      } else if (label === 'Team insights') {
+        const res = await aiTeamInsights({ teamId, projectId });
+        const { metrics, recommendations } = res;
+        const content = `Throughput (30d): ${metrics.throughput30d}
+Avg WIP age (days): ${metrics.avgWipAgeDays}
+Overdue count: ${metrics.overdueCount}
+Recommendations: ${recommendations.join(' | ')}`;
+        setMessages((prev) => [
+          ...prev,
+          { id: (now + 1).toString(), type: 'ai' as const, content, timestamp: new Date() },
+        ]);
+      }
+    } catch (e: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (now + 1).toString(),
+          type: 'ai' as const,
+          content: `Action failed: ${e?.message || 'error'}`,
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (
@@ -103,7 +240,8 @@ export function AIAssistant() {
                       size="sm"
                       variant="outline"
                       className="text-xs h-7"
-                      onClick={() => handleSendMessage(action.label)}
+                      onClick={() => runQuickAction(action.label)}
+                      loading={loading === action.label}
                     >
                       {action.icon}
                       <span className="ml-1">{action.label}</span>
@@ -149,10 +287,12 @@ export function AIAssistant() {
                   <Input
                     placeholder="Ask me anything..."
                     className="flex-1 text-sm"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.currentTarget.value)}
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
-                        handleSendMessage(e.currentTarget.value);
-                        e.currentTarget.value = '';
+                        handleSendMessage(inputValue);
+                        setInputValue('');
                       }
                     }}
                   />
