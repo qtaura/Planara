@@ -21,4 +21,11 @@ export class Organization {
 
   @CreateDateColumn()
   createdAt!: Date;
+
+  // Soft delete lifecycle
+  @Column({ nullable: true })
+  deletedAt?: Date;
+
+  @Column({ nullable: true })
+  deleteGraceUntil?: Date;
 }

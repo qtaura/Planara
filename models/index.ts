@@ -17,3 +17,4 @@ export { BannedEmail } from './BannedEmail.js';
 export { EmailVerificationCode } from './EmailVerificationCode.js';
 export { ExternalLink } from './ExternalLink.js';
 export { IntegrationSettings } from './IntegrationSettings.js';
+export { RetentionPolicy } from './RetentionPolicy.js';

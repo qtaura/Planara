@@ -145,7 +145,8 @@ export async function searchProjects(req: Request, res: Response) {
       'project.createdAt',
       'project.archived',
       'project.favorite',
-    ]);
+    ])
+    .andWhere('project.deletedAt IS NULL');
 
   if (teamId) qb.andWhere('project.teamId = :teamId', { teamId });
   else if (userId) qb.andWhere('project.ownerId = :userId', { userId });

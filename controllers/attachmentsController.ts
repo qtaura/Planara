@@ -39,9 +39,12 @@ async function virusScanBuffer(buf: Buffer): Promise<{ clean: boolean; reason?: 
   }
 }
 
-function applyRetentionPolicy(_att: Attachment) {
-  // Stub: hook point for retention policy scheduling
-  // e.g., enqueue job to purge old versions beyond N days
+import { applyRetentionPolicyForAttachment } from '../services/retentionService.js';
+
+async function applyRetentionPolicy(att: Attachment) {
+  try {
+    await applyRetentionPolicyForAttachment(att);
+  } catch {}
 }
 
 function sanitize(att: Attachment) {

@@ -4,6 +4,8 @@ import { Organization } from '../models/Organization.js';
 import { Membership } from '../models/Membership.js';
 import { User } from '../models/User.js';
 
+const GRACE_DAYS = Number(process.env.DELETE_GRACE_DAYS || 7);
+
 function slugify(input: string) {
   return String(input)
     .trim()
@@ -50,15 +52,19 @@ export async function listMyOrganizations(req: Request, res: Response) {
     const orgRepo = AppDataSource.getRepository(Organization);
     const memRepo = AppDataSource.getRepository(Membership);
 
-    // Owned orgs
-    const owned = await orgRepo.find({ where: { ownerUserId: userId } });
+    // Owned orgs (exclude soft-deleted)
+    const owned = await orgRepo
+      .createQueryBuilder('o')
+      .where('o.ownerUserId = :userId', { userId })
+      .andWhere('o.deletedAt IS NULL')
+      .getMany();
 
-    // Orgs via memberships
+    // Orgs via memberships (exclude soft-deleted)
     const memberships = await memRepo.find({
       relations: { org: true, team: true, user: true },
       where: { user: { id: userId } as any } as any,
     });
-    const viaMembership = memberships.map((m) => m.org);
+    const viaMembership = memberships.map((m) => m.org).filter((o) => !(o as any)?.deletedAt);
 
     // Deduplicate
     const map = new Map<number, Organization>();
@@ -81,6 +87,8 @@ export async function updateOrganization(req: Request, res: Response) {
     const org = await orgRepo.findOne({ where: { id: orgId } });
     if (!org) return res.status(404).json({ error: 'not found' });
     if (org.ownerUserId !== userId) return res.status(403).json({ error: 'owner required' });
+    if (org.deletedAt)
+      return res.status(400).json({ error: 'cannot update a deleted organization' });
 
     const slug = slugify(name);
     const nameLower = name.toLowerCase();
@@ -115,11 +123,46 @@ export async function deleteOrganization(req: Request, res: Response) {
     const org = await orgRepo.findOne({ where: { id: orgId } });
     if (!org) return res.status(404).json({ error: 'not found' });
     if (org.ownerUserId !== userId) return res.status(403).json({ error: 'owner required' });
+    if (org.deletedAt) return res.status(400).json({ error: 'organization already deleted' });
 
-    await orgRepo.delete({ id: orgId });
-    return res.json({ success: true });
+    const now = new Date();
+    org.deletedAt = now;
+    const graceUntil = new Date(now.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000);
+    org.deleteGraceUntil = graceUntil;
+    await orgRepo.save(org);
+
+    return res.json({ success: true, graceUntil: graceUntil.toISOString() });
   } catch (e) {
     return res.status(500).json({ error: 'failed to delete organization' });
+  }
+}
+
+export async function recoverOrganization(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number | undefined;
+    if (!userId) return res.status(401).json({ error: 'unauthorized' });
+    const orgId = Number(req.params.id);
+    if (!orgId) return res.status(400).json({ error: 'invalid input' });
+
+    const orgRepo = AppDataSource.getRepository(Organization);
+    const org = await orgRepo.findOne({ where: { id: orgId } });
+    if (!org) return res.status(404).json({ error: 'not found' });
+    if (org.ownerUserId !== userId) return res.status(403).json({ error: 'owner required' });
+    if (!org.deletedAt) return res.status(400).json({ error: 'organization is not deleted' });
+
+    const now = new Date();
+    const graceUntil = org.deleteGraceUntil ? new Date(org.deleteGraceUntil) : null;
+    if (graceUntil && now > graceUntil) {
+      return res.status(410).json({ error: 'grace period expired' });
+    }
+
+    org.deletedAt = null as any;
+    org.deleteGraceUntil = null as any;
+    await orgRepo.save(org);
+
+    return res.json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ error: 'failed to recover organization' });
   }
 }
 

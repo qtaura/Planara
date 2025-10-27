@@ -23,6 +23,8 @@ import attachmentsRouter from './routes/attachments.js';
 import searchRouter from './routes/search.js';
 import { cacheMiddleware, getCacheStats } from './middlewares/cache.js';
 import { flags } from './config/flags.js';
+import exportsRouter from './routes/exports.js';
+import retentionRouter from './routes/retention.js';
 
 // ===== OBSERVABILITY SETUP =====
 
@@ -336,6 +338,8 @@ app.use('/api/orgs', cacheMiddleware({ ttl: 10 * 60 * 1000 }), orgsRouter); // 1
 app.use('/api/teams', cacheMiddleware({ ttl: 5 * 60 * 1000 }), teamsRouter2); // 5 minutes
 app.use('/api/attachments', cacheMiddleware({ ttl: 30 * 60 * 1000 }), attachmentsRouter); // 30 minutes
 app.use('/api/integrations', cacheMiddleware({ skipCache: true }), integrationsRouter); // No cache — webhooks and commands
+app.use('/api/export', cacheMiddleware({ ttl: 10 * 60 * 1000 }), exportsRouter); // 10 minutes
+app.use('/api/retention', cacheMiddleware({ skipCache: true }), retentionRouter); // No cache — admin-only
 // Conditionally enable search based on feature flags
 if (flags.searchEnabled) {
   app.use('/api/search', cacheMiddleware({ ttl: 2 * 60 * 1000 }), searchRouter);

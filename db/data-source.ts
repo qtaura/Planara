@@ -20,6 +20,7 @@ import { Attachment } from '../models/Attachment.js';
 import { FileVersion } from '../models/FileVersion.js';
 import { ExternalLink } from '../models/ExternalLink.js';
 import { IntegrationSettings } from '../models/IntegrationSettings.js';
+import { RetentionPolicy } from '../models/RetentionPolicy.js';
 
 // Prefer Postgres when DATABASE_URL/RAILWAY_DATABASE_URL is provided; otherwise fall back to SQLite
 const dbUrl = process.env.DATABASE_URL || process.env.RAILWAY_DATABASE_URL;
@@ -56,6 +57,7 @@ export const AppDataSource = new DataSource(
           FileVersion,
           ExternalLink,
           IntegrationSettings,
+          RetentionPolicy,
         ],
         synchronize: true,
         logging: false,

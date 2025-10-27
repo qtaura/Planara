@@ -5,6 +5,8 @@ import { Task } from '../models/Task.js';
 import { User } from '../models/User.js';
 import { Team } from '../models/Team.js';
 
+const GRACE_DAYS = Number(process.env.DELETE_GRACE_DAYS || 7);
+
 export const getProjects = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
@@ -14,26 +16,31 @@ export const getProjects = async (req: Request, res: Response) => {
 
     const projectRepo = AppDataSource.getRepository(Project);
 
-    let projects: Project[];
-    let total: number;
+    let projects: Project[] = [];
+    let total: number = 0;
 
     if (teamId) {
-      [projects, total] = await projectRepo.findAndCount({
-        where: { team: { id: teamId } },
-        relations: { team: true, owner: true },
-        take: limit,
-        skip: offset,
-        order: { createdAt: 'DESC' },
-      });
+      const qb = projectRepo
+        .createQueryBuilder('p')
+        .leftJoin('p.team', 't')
+        .leftJoin('p.owner', 'o')
+        .where('t.id = :teamId', { teamId })
+        .andWhere('p.deletedAt IS NULL')
+        .orderBy('p.createdAt', 'DESC');
+      const [items, count] = await qb.take(limit).skip(offset).getManyAndCount();
+      projects = items;
+      total = count;
     } else {
-      // Include team relation as well so the UI can gate actions by role
-      [projects, total] = await projectRepo.findAndCount({
-        where: { owner: { id: userId } },
-        relations: { owner: true, team: true },
-        take: limit,
-        skip: offset,
-        order: { createdAt: 'DESC' },
-      });
+      const qb = projectRepo
+        .createQueryBuilder('p')
+        .leftJoin('p.owner', 'o')
+        .leftJoin('p.team', 't')
+        .where('o.id = :userId', { userId })
+        .andWhere('p.deletedAt IS NULL')
+        .orderBy('p.createdAt', 'DESC');
+      const [items, count] = await qb.take(limit).skip(offset).getManyAndCount();
+      projects = items;
+      total = count;
     }
 
     res.json({
@@ -95,6 +102,8 @@ export const updateProject = async (req: Request, res: Response) => {
       relations: { owner: true, team: true },
     });
     if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (project.deletedAt)
+      return res.status(400).json({ error: 'cannot update a deleted project' });
 
     // Personal projects: owner must match when no team context provided
     if (!teamId && project.owner?.id !== userId) {
@@ -150,9 +159,55 @@ export const deleteProject = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Cross-team delete forbidden' });
     }
 
-    await projectRepo.remove(project);
-    res.json({ success: true });
+    if (project.deletedAt) return res.status(400).json({ error: 'project already deleted' });
+
+    const now = new Date();
+    project.deletedAt = now;
+    project.deleteGraceUntil = new Date(now.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000);
+    await projectRepo.save(project);
+
+    res.json({ success: true, graceUntil: project.deleteGraceUntil?.toISOString() });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete project' });
+  }
+};
+
+export const recoverProject = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    const projectId = Number(req.params.id);
+    const teamId = req.query.teamId ? Number(req.query.teamId) : undefined;
+
+    const projectRepo = AppDataSource.getRepository(Project);
+
+    const project = await projectRepo.findOne({
+      where: { id: projectId },
+      relations: { owner: true, team: true },
+    });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    // Personal projects: owner must match when no team context provided
+    if (!teamId && project.owner?.id !== userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    // If teamId provided, enforce cross-team boundary
+    if (teamId && project.team && project.team.id !== teamId) {
+      return res.status(403).json({ error: 'Cross-team recover forbidden' });
+    }
+
+    if (!project.deletedAt) return res.status(400).json({ error: 'project is not deleted' });
+    const now = new Date();
+    const graceUntil = project.deleteGraceUntil ? new Date(project.deleteGraceUntil) : null;
+    if (graceUntil && now > graceUntil) {
+      return res.status(410).json({ error: 'grace period expired' });
+    }
+
+    project.deletedAt = null as any;
+    project.deleteGraceUntil = null as any;
+    await projectRepo.save(project);
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to recover project' });
   }
 };

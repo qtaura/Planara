@@ -55,6 +55,14 @@ export class User {
   @Column({ nullable: true })
   verificationSecret?: string;
 
+  // Soft delete lifecycle
+  @Column({ nullable: true })
+  @Index()
+  deletedAt?: Date;
+
+  @Column({ nullable: true })
+  deleteGraceUntil?: Date;
+
   @OneToMany(() => Task, (task) => task.assignee)
   tasks?: Task[];
 

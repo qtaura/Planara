@@ -947,28 +947,18 @@ export async function deleteAccount(req: Request, res: Response) {
     const user = await userRepo.findOne({ where: { id: userId } });
     if (!user) return res.status(404).json({ success: false, error: 'user not found' });
 
-    // Verify password before deletion
     const isPasswordValid = await bcrypt.compare(password, (user as any).hashedPassword);
     if (!isPasswordValid) {
       return res.status(400).json({ success: false, error: 'incorrect password' });
     }
 
-    const userEmail = (user as any).email;
+    const graceDays = Number(process.env.DELETE_GRACE_DAYS || 7);
+    const graceUntil = new Date(Date.now() + graceDays * 86400000);
 
-    // Telemetry: account_deleted (before deletion)
-    try {
-      const evRepo = AppDataSource.getRepository(SecurityEvent);
-      await evRepo.save(
-        evRepo.create({
-          email: userEmail,
-          userId,
-          eventType: 'account_deleted',
-          ip: req.ip,
-          metadata: { timestamp: new Date().toISOString() },
-          createdAt: new Date(),
-        } as any)
-      );
-    } catch {}
+    // Mark account as soft-deleted
+    (user as any).deletedAt = new Date();
+    (user as any).deleteGraceUntil = graceUntil;
+    await userRepo.save(user);
 
     // Revoke all refresh tokens
     const refreshRepo = AppDataSource.getRepository(RefreshToken);
@@ -983,11 +973,38 @@ export async function deleteAccount(req: Request, res: Response) {
       .where('userId = :uid', { uid: userId })
       .execute();
 
-    // Delete the user account
-    await userRepo.remove(user);
-
-    return res.status(200).json({ success: true, message: 'Account deleted successfully' });
+    return res
+      .status(200)
+      .json({ success: true, message: 'Account scheduled for deletion', graceUntil });
   } catch (e) {
     return res.status(500).json({ success: false, error: 'failed to delete account' });
+  }
+}
+
+export async function recoverAccount(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId as number | undefined;
+    if (!userId) return res.status(401).json({ success: false, error: 'unauthorized' });
+
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, error: 'user not found' });
+
+    if (!(user as any).deletedAt) {
+      return res.status(400).json({ success: false, error: 'account not deleted' });
+    }
+
+    const graceUntil = (user as any).deleteGraceUntil as Date | undefined;
+    if (graceUntil && new Date() > new Date(graceUntil)) {
+      return res.status(410).json({ success: false, error: 'grace period expired' });
+    }
+
+    (user as any).deletedAt = null;
+    (user as any).deleteGraceUntil = null;
+    await userRepo.save(user);
+
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: 'failed to recover account' });
   }
 }

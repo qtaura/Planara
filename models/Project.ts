@@ -32,6 +32,14 @@ export class Project {
   @Index()
   archived!: boolean;
 
+  // Soft delete lifecycle
+  @Column({ nullable: true })
+  @Index()
+  deletedAt?: Date;
+
+  @Column({ nullable: true })
+  deleteGraceUntil?: Date;
+
   @Column({ default: false })
   @Index()
   favorite!: boolean;
