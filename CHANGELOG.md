@@ -6,6 +6,10 @@ This project adheres to Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
+Nothing currently.
+
+## [1.0.0] - 2025-10-30
+
 ### Added
 
 - Admin Controls: step-by-step layout with Quick Guide, helper text, and clear button labels.
@@ -14,6 +18,24 @@ This project adheres to Keep a Changelog and Semantic Versioning.
 - Signup providers: auto-route to Email Verification when account is unverified post-OAuth.
 - Email signup: inline validation aligned with backend rules; friendly errors for invalid/banned email, existing user, required fields, and network issues.
 - App layout: persistent top banner for unverified users with “Verify now” CTA; hides on verification view.
+- Organizations & Teams: Organization, Team, Membership models; CRUD; invites; transfers; roles; management UI.
+- RBAC: roles (Owner/Admin/Member/Viewer), permission matrix, middleware enforcement across routes, conditional UI.
+- Projects & Tasks: subtasks, dependencies, labels, due dates, priority, assignee, watchers; endpoints and Kanban/UI.
+- Real-Time Collaboration: Socket.IO server, task/comment live updates, presence, client subscriptions, throttling & limits.
+- Comments & Threads: threaded comments, reactions, mentions `@username`; endpoints; UI with autocomplete and preview.
+- Files & Attachments: versioning, previews, history, drag-and-drop uploads; retention hooks and access checks.
+- Search: full-text endpoints, filters, indexed fields, global search UI, saved chips; pagination.
+- Notifications Center: preferences, list/read/unread/delete, digest jobs; screens with badges and filters.
+- Authentication & Sessions: device/session management, refresh rotation, session list UI, revoke flows.
+- Email Verification & Account: hardened resend/verify; change email + re-verify; account management UI.
+- Observability: global error handler, structured logs, request logging, `/metrics` endpoint; SLO scaffolding.
+- Performance: pagination, ETag/If-None-Match, GET caching, hot-path indexes, virtualized lists, rate limiting.
+- Testing & Quality: expanded unit/integration/E2E suites; OpenAPI spec & validation; CI lint/format/test gates; seed scripts.
+- Developer Experience: shared types for contracts; migrations; feature flags; one-command scripts; contribution docs.
+- UX & Accessibility: keyboard navigation, ARIA, contrast, focus outlines, skeletons, optimistic UI, i18n, preferences.
+- Integrations: GitHub/Jira linking & sync; Slack notifications & slash commands; Calendar ICS import/export; Webhooks (HMAC).
+- Data Lifecycle: exports, deletions (grace/soft-delete), retention policies across logs/notifications/tasks/attachments.
+- AI Assist: authoring suggestions, triage hints, analytics insights.
 
 ### Changed
 
@@ -27,9 +49,13 @@ This project adheres to Keep a Changelog and Semantic Versioning.
 
 - Backend: TypeORM `RefreshToken.expiresAt`/`createdAt` columns changed from `datetime` to `timestamp` for PostgreSQL compatibility (fixes DataTypeNotSupportedError).
 
+### Security
+
+- RBAC applied across routes; audit logs for admin actions and exports; hardened CORS; secrets rotation guidance; admin least-privilege patterns.
+
 ### Docs
 
-- Rewrote the entire CHANGELOG to list all features across releases.
+- Rewrote and consolidated the CHANGELOG for the 1.0.0 release.
 
 ## [0.1.0] - 2025-10-19
 
