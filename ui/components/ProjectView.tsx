@@ -107,7 +107,6 @@ export function ProjectView({ projectId, onContext, onTaskContext }: ProjectView
     );
   }
 
-
   return (
     <div className="flex-1 h-screen overflow-y-auto bg-white dark:bg-[#0A0A0A]">
       {/* Header */}
