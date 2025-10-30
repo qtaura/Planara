@@ -26,7 +26,7 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 
 interface ProjectViewProps {
   projectId: string;
-  onContext?: (ctx: { teamId?: number | null }) => void;
+  onContext?: (ctx: { teamId?: number | null; orgId?: number | null }) => void;
   onTaskContext?: (ctx: { activeTaskId?: number | null; activeThreadId?: number | null }) => void;
 }
 
@@ -45,7 +45,8 @@ export function ProjectView({ projectId, onContext, onTaskContext }: ProjectView
       const p = await getProjectWithRelations(projectId);
       setProject(p || null);
       const teamId = p?.team?.id ?? null;
-      onContext?.({ teamId });
+      const orgId = p?.team?.org?.id ?? null;
+      onContext?.({ teamId, orgId });
     } catch (e: any) {
       setError(e?.message || 'Failed to load project');
       toast.error(error || 'Failed to load project');

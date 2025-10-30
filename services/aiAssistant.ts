@@ -10,14 +10,16 @@ function normalize(str: string): string {
 }
 
 export async function suggestTaskAuthoring(options: {
+  orgId?: number;
   projectId?: number;
   teamId?: number;
+  taskId?: number;
   prompt?: string;
 }): Promise<{
   suggestions: { title: string; description: string }[];
   rationale: string;
 }> {
-  const { projectId, teamId, prompt } = options || {};
+  const { orgId, projectId, teamId, taskId, prompt } = options || {};
   const taskRepo = AppDataSource.getRepository(Task);
 
   let where: any = {};
@@ -107,6 +109,9 @@ export async function summarizeThread(threadId: number): Promise<{
 }
 
 export async function triageEvaluate(options: {
+  orgId?: number;
+  projectId?: number;
+  teamId?: number;
   taskId?: number;
   taskSnapshot?: {
     title?: string;
@@ -121,7 +126,7 @@ export async function triageEvaluate(options: {
   blockers: string[];
   signals: Record<string, any>;
 }> {
-  const { taskId, taskSnapshot } = options || {};
+  const { orgId, projectId, teamId, taskId, taskSnapshot } = options || {};
   const taskRepo = AppDataSource.getRepository(Task);
   let task: Task | null = null;
   if (taskId) {
@@ -136,6 +141,7 @@ export async function triageEvaluate(options: {
 
   let suggestedPriority: 'low' | 'medium' | 'high' | 'critical' = 'medium';
   const signals: Record<string, any> = {};
+  signals.context = { orgId, projectId, teamId, taskId };
 
   const keywordsCritical = ['security', 'data loss', 'breach', 'p0', 'sev0'];
   const keywordsHigh = ['deadline', 'customer', 'release', 'incident', 'outage'];
@@ -205,6 +211,7 @@ export async function triageEvaluate(options: {
 }
 
 export async function teamInsights(options: {
+  orgId?: number;
   teamId?: number;
   projectId?: number;
   windowDays?: number;
@@ -212,7 +219,7 @@ export async function teamInsights(options: {
   metrics: Record<string, any>;
   recommendations: string[];
 }> {
-  const { teamId, projectId, windowDays = 30 } = options || {};
+  const { orgId, teamId, projectId, windowDays = 30 } = options || {};
   const taskRepo = AppDataSource.getRepository(Task);
 
   const where: any = {};
@@ -254,6 +261,7 @@ export async function teamInsights(options: {
     avgWipAgeDays,
     overdueCount: overdue.length,
     priorityDist,
+    context: { orgId, teamId, projectId },
   };
 
   const recommendations: string[] = [];

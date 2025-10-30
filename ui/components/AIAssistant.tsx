@@ -19,13 +19,14 @@ import { aiAuthoringSuggest, aiSummarizeThread, aiTriageEvaluate, aiTeamInsights
 
 export function AIAssistant(
   props: {
+    orgId?: number;
     projectId?: number;
     teamId?: number;
     activeThreadId?: number;
     activeTaskId?: number;
   } = {}
 ) {
-  const { projectId, teamId, activeThreadId, activeTaskId } = props;
+  const { orgId, projectId, teamId, activeThreadId, activeTaskId } = props;
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -59,7 +60,13 @@ export function AIAssistant(
     setMessages((prev) => [...prev, userMsg]);
     setLoading('Suggest tasks');
     try {
-      const res = await aiAuthoringSuggest({ projectId, teamId, prompt: content });
+      const res = await aiAuthoringSuggest({
+        orgId,
+        projectId,
+        teamId,
+        taskId: activeTaskId,
+        prompt: content,
+      });
       const formatted = res.suggestions
         .map((s, i) => `${i + 1}. ${s.title} — ${s.description}`)
         .join('\n');
@@ -90,7 +97,13 @@ export function AIAssistant(
     const now = Date.now();
     try {
       if (label === 'Suggest tasks') {
-        const res = await aiAuthoringSuggest({ projectId, teamId, prompt: inputValue });
+        const res = await aiAuthoringSuggest({
+          orgId,
+          projectId,
+          teamId,
+          taskId: activeTaskId,
+          prompt: inputValue,
+        });
         const formatted = res.suggestions
           .map((s, i) => `${i + 1}. ${s.title} — ${s.description}`)
           .join('\n');
@@ -115,7 +128,7 @@ export function AIAssistant(
             },
           ]);
         } else {
-          const res = await aiTriageEvaluate({ taskId: activeTaskId });
+          const res = await aiTriageEvaluate({ orgId, projectId, teamId, taskId: activeTaskId });
           const content = `Suggested priority: ${res.suggestedPriority.toUpperCase()}.
 Blockers detected: ${res.blockers.length}${res.blockers.length ? ` — ${res.blockers.slice(0, 2).join('; ')}` : ''}`;
           setMessages((prev) => [
@@ -135,7 +148,7 @@ Blockers detected: ${res.blockers.length}${res.blockers.length ? ` — ${res.blo
             },
           ]);
         } else {
-          const res = await aiTriageEvaluate({ taskId: activeTaskId });
+          const res = await aiTriageEvaluate({ orgId, projectId, teamId, taskId: activeTaskId });
           const due = res.dueDateSuggestion
             ? new Date(res.dueDateSuggestion).toLocaleDateString()
             : 'n/a';
@@ -157,7 +170,13 @@ Blockers detected: ${res.blockers.length}${res.blockers.length ? ` — ${res.blo
             },
           ]);
         } else {
-          const res = await aiSummarizeThread(activeThreadId);
+          const res = await aiSummarizeThread({
+            threadId: activeThreadId,
+            orgId,
+            projectId,
+            teamId,
+            taskId: activeTaskId,
+          });
           const content = `${res.summary}`;
           setMessages((prev) => [
             ...prev,
@@ -165,7 +184,7 @@ Blockers detected: ${res.blockers.length}${res.blockers.length ? ` — ${res.blo
           ]);
         }
       } else if (label === 'Team insights') {
-        const res = await aiTeamInsights({ teamId, projectId });
+        const res = await aiTeamInsights({ orgId, teamId, projectId });
         const { metrics, recommendations } = res;
         const content = `Throughput (30d): ${metrics.throughput30d}
 Avg WIP age (days): ${metrics.avgWipAgeDays}
@@ -238,8 +257,9 @@ Recommendations: ${recommendations.join(' | ')}`;
                     </p>
                     <div className="mt-1">
                       <Badge variant="outline" className="text-[10px] font-normal">
-                        Context: P:{String(projectId ?? '-')} Tm:{String(teamId ?? '-')} Tk:
-                        {String(activeTaskId ?? '-')} Th:{String(activeThreadId ?? '-')}
+                        Context: Org:{String(orgId ?? '-')} P:{String(projectId ?? '-')} Tm:
+                        {String(teamId ?? '-')} Tk:{String(activeTaskId ?? '-')} Th:
+                        {String(activeThreadId ?? '-')}
                       </Badge>
                     </div>
                   </div>

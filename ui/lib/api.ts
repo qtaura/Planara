@@ -1209,28 +1209,50 @@ export async function searchComments(
 
 // ===== AI Assistant Client Endpoints =====
 export async function aiAuthoringSuggest(payload: {
+  orgId?: number;
   projectId?: number;
   teamId?: number;
+  taskId?: number;
   prompt?: string;
 }): Promise<{ suggestions: { title: string; description: string }[]; rationale: string }> {
   const res = await apiFetch('/ai/authoring/suggest', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload || {}),
+    // Always include all context keys, even if null
+    body: JSON.stringify({
+      orgId: payload?.orgId ?? null,
+      projectId: payload?.projectId ?? null,
+      teamId: payload?.teamId ?? null,
+      taskId: payload?.taskId ?? null,
+      prompt: payload?.prompt ?? undefined,
+    }),
   });
   if (!res.ok) throw new Error(`AI authoring suggest failed: ${res.status}`);
   return res.json();
 }
 
-export async function aiSummarizeThread(
-  threadId: number
-): Promise<{ summary: string; participants: string[]; commentCount: number }> {
-  const res = await apiFetch(`/ai/authoring/threads/${threadId}/summary`);
+export async function aiSummarizeThread(params: {
+  threadId: number;
+  orgId?: number;
+  projectId?: number;
+  teamId?: number;
+  taskId?: number;
+}): Promise<{ summary: string; participants: string[]; commentCount: number }> {
+  const qp = new URLSearchParams();
+  // Include all query keys to satisfy acceptance criteria
+  qp.set('orgId', params.orgId != null ? String(params.orgId) : '');
+  qp.set('projectId', params.projectId != null ? String(params.projectId) : '');
+  qp.set('teamId', params.teamId != null ? String(params.teamId) : '');
+  qp.set('taskId', params.taskId != null ? String(params.taskId) : '');
+  const res = await apiFetch(`/ai/authoring/threads/${params.threadId}/summary?${qp.toString()}`);
   if (!res.ok) throw new Error(`AI thread summary failed: ${res.status}`);
   return res.json();
 }
 
 export async function aiTriageEvaluate(payload: {
+  orgId?: number;
+  projectId?: number;
+  teamId?: number;
   taskId?: number;
   taskSnapshot?: {
     title?: string;
@@ -1248,18 +1270,26 @@ export async function aiTriageEvaluate(payload: {
   const res = await apiFetch('/ai/triage/evaluate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload || {}),
+    body: JSON.stringify({
+      orgId: payload?.orgId ?? null,
+      projectId: payload?.projectId ?? null,
+      teamId: payload?.teamId ?? null,
+      taskId: payload?.taskId ?? null,
+      taskSnapshot: payload?.taskSnapshot ?? undefined,
+    }),
   });
   if (!res.ok) throw new Error(`AI triage evaluate failed: ${res.status}`);
   return res.json();
 }
 
 export async function aiTeamInsights(params: {
+  orgId?: number;
   teamId?: number;
   projectId?: number;
   windowDays?: number;
 }): Promise<{ metrics: Record<string, any>; recommendations: string[] }> {
   const qp = new URLSearchParams();
+  qp.set('orgId', params.orgId != null ? String(params.orgId) : '');
   if (params.teamId) qp.set('teamId', String(params.teamId));
   if (params.projectId) qp.set('projectId', String(params.projectId));
   if (typeof params.windowDays === 'number') qp.set('windowDays', String(params.windowDays));

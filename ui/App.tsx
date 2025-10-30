@@ -27,6 +27,7 @@ function AppContent() {
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
   // Assistant contextual props
+  const [assistantOrgId, setAssistantOrgId] = useState<number | null>(null);
   const [assistantTeamId, setAssistantTeamId] = useState<number | null>(null);
   const [assistantTaskId, setAssistantTaskId] = useState<number | null>(null);
   const [assistantThreadId, setAssistantThreadId] = useState<number | null>(null);
@@ -297,7 +298,10 @@ function AppContent() {
         {currentView === 'project' && selectedProject && (
           <ProjectView
             projectId={selectedProject}
-            onContext={({ teamId }) => setAssistantTeamId(teamId ?? null)}
+            onContext={({ teamId, orgId }) => {
+              setAssistantTeamId(teamId ?? null);
+              setAssistantOrgId(orgId ?? null);
+            }}
             onTaskContext={({ activeTaskId, activeThreadId }) => {
               if (typeof activeTaskId !== 'undefined') setAssistantTaskId(activeTaskId ?? null);
               if (typeof activeThreadId !== 'undefined')
@@ -315,6 +319,7 @@ function AppContent() {
         )}
 
         <AIAssistant
+          orgId={assistantOrgId ?? undefined}
           projectId={
             currentView === 'project' && selectedProject ? Number(selectedProject) : undefined
           }
