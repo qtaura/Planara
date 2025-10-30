@@ -8,6 +8,30 @@ This project adheres to Keep a Changelog and Semantic Versioning.
 
 Nothing currently.
 
+## [1.2.0] - Unreleased
+
+This section tracks changes intended for the upcoming 1.2.0 release.
+
+### Added
+
+- No entries yet.
+
+### Changed
+
+- No entries yet.
+
+### Fixed
+
+- No entries yet.
+
+### Security
+
+- No entries yet.
+
+### Documentation
+
+- No entries yet.
+
 ## [1.0.0] - 2025-10-30
 
 ### Added
