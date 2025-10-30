@@ -14,11 +14,17 @@ This section tracks changes intended for the upcoming 1.2.0 release.
 
 ### Added
 
-- No entries yet.
+- AI Assistant context plumbing across UI and server:
+  - UI assistant now sends `orgId`, `projectId`, `teamId`, and `taskId`/`threadId` with requests.
+  - Assistant badge shows `Org`, `P`, `Tm`, `Tk`, `Th` for quick verification.
+  - Server controllers parse, log, and forward context; services surface it in signals/metrics.
 
 ### Changed
 
-- No entries yet.
+- `ProjectView` emits `orgId` via `onContext` (derived from `team.org.id`); `App.tsx` passes it to the assistant.
+- `ui/lib/api.ts` includes full context in assistant endpoints (POST bodies or query params as appropriate).
+- `controllers/aiController.ts` accepts context from body/query and forwards it to services.
+- `services/aiAssistant.ts` functions accept optional context and return augmented payloads.
 
 ### Fixed
 
@@ -30,7 +36,7 @@ This section tracks changes intended for the upcoming 1.2.0 release.
 
 ### Documentation
 
-- No entries yet.
+- Added developer notes on deriving `orgId` and validating context propagation with the badge and server logs.
 
 ## [1.0.0] - 2025-10-30
 
