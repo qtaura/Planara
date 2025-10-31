@@ -9,6 +9,13 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     pool: 'forks',
     isolate: false,
+    // Reduce concurrency to avoid Windows worker crashes / OOM
+    poolOptions: {
+      forks: {
+        maxForks: 1,
+        minForks: 1,
+      },
+    },
     onConsoleLog: (log, type) => {
       if (['log', 'info', 'debug'].includes(type)) return false;
       return undefined;
