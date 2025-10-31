@@ -19,12 +19,21 @@ This section tracks changes intended for the upcoming 1.2.0 release.
   - Assistant badge shows `Org`, `P`, `Tm`, `Tk`, `Th` for quick verification.
   - Server controllers parse, log, and forward context; services surface it in signals/metrics.
 
+- Phase 3: Tests to lock in behavior
+  - UI unit test for `CommentsPanel`: restores last-selected thread from `localStorage` and saves on selection.
+  - UI assistant payload test: verifies `AIAssistant` maps props to request payload, including `threadId`.
+  - API tests (AI):
+    - `POST /api/ai/triage/evaluate` includes `signals.context` with `orgId`, `teamId`, `projectId`, `taskId`.
+    - `GET /api/ai/analytics/team-insights` echoes `metrics.context` and scopes metrics by `projectId`.
+
 ### Changed
 
 - `ProjectView` emits `orgId` via `onContext` (derived from `team.org.id`); `App.tsx` passes it to the assistant.
 - `ui/lib/api.ts` includes full context in assistant endpoints (POST bodies or query params as appropriate).
 - `controllers/aiController.ts` accepts context from body/query and forwards it to services.
 - `services/aiAssistant.ts` functions accept optional context and return augmented payloads.
+
+- UI test configuration: stabilized Vitest on Windows by reducing heavy assistant rendering in a dedicated payload test and tuning worker settings to avoid OOM/worker exit in local runs.
 
 ### Fixed
 

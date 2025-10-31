@@ -1,0 +1,168 @@
+Awesome — here’s a FAANG-grade feature list tailored to your repo, with detailed “what to do” under each feature. I’m focusing on gaps and must-haves to make the product robust, scalable, and delightful.
+
+Organizations & Teams
+
+Data: Add Organization, Team, Membership models; deprecate User.teamId in favor of Membership with role.
+Backend: CRUD for orgs/teams; invite flows; join/leave; list members; role changes; transfer ownership.
+UI: Org/Team management screens in ui/components/SettingsScreen.tsx; invite flows; role dropdowns; member list with search.
+Validation: Ownership rules; unique team names within org; cannot demote last owner; email canonicalization.
+Authorization: RBAC middleware that checks resource scope per route; apply to routes/*.
+Tests: API integration tests for create/invite/join/role change; permission denial cases.
+
+Role-Based Access Control (RBAC)
+
+Data: Define roles Owner, Admin, Member, Viewer with a permission matrix stored in code.
+Backend: authorize(resource, action) helper; enforce on projects/tasks/comments/files routes.
+UI: Conditionally render actions by role (e.g., delete project only for admins/owners).
+Validation: Block actions that cross org boundaries; log denials via SecurityEvent.
+Telemetry: Permission check outcomes in logs with userId, org, team, action, resource.
+Tests: Unit tests for RBAC matrix; integration tests asserting access granted/denied.
+
+Projects & Tasks Enhancements
+
+Data: Add Subtask, Dependency, Label, DueDate, Priority, Assignee, Watchers fields to Task.
+Backend: Endpoints for subtasks; set dependencies; assign/unassign; watchers; recurring tasks; bulk update.
+UI: Kanban (ui/components/KanbanView.tsx) with filters; task modal extended fields; watchers chip; labels.
+Validation: Prevent dependency cycles; due date in future; max watchers; label uniqueness per project.
+Telemetry: Task lifecycle events (create, assign, complete) and bulk operations logged.
+Tests: E2E flows for create/assign/complete; dependency resolution cases; filter coverage.
+
+Real-Time Collaboration
+
+Backend: Add Socket.IO server; events for task updates, comments, presence; auth handshake.
+UI: Subscribe in AppLayout.tsx; live updates for KanbanView, TaskModal, Comments; presence avatars.
+Data: Presence ephemeral store (in-memory or Redis later); throttling updates.
+Validation: Auth required; rate limit event emissions; per-room membership checks.
+Telemetry: Message rates; room membership; dropped connections; reconnection rates.
+Tests: Simulated multi-client update/merge; presence join/leave; latency guardrails.
+
+Comments & Threads
+
+Data: Add Thread model with parentCommentId; reactions; mentions @username.
+Backend: Create reply; list thread; reaction endpoints; mention detection; notification generation.
+UI: Threaded comments view; reaction bar; mention autocomplete; markdown preview.
+Validation: Max depth; sanitize markdown; limit reactions set; mention resolvers case-insensitive.
+Telemetry: Comment create/edit/delete; reaction counts; mention notifications volume.
+Tests: Thread rendering; mention notification delivery; reaction persistence.
+
+Files & Attachments
+
+Data: File/Attachment model with versioning; link to tasks/projects; metadata (size, mime).
+Backend: Upload (pre-signed URL if using S3 later); versioning; preview; delete; access checks.
+UI: Attachments section in TaskModal.tsx; file preview; version history; drag-and-drop upload.
+Validation: Size limits; allowed types; virus scanning; retention policy hooks.
+Telemetry: Upload/download counts; size distribution; storage errors.
+Tests: Upload limits; version rollbacks; access by role; previews.
+
+Search
+
+Backend: Full-text search endpoints across projects/tasks/comments; filters (assignee, status, labels, date range).
+Data: Add indexed columns (usernameLower, teamId, createdAt, titleLower); consider lightweight search index.
+UI: Global search bar; filter panel; saved search chips; debounced typeahead.
+Validation: Scope by org/team; sanitize queries; length limits; pagination.
+Telemetry: Query volume; latency; zero-result rates; saved-search usage.
+Tests: Query correctness; filter combinations; pagination.
+
+Notifications Center
+
+Data: Extend Notification with readAt, channel, preferenceId; preferences per user.
+Backend: List, mark read/unread, delete; email digest jobs; preference CRUD.
+UI: Notification center in NotificationScreen.tsx; filters; preferences screen; badge counters.
+Validation: Dedup invites; rate limit noisy events; preference conflicts.
+Telemetry: Delivery success; read rates; digest generation; channel mix.
+Tests: Read/unread flows; preference updates; digest generation unit tests.
+
+Authentication & Sessions
+
+Backend: Device/session management endpoints; list active sessions; revoke; refresh rotation logs.
+Data: Session or expand RefreshToken with device metadata; last used; IP; UA.
+UI: Security settings page; session list; force sign-out; device names.
+Validation: Prevent reuse of revoked refresh; limit concurrent sessions; enforce token rotation.
+Telemetry: Session creation/revocation; suspicious activity alerts; token anomalies.
+Tests: Refresh rotation correctness; revoke behavior; concurrent login cases.
+
+Email Verification & Account Management
+
+Backend: Harden resend/verify flows (you already have strong backoff); add change email + re-verify.
+UI: Account screen for email change, password reset, delete account; verification status badges.
+Validation: Email uniqueness; cooldowns; disable critical actions until verified.
+Telemetry: Email changes; reset requests; verification funnels.
+Tests: Email change workflow; reset password (if/when local auth added).
+
+Security & Compliance
+
+Authorization: Apply RBAC to every route; audit logs for admin actions and data exports.
+Data Protection: Encrypt sensitive fields; secrets rotation; secure config handling.
+CSRF/CORS: Harden CORS; CSRF not needed for token auth, document rationale.
+Admin Ops: Access reviews; admin tokens guarded; least-privilege configuration.
+Telemetry: Security events expanded; alert thresholds; anomaly detection basic rules.
+Tests: Security regression tests; permission escalation attempts; injection/sanitization coverage.
+
+Observability & Reliability
+
+Backend: Global error handler; structured logs with correlation IDs; request logging middleware.
+Metrics: Expose /metrics (Prometheus); latency, error rates, DB timings, queue stats later.
+SLOs: Define latency and availability targets; add lightweight alerting hooks.
+Backups: DB backup schedule; restore playbooks; smoke restore test.
+UI: Error boundaries; toast on recoverable errors; retry patterns for transient failures.
+Tests: Chaos tests for DB downtime; latency spikes; retry behaviors.
+
+Performance & Scalability
+
+Backend: Pagination everywhere (getUsers, projects, tasks); ETag/If-None-Match; response caching for GETs.
+Data: Indexes on hot paths; denormalized counters for lists (comments count).
+UI: Virtualized lists; code-splitting in ui/vite.config.ts; dynamic import() for heavy screens.
+Rate Limiting: Extend authLimiter across login/signup/oauth routes; strict application on sensitive endpoints.
+Telemetry: Slow query logging; cache hit/miss; paginated response sizes.
+Tests: Load tests; pagination boundaries; caching freshness.
+
+Quality & Testing
+
+Backend: Broaden test suite — controllers/services; integration tests for key flows (signup, verify, login, invite, accept).
+UI: Component tests for SettingsScreen, NotificationScreen, KanbanView, TaskModal.
+Contract: OpenAPI spec and validation middleware; client types generation.
+CI: Lint, format, test gates; preview builds per PR; green-merge policy.
+Data: Seed scripts and fixtures for dev/testing with realistic scenarios.
+
+Developer Experience
+
+Types: Shared type package for API contracts (ui/types + server types); eliminate stringly APIs.
+Migrations: Formal migration system for models; forward/backward compatibility.
+Feature Flags: Centralized flags to stage risky features; kill switch for real-time or search.
+Scripts: One-command setup (npm run dev:all, npm run seed); docs in README.md.
+Docs: Contribution guide; architecture overview; API docs (OpenAPI).
+
+UX & Accessibility
+
+Accessibility: Keyboard navigation; ARIA across ui/components/ui/*; color contrast; focus outlines.
+Usability: Empty states, skeleton loaders, optimistic UI for task edits with rollback on error.
+Internationalization: i18n scaffolding; date/time/number locale; RTL support.
+Settings: Personal preferences for theme, notifications, language.
+
+Integrations
+
+GitHub/Jira: Import/export issues; link tasks to external tickets; status sync.
+Slack: Notification channel; slash commands to create tasks; bot DM digests.
+Calendar: ICS export/import for due dates and milestones; integration settings.
+Webhooks: Outbound webhooks with HMAC signing; inbound endpoints with validation.
+
+Data Lifecycle
+
+Export: Self-serve data export for org/team/project; JSON/CSV; email or download.
+Deletion: Account/org/project deletion with grace period; soft delete with recover.
+Retention: Configurable retention for logs/notifications; purge tasks and attachments per policy.
+
+AI Assist
+
+Authoring: Suggest task titles/descriptions from activity context; summarization for threads.
+Triage: Priority detection; due date suggestions; notify when blockers identified.
+Analytics: Team insights (cycle time, throughput); recommendations for process improvements.
+
+Immediate High-Impact Items (Missing Today)
+
+Implement org/team/membership models and RBAC guard; migrate User.teamId usage.
+Add pagination/filtering to list endpoints (routes/users.ts getUsers, projects, tasks).
+Add global error-handling middleware and standardized JSON error shapes.
+Build Notification preferences + read/unread + digest job.
+Add Socket.IO real-time updates for tasks/comments; presence tracking.
+If you want, I can start by drafting the RBAC middleware and the Organization/Team/Membership models, plus migration plan and scaffolding endpoints, then follow with pagination across list routes.
