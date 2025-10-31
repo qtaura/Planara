@@ -34,7 +34,6 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import NotificationScreen from '../NotificationScreen';
 
-
 describe('NotificationScreen', () => {
   it('renders notifications and filters unread', async () => {
     render(<NotificationScreen />);
