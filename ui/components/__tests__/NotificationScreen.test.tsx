@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import NotificationScreen from '../NotificationScreen';
 
+// Mock APIs BEFORE importing the component to ensure mocks are applied
 const notifications = [
   {
     id: 1,
@@ -31,6 +31,9 @@ vi.mock('@lib/api', () => ({
 }));
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+import NotificationScreen from '../NotificationScreen';
+
 
 describe('NotificationScreen', () => {
   it('renders notifications and filters unread', async () => {
