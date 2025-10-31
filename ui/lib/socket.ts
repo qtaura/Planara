@@ -1,6 +1,9 @@
 import { io, Socket } from 'socket.io-client';
 import { API_BASE, getToken } from './api';
 
+// Avoid establishing real socket connections during unit tests
+const IS_TEST = (import.meta as any)?.env?.MODE === 'test';
+
 let socket: Socket | null = null;
 let currentRoom: string | null = null;
 
@@ -11,6 +14,7 @@ function forward(name: string, detail: any) {
 }
 
 export function getSocket(): Socket | null {
+  if (IS_TEST) return null;
   if (socket) return socket;
   const token = getToken();
   socket = io(API_BASE.replace(/\/$/, ''), {

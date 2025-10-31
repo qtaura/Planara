@@ -6,7 +6,14 @@ export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   test: {
     environment: 'jsdom',
+    // Ensure jsdom has a proper URL so localStorage and other APIs work
+    environmentOptions: {
+      jsdom: {
+        url: 'http://localhost/',
+      },
+    },
     setupFiles: ['./test/setup.ts'],
+    // Use forks with single worker to reduce memory and stabilize on Windows
     pool: 'forks',
     isolate: false,
     // Reduce concurrency to avoid Windows worker crashes / OOM
