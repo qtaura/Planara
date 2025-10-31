@@ -31,6 +31,11 @@ function AppContent() {
   const [assistantTeamId, setAssistantTeamId] = useState<number | null>(null);
   const [assistantTaskId, setAssistantTaskId] = useState<number | null>(null);
   const [assistantThreadId, setAssistantThreadId] = useState<number | null>(null);
+  // Assistant human-friendly context
+  const [assistantProjectName, setAssistantProjectName] = useState<string | null>(null);
+  const [assistantTeamName, setAssistantTeamName] = useState<string | null>(null);
+  const [assistantOrgName, setAssistantOrgName] = useState<string | null>(null);
+  const [assistantTaskTitle, setAssistantTaskTitle] = useState<string | null>(null);
   // signup flow state
   const [signupEmail, setSignupEmail] = useState<string>('');
   const [signupPassword, setSignupPassword] = useState<string>('');
@@ -298,12 +303,17 @@ function AppContent() {
         {currentView === 'project' && selectedProject && (
           <ProjectView
             projectId={selectedProject}
-            onContext={({ teamId, orgId }) => {
+            onContext={({ teamId, orgId, projectName, teamName, orgName }) => {
               setAssistantTeamId(teamId ?? null);
               setAssistantOrgId(orgId ?? null);
+              setAssistantProjectName(projectName ?? null);
+              setAssistantTeamName(teamName ?? null);
+              setAssistantOrgName(orgName ?? null);
             }}
-            onTaskContext={({ activeTaskId, activeThreadId }) => {
+            onTaskContext={({ activeTaskId, activeThreadId, activeTaskTitle }) => {
               if (typeof activeTaskId !== 'undefined') setAssistantTaskId(activeTaskId ?? null);
+              if (typeof activeTaskTitle !== 'undefined')
+                setAssistantTaskTitle(activeTaskTitle ?? null);
               if (typeof activeThreadId !== 'undefined')
                 setAssistantThreadId(activeThreadId ?? null);
             }}
@@ -326,6 +336,10 @@ function AppContent() {
           teamId={assistantTeamId ?? undefined}
           activeTaskId={assistantTaskId ?? undefined}
           activeThreadId={assistantThreadId ?? undefined}
+          orgName={assistantOrgName ?? undefined}
+          projectName={assistantProjectName ?? undefined}
+          teamName={assistantTeamName ?? undefined}
+          activeTaskTitle={assistantTaskTitle ?? undefined}
         />
       </div>
 

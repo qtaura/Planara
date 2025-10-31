@@ -38,6 +38,15 @@ This section tracks changes intended for the upcoming 1.2.0 release.
 
 - Added developer notes on deriving `orgId` and validating context propagation with the badge and server logs.
 
+### UX
+
+- Assistant context chip polish:
+  - Toggle is now an icon-only control (Eye/EyeOff) for a cleaner look.
+  - Names-first display with fallback to IDs for Org/Project/Team/Task.
+  - Tooltip shows full mapping: `Name (ID ...)` for Org, Project, Team, Task; plus Thread ID.
+  - Auto-show when `activeTaskId` becomes present; respects user toggle afterward.
+  - `ProjectView` emits `projectName`, `teamName`, `orgName`, and `activeTaskTitle`; `App` captures and passes them to `AIAssistant`.
+
 ## [1.0.0] - 2025-10-30
 
 ### Added

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from '@lib/motion-shim';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { Eye, EyeOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import {
@@ -24,9 +26,24 @@ export function AIAssistant(
     teamId?: number;
     activeThreadId?: number;
     activeTaskId?: number;
+    // Friendly names
+    orgName?: string;
+    projectName?: string;
+    teamName?: string;
+    activeTaskTitle?: string;
   } = {}
 ) {
-  const { orgId, projectId, teamId, activeThreadId, activeTaskId } = props;
+  const {
+    orgId,
+    projectId,
+    teamId,
+    activeThreadId,
+    activeTaskId,
+    orgName,
+    projectName,
+    teamName,
+    activeTaskTitle,
+  } = props;
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -39,6 +56,14 @@ export function AIAssistant(
   ]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState<string | null>(null);
+  const [showContextChip, setShowContextChip] = useState(!!activeTaskId);
+  const [hasUserToggledChip, setHasUserToggledChip] = useState(false);
+
+  useEffect(() => {
+    if (activeTaskId && !showContextChip && !hasUserToggledChip) {
+      setShowContextChip(true);
+    }
+  }, [activeTaskId]);
 
   const quickActions = [
     { icon: <Zap className="w-3 h-3" />, label: 'Suggest tasks' },
@@ -255,12 +280,61 @@ Recommendations: ${recommendations.join(' | ')}`;
                         'Always here to help'
                       )}
                     </p>
-                    <div className="mt-1">
-                      <Badge variant="outline" className="text-[10px] font-normal">
-                        Context: Org:{String(orgId ?? '-')} P:{String(projectId ?? '-')} Tm:
-                        {String(teamId ?? '-')} Tk:{String(activeTaskId ?? '-')} Th:
-                        {String(activeThreadId ?? '-')}
-                      </Badge>
+                    <div className="mt-1 flex items-center gap-2">
+                      {showContextChip && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="text-[10px] font-normal">
+                              Context: Org:{String(orgName || orgId || '-')} P:
+                              {String(projectName || projectId || '-')} Tm:
+                              {String(teamName || teamId || '-')} Tk:
+                              {String(activeTaskTitle || activeTaskId || '-')} Th:
+                              {String(activeThreadId ?? '-')}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent sideOffset={6}>
+                            <div className="space-y-1">
+                              <div>
+                                Org: {String(orgName || '-')}
+                                {orgId ? ` (ID ${orgId})` : ''}
+                              </div>
+                              <div>
+                                Project: {String(projectName || '-')}
+                                {projectId ? ` (ID ${projectId})` : ''}
+                              </div>
+                              <div>
+                                Team: {String(teamName || '-')}
+                                {teamId ? ` (ID ${teamId})` : ''}
+                              </div>
+                              <div>
+                                Task: {String(activeTaskTitle || '-')}
+                                {activeTaskId ? ` (ID ${activeTaskId})` : ''}
+                              </div>
+                              <div>Thread: {activeThreadId ? `ID ${activeThreadId}` : '-'}</div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setShowContextChip(!showContextChip);
+                          setHasUserToggledChip(true);
+                        }}
+                        title={showContextChip ? 'Hide context' : 'Show context'}
+                        aria-label={showContextChip ? 'Hide context' : 'Show context'}
+                        className="h-6 w-6"
+                      >
+                        {showContextChip ? (
+                          <EyeOff className="h-3.5 w-3.5" />
+                        ) : (
+                          <Eye className="h-3.5 w-3.5" />
+                        )}
+                        <span className="sr-only">
+                          {showContextChip ? 'Hide context' : 'Show context'}
+                        </span>
+                      </Button>
                     </div>
                   </div>
                 </div>

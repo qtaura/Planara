@@ -26,8 +26,18 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 
 interface ProjectViewProps {
   projectId: string;
-  onContext?: (ctx: { teamId?: number | null; orgId?: number | null }) => void;
-  onTaskContext?: (ctx: { activeTaskId?: number | null; activeThreadId?: number | null }) => void;
+  onContext?: (ctx: {
+    teamId?: number | null;
+    orgId?: number | null;
+    projectName?: string | null;
+    teamName?: string | null;
+    orgName?: string | null;
+  }) => void;
+  onTaskContext?: (ctx: {
+    activeTaskId?: number | null;
+    activeThreadId?: number | null;
+    activeTaskTitle?: string | null;
+  }) => void;
 }
 
 export function ProjectView({ projectId, onContext, onTaskContext }: ProjectViewProps) {
@@ -46,7 +56,10 @@ export function ProjectView({ projectId, onContext, onTaskContext }: ProjectView
       setProject(p || null);
       const teamId = p?.team?.id ?? null;
       const orgId = p?.team?.org?.id ?? null;
-      onContext?.({ teamId, orgId });
+      const projectName = p?.name ?? null;
+      const teamName = p?.team?.name ?? null;
+      const orgName = p?.team?.org?.name ?? null;
+      onContext?.({ teamId, orgId, projectName, teamName, orgName });
     } catch (e: any) {
       setError(e?.message || 'Failed to load project');
       toast.error(error || 'Failed to load project');
@@ -89,7 +102,8 @@ export function ProjectView({ projectId, onContext, onTaskContext }: ProjectView
   // Propagate selected task id to parent for assistant context
   useEffect(() => {
     const tid = selectedTask ? Number(selectedTask.id) : null;
-    onTaskContext?.({ activeTaskId: tid });
+    const title = selectedTask ? String(selectedTask.title) : null;
+    onTaskContext?.({ activeTaskId: tid, activeTaskTitle: title });
   }, [selectedTask]);
 
   if (loading) {
