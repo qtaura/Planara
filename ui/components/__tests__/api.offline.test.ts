@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from 'vitest';
-import * as Sonner from 'sonner';
 import { apiFetch } from '../../lib/api';
 
 // Helper to set navigator.onLine in JSDOM

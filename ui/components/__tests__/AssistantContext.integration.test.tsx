@@ -35,7 +35,7 @@ vi.mock('@lib/api', () => {
       { id: 2, content: 'Thread B start', taskId: 555, parentCommentId: null, threadId: 22 },
     ]),
     // Assistant actions
-    aiSummarizeThread: vi.fn(async (_params: any) => ({
+    aiSummarizeThread: vi.fn(async () => ({
       summary: 'Summary OK',
       participants: ['alex'],
       commentCount: 2,
@@ -86,7 +86,7 @@ describe('Integration: thread selection propagates to AIAssistant and request pa
       );
     };
 
-    const ui = render(React.createElement(Wrapper));
+    render(React.createElement(Wrapper));
 
     // Choose Thread B (threadId 22)
     const threadB = await screen.findByText('Thread B start');

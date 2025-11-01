@@ -5,7 +5,7 @@ import CommentsPanel from '../CommentsPanel';
 // Mock API used by CommentsPanel (component imports ../../lib/api relative to this test)
 vi.mock('../../lib/api', () => {
   return {
-    listComments: vi.fn(async (_taskId: number) => [
+    listComments: vi.fn(async () => [
       // Two root threads with ids 11 and 22
       { id: 1, content: 'Root A start', taskId: 123, parentCommentId: null, threadId: 11 },
       { id: 2, content: 'Root B start', taskId: 123, parentCommentId: null, threadId: 22 },

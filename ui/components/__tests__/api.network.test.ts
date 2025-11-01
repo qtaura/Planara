@@ -1,14 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { sendVerificationCode } from '../../lib/api';
 
-function networkError() {
-  const err = new Error('fetch failed');
-  // Simulate typical network failure
-  // @ts-ignore
-  err.cause = 'network';
-  return err;
-}
-
 describe('API offline detection', () => {
   beforeEach(() => {
     vi.restoreAllMocks();

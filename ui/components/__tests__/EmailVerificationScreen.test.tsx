@@ -6,11 +6,11 @@ import { ThemeProvider } from '../../lib/theme-context';
 
 vi.mock('@lib/api', () => {
   return {
-    sendVerificationCode: vi.fn(async (email: string) => ({
+    sendVerificationCode: vi.fn(async () => ({
       expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
       devCode: '123456',
     })),
-    verifyEmailCode: vi.fn(async (_email: string, _code: string) => ({ success: true })),
+    verifyEmailCode: vi.fn(async () => ({ success: true })),
     getVerificationStatus: vi.fn(async () => ({ verified: true })),
     getCurrentUser: vi.fn(() => ({ id: 'u1', email: 'test@example.com', isVerified: false })),
     setCurrentUser: vi.fn(() => {}),

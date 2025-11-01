@@ -1,4 +1,3 @@
-import type { Project, Task, Milestone, SubTask } from '../types';
 import { toast } from 'sonner';
 import { isOffline, retryWhenOnline } from './network';
 

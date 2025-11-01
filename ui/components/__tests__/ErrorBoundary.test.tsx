@@ -2,7 +2,6 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import ErrorBoundary from '../ErrorBoundary';
-import * as Sonner from 'sonner';
 
 vi.mock('sonner', () => ({
   toast: {

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Checkbox } from './ui/checkbox';
@@ -54,23 +53,24 @@ export function TaskModal({ task, isOpen, onClose, teamId, onActiveThreadChange 
   const [attachments, setAttachments] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [versionsFor, setVersionsFor] = useState<number | null>(null);
+  const taskId = task?.id;
 
   // Use optimistic UI for task updates
   const optimisticTask = useOptimisticTask(task || ({} as Task));
 
   useEffect(() => {
     async function loadAttachments() {
-      if (!task) return;
+      if (!taskId) return;
       try {
         const items = await listAttachments({
-          taskId: Number(task.id),
+          taskId: Number(taskId),
           teamId: teamId || undefined,
         });
         setAttachments(items || []);
       } catch {}
     }
     if (isOpen) loadAttachments();
-  }, [task?.id, isOpen, teamId]);
+  }, [taskId, isOpen, teamId]);
 
   useEffect(() => {
     let cancelled = false;
