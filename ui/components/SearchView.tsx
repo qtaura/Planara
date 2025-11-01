@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { searchTasks, searchProjects, searchComments } from '../lib/api';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Select } from './ui/select';
 
 // Lightweight select using native <select> to avoid new dependencies
 function TypeSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {

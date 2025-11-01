@@ -133,7 +133,7 @@ export async function runBatch(req: Request, res: Response) {
         correlationId: (req as any)?.correlationId,
         triggeredBy: 'admin',
       };
-      // eslint-disable-next-line no-console
+
       console.log(JSON.stringify(logEntry));
     } catch {}
     try {
@@ -151,7 +151,7 @@ export async function runBatch(req: Request, res: Response) {
         correlationId: (req as any)?.correlationId,
         triggeredBy: 'admin',
       };
-      // eslint-disable-next-line no-console
+
       console.log(JSON.stringify(logEntry));
     } catch {}
     try {

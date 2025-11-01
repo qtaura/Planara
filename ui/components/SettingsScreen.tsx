@@ -7,7 +7,7 @@ import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Separator } from './ui/separator';
-import { User, Bell, Palette, Users, Shield, Github, Mail, Trash2, Globe } from 'lucide-react';
+import { User, Bell, Palette, Users, Shield, Trash2, Globe } from 'lucide-react';
 import { useTheme } from '../lib/theme-context';
 import { useLocale } from '../lib/i18n';
 import { toast } from 'sonner';
@@ -26,8 +26,6 @@ import {
   getCurrentUser,
   getCurrentUserFromAPI,
   updateUser,
-  getNotifications,
-  getUnreadNotificationCount,
   adminUnlock,
   getLockoutState,
   getSecurityEvents,
@@ -42,12 +40,6 @@ import {
   updateOrganization,
   deleteOrganization,
   transferOrgOwnership,
-  listTeams,
-  createTeam,
-  listMembers,
-  changeRole,
-  transferTeamOwnership,
-  leaveTeam,
   getSessions,
   revokeSession,
   renameSession,
@@ -69,7 +61,7 @@ export function SettingsScreen() {
         })
         .catch(() => {});
     }
-  }, []);
+  }, [user]);
 
   // Preselect section from navigation and listen for section change events
   useEffect(() => {

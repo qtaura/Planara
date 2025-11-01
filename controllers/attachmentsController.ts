@@ -6,7 +6,6 @@ import { Attachment } from '../models/Attachment.js';
 import { FileVersion } from '../models/FileVersion.js';
 import { Task } from '../models/Task.js';
 import { Project } from '../models/Project.js';
-import { User } from '../models/User.js';
 import { recordAttachmentEvent } from '../services/securityTelemetry.js';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');

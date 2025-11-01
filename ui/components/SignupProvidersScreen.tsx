@@ -71,6 +71,9 @@ export function SignupProvidersScreen({
   function startProvider(provider: 'github' | 'google' | 'slack') {
     const url = `${API_BASE}/users/oauth/${provider}/start?origin=${encodeURIComponent(window.location.origin)}`;
     window.open(url, 'oauth', 'width=600,height=700');
+    try {
+      onChooseProvider(provider);
+    } catch {}
   }
 
   // Header

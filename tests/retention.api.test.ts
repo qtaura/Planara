@@ -155,7 +155,7 @@ describe('Retention policies: admin routes and trimming behavior', () => {
       .send({ scope: 'project', projectId: project.id, maxVersions: 2 });
     if (createRes.status >= 400) {
       // Log error details to aid debugging
-      // eslint-disable-next-line no-console
+
       console.error('create policy error:', createRes.body);
     }
     expect([200, 201]).toContain(createRes.status);
@@ -197,7 +197,6 @@ describe('Retention policies: admin routes and trimming behavior', () => {
       .set('x-admin-token', process.env.ADMIN_UNLOCK_TOKEN as string)
       .send({ scope: 'project', projectId: project.id, maxVersions: 2 });
     if (createRes.status >= 400) {
-      // eslint-disable-next-line no-console
       console.error('create policy error:', createRes.body);
     }
     expect([200, 201]).toContain(createRes.status);

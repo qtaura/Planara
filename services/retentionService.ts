@@ -131,7 +131,7 @@ export async function applyRetentionPolicyForAttachment(att: Attachment): Promis
         keepDays: policy.keepDays ?? null,
       },
     };
-    // eslint-disable-next-line no-console
+
     console.log(JSON.stringify(logEntry));
   } catch {}
 }

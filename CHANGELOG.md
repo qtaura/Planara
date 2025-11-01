@@ -6,7 +6,16 @@ This project adheres to Keep a Changelog and Semantic Versioning.
 
 ## [Unreleased]
 
-Nothing currently.
+### Changed
+
+- Lint cleanup across UI and server: removed unused imports/variables in tests, controllers, and UI screens.
+- React hooks: fixed `exhaustive-deps` in `SettingsScreen` and `TaskModal` to align with ESLint guidance.
+- Signup providers: invoke `onChooseProvider` when starting OAuth for better parent instrumentation.
+- Code formatting: ran Prettier across repository to normalize style.
+
+### Fixed
+
+- Addressed several `no-unused-vars` warnings in UI components (`SearchView`, `SetUsernameScreen`) and controllers (attachments, integrations).
 
 ## [1.2.0] - Unreleased
 

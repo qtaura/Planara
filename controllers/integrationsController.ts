@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { verifySignature, WebhookProvider } from '../services/webhookService.js';
-import { strictLimiter } from '../middlewares/rateLimiter.js';
 import { AppDataSource } from '../db/data-source.js';
 import { ExternalLink } from '../models/ExternalLink.js';
 import { Task } from '../models/Task.js';
