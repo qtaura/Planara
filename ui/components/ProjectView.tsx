@@ -1,18 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
-import {
-  Settings,
-  Github,
-  Users,
-  MoreHorizontal,
-  Star,
-  TrendingUp,
-  Calendar,
-  ListTodo,
-} from 'lucide-react';
+import { Settings, Github, Users, Star, TrendingUp, Calendar, ListTodo } from 'lucide-react';
 import { KanbanView } from './KanbanView';
 import { RoadmapView } from './RoadmapView';
 import { CalendarView } from './CalendarView';
@@ -45,12 +36,10 @@ export function ProjectView({ projectId, onContext, onTaskContext }: ProjectView
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [presentUsers, setPresentUsers] = useState<number[]>([]);
 
-  async function refreshProject() {
+  const refreshProject = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const p = await getProjectWithRelations(projectId);
       setProject(p || null);
@@ -61,13 +50,12 @@ export function ProjectView({ projectId, onContext, onTaskContext }: ProjectView
       const orgName = p?.team?.org?.name ?? null;
       onContext?.({ teamId, orgId, projectName, teamName, orgName });
     } catch (e: any) {
-      setError(e?.message || 'Failed to load project');
-      toast.error(error || 'Failed to load project');
+      toast.error(e?.message || 'Failed to load project');
       setProject(null);
     } finally {
       setLoading(false);
     }
-  }
+  }, [projectId, onContext]);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +73,7 @@ export function ProjectView({ projectId, onContext, onTaskContext }: ProjectView
       window.removeEventListener('tasks:changed', onTasksChanged as EventListener);
       window.removeEventListener('projects:changed', onProjectsChanged as EventListener);
     };
-  }, [projectId]);
+  }, [refreshProject]);
 
   useEffect(() => {
     function onPresence(e: any) {
@@ -104,7 +92,7 @@ export function ProjectView({ projectId, onContext, onTaskContext }: ProjectView
     const tid = selectedTask ? Number(selectedTask.id) : null;
     const title = selectedTask ? String(selectedTask.title) : null;
     onTaskContext?.({ activeTaskId: tid, activeTaskTitle: title });
-  }, [selectedTask]);
+  }, [selectedTask, onTaskContext]);
 
   if (loading) {
     return (

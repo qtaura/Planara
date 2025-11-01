@@ -1,4 +1,5 @@
 import { motion } from '@lib/motion-shim';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -30,18 +31,18 @@ export function FilesView({ projectId }: { projectId: string }) {
   const [versions, setVersions] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  async function refreshAttachments() {
+  const refreshAttachments = useCallback(async () => {
     try {
       const list = await listAttachments({ projectId: Number(projectId) });
       setAttachments(Array.isArray(list) ? list : []);
-    } catch (e) {
+    } catch {
       // swallow for now
     }
-  }
+  }, [projectId]);
 
   useEffect(() => {
     refreshAttachments().catch(() => {});
-  }, [projectId]);
+  }, [refreshAttachments]);
 
   async function onUploadSelected(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -51,7 +52,7 @@ export function FilesView({ projectId }: { projectId: string }) {
         await uploadAttachment({ file: f, projectId: Number(projectId) });
       }
       await refreshAttachments();
-    } catch (e) {
+    } catch {
       // swallow for now
     } finally {
       setUploading(false);
@@ -63,7 +64,7 @@ export function FilesView({ projectId }: { projectId: string }) {
     try {
       await deleteAttachment(attId);
       await refreshAttachments();
-    } catch (e) {
+    } catch {
       // swallow
     }
   }
@@ -73,7 +74,7 @@ export function FilesView({ projectId }: { projectId: string }) {
     try {
       const v = await listAttachmentVersions(attId);
       setVersions(v);
-    } catch (e) {
+    } catch {
       setVersions([]);
     }
   }
@@ -85,7 +86,7 @@ export function FilesView({ projectId }: { projectId: string }) {
       setVersionsFor(null);
       setVersions([]);
       await refreshAttachments();
-    } catch (e) {
+    } catch {
       // noop
     }
   }

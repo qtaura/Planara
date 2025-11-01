@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Bell,
   Check,
@@ -17,7 +17,6 @@ import {
   markAllNotificationsAsRead,
   deleteNotification,
   acceptTeamInvite,
-  markNotificationAsUnread,
 } from '@lib/api';
 import { toast } from 'sonner';
 
@@ -39,11 +38,7 @@ export default function NotificationScreen() {
   const [filterType, setFilterType] = useState<string>('');
   const [filterChannel, setFilterChannel] = useState<string>('');
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [showUnreadOnly, filterType, filterChannel]);
-
-  async function fetchNotifications() {
+  const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getNotifications({
@@ -60,7 +55,11 @@ export default function NotificationScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [showUnreadOnly, filterType, filterChannel]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   async function handleMarkAsRead(notificationId: number) {
     try {
